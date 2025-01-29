@@ -2,14 +2,6 @@
 # John Kearns
 # Goal: Write script to get all of the other economic data
 
-
-
-master_dir = "/Users/johnkearns/Documents/GitHub/State_GDP_Trends/"
-do_folder = paste0(master_dir,"Do/")
-data_folder = paste0(master_dir,"Data/")
-results_folder = paste0(master_dir,"Results/")
-charts_folder = paste0(master_dir,"Charts/")
-
 # load packages
 library(estimatr)
 library(gtrendsR)

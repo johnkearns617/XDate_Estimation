@@ -2,12 +2,6 @@
 # John Kearns
 # Goal: Write script to pull categories to replicate Nakazawa 2022
 
-master_dir = "/Users/johnkearns/Documents/GitHub/XDate_Estimation/"
-do_folder = paste0(master_dir,"Do/")
-data_folder = paste0(master_dir,"Data/")
-results_folder = paste0(master_dir,"Results/")
-charts_folder = paste0(master_dir,"Charts/")
-
 # load packages
 library(estimatr)
 library(gtrendsR)
@@ -47,16 +41,16 @@ which_category = function(num){
   
 }
 
-nk_categories = read_csv(paste0(data_folder,"Raw/Nakazawa_Categories.csv")) %>% 
+nk_categories = read_csv(paste0("Data/Raw/Nakazawa_Categories.csv")) %>% 
   left_join(categories %>% mutate(name=gsub(" ","",name)),by=c("variables"="name")) %>% 
   filter(!is.na(id)) %>% 
   distinct(id,.keep_all=TRUE)
 # do we want to add anymore categories?
 
-trends_cats = read_delim(paste0(master_dir,"Data/google_trend_categories.txt"), delim=': ')
+trends_cats = read_delim(paste0("Data/google_trend_categories.txt"), delim=': ')
 colnames(trends_cats) = c('category','id')
 
-trends_data = read_csv(paste0(data_folder,"Raw/full_trends_df_weekly.csv")) %>% 
+trends_data = read_csv(paste0("Data/Raw/full_trends_df_weekly.csv")) %>% 
   select(-`...1`) %>% 
   mutate(flag=ifelse(date<dplyr::lag(date,1),1,0)) %>% 
   mutate(pull_grp=case_when(
@@ -97,175 +91,125 @@ trends_data = trends_data %>%
 trends_data = trends_data %>% 
   group_by(cat) %>% 
   mutate(weight=case_when(
-    year(date)==2008&pull_grp==1~mean(tail(value[year(date)==2008&pull_grp==1],40)/tail(value[year(date)==2008&pull_grp==2],40),na.rm=TRUE),
-    year(date)==2012&pull_grp==2~mean(tail(value[year(date)==2012&pull_grp==2],40)/tail(value[year(date)==2012&pull_grp==3],40),na.rm=TRUE),
-    year(date)==2016&pull_grp==3~mean(tail(value[year(date)==2016&pull_grp==3],40)/tail(value[year(date)==2016&pull_grp==4],40),na.rm=TRUE),
-    year(date)==2020&pull_grp==4~mean(tail(value[year(date)==2020&pull_grp==4],40)/tail(value[year(date)==2020&pull_grp==5],40),na.rm=TRUE),
-    year(date)==2024&pull_grp==5~mean(tail(value[year(date)==2024&pull_grp==5],40)/tail(value[year(date)==2024&pull_grp==6],40),na.rm=TRUE)
+    year(date)==2008&pull_grp==1~mean(tail(value[year(date)==2008&pull_grp==1],40)-tail(value[year(date)==2008&pull_grp==2],40),na.rm=TRUE),
+    year(date)==2012&pull_grp==2~mean(tail(value[year(date)==2012&pull_grp==2],40)-tail(value[year(date)==2012&pull_grp==3],40),na.rm=TRUE),
+    year(date)==2016&pull_grp==3~mean(tail(value[year(date)==2016&pull_grp==3],40)-tail(value[year(date)==2016&pull_grp==4],40),na.rm=TRUE),
+    year(date)==2020&pull_grp==4~mean(tail(value[year(date)==2020&pull_grp==4],40)-tail(value[year(date)==2020&pull_grp==5],40),na.rm=TRUE),
+    year(date)==2024&pull_grp==5~mean(tail(value[year(date)==2024&pull_grp==5],40)-tail(value[year(date)==2024&pull_grp==6],40),na.rm=TRUE)
     )) %>% 
   mutate(value_adj=value,
-         value_adj=ifelse(date<head(date[pull_grp==6],1),value_adj[date<head(date[pull_grp==6],1)]/tail(weight[pull_grp==5],1),value_adj),
-         value_adj=ifelse(date<head(date[pull_grp==5],1),value_adj[date<head(date[pull_grp==5],1)]/tail(weight[pull_grp==4],1),value_adj),
-         value_adj=ifelse(date<head(date[pull_grp==4],1),value_adj[date<head(date[pull_grp==4],1)]/tail(weight[pull_grp==3],1),value_adj),         
-         value_adj=ifelse(date<head(date[pull_grp==3],1),value_adj[date<head(date[pull_grp==3],1)]/tail(weight[pull_grp==2],1),value_adj),
-         value_adj=ifelse(date<head(date[pull_grp==2],1),value_adj[date<head(date[pull_grp==2],1)]/tail(weight[pull_grp==1],1),value_adj)) %>% 
+         value_adj=ifelse(pull_grp<=1,value_adj-tail(weight[pull_grp==1],1),value_adj),
+         value_adj=ifelse(pull_grp<=2,value_adj-tail(weight[pull_grp==2],1),value_adj),
+         value_adj=ifelse(pull_grp<=3,value_adj-tail(weight[pull_grp==3],1),value_adj),       
+         value_adj=ifelse(pull_grp<=4,value_adj-tail(weight[pull_grp==4],1),value_adj),
+         value_adj=ifelse(pull_grp<=5,value_adj-tail(weight[pull_grp==5],1),value_adj)) %>% 
   filter(pull_grp==1|(year(date)>2008&pull_grp==2)|(year(date)>2012&pull_grp==3)|(year(date)>2016&pull_grp==4)|(year(date)>2020&pull_grp==5)|(year(date)>2024&pull_grp==6))
 
 #get rid of duplicates
 lazy_trends_data = dtplyr::lazy_dt(trends_data)
 trends_data1 = lazy_trends_data %>%
   group_by(cat) %>% 
-  mutate(value_adj=ifelse(date<"2011-01-01",value_adj+(mean(value[year(date)==2011])-mean(value_adj[year(date)==2010])),value_adj), # level adjustment for all data before 2011
-         value_adj=ifelse(date<"2011-01-01"&value_adj<5,value_adj+(-5-min(value_adj)),value_adj), # deal with value_adjs that are made very negative
-         value_adj=ifelse(date<"2011-01-01"&value_adj<1,value_adj+(1-min(value_adj)),value_adj), # ^
-         value_adj=ifelse(date<"2016-01-01",value_adj+(mean(value_adj[year(date)==2016])-mean(value_adj[year(date)==2015])),value_adj), # level adjustment for discontinuity at 2016
-         value_adj=ifelse(value_adj<1,value_adj+(1-min(value_adj)),value_adj),
-         value_adj=scales::rescale(value_adj,c(min(value_adj),100))) %>% 
+  mutate(value_adj2=ifelse(date<"2011-01-01",value_adj+(mean(tail(value_adj[year(date)==2011],15))-mean(tail(value_adj[year(date)==2010],15))),value_adj), # level adjustment for all data before 2011
+         value_adj2=ifelse(date<"2016-01-01",value_adj2+(mean(tail(value_adj2[year(date)==2016],15))-mean(tail(value_adj2[year(date)==2015],15))),value_adj2)) %>% 
   ungroup() %>% 
   as.data.frame()
 
 coef_df = data.frame()
-for(id in unique(trends_cats$id)){
+
+reg_df = trends_data1 %>% 
+  filter(date<"2016-01-01") %>% 
+  group_by(cat) %>%
+  mutate(time_var=1:n()) %>%
+  ungroup() %>%
+  select(time_var,date,value_adj2,cat)
   
-  print(which(unique(trends_cats$id)==id))
+lm1 = lm(value_adj2~time_var*factor(cat),reg_df)
   
-  reg_df = trends_data1 %>% 
-    filter(date<"2016-01-01"&cat==id) %>% 
-    group_by(state,cat) %>%
-    mutate(time_var=1:n(),
-           statecat=paste0(state)) %>%
-    ungroup() %>%
-    select(time_var,date,value,statecat)
+tmp = broom::tidy(lm1) %>% 
+  slice(2,220:nrow(tidy(lm1))) %>% 
+  mutate(term=gsub("time_var:factor\\(cat\\)","",term),
+         estimate=estimate+estimate[1]) %>% 
+  select(cat=term,coef=estimate) %>% 
+  mutate(cat=as.numeric(cat))
+tmp$cat[1] = 77
   
-  lm1 = lm(value~time_var*factor(statecat),reg_df)
-  tmp = broom::tidy(lm1) %>% 
-    slice(2,53:102) %>% 
-    mutate(term=gsub("time_var:factor\\(statecat\\)","",term),
-           estimate=estimate+estimate[1]) %>% 
-    select(state=term,coef=estimate) %>% 
-    mutate(cat=id)
-  
-  tmp$state[1] = "US-AK"
-  
-  coef_df = bind_rows(coef_df,tmp)
-  
-}
+coef_df = bind_rows(coef_df,tmp)
 
 time_match = reg_df %>% 
-  filter(statecat=="US-MA") %>% 
+  filter(cat==249) %>% 
   mutate(date=rev(as.Date(date))) %>% 
   select(time_var,date)
 trends_data1 = left_join(trends_data1,time_match,by=c("date"="date")) %>% 
   mutate(time_var=ifelse(is.na(time_var),0,time_var))
-trends_data1 = left_join(trends_data1,coef_df,by=c("state","cat"))
-trends_data1$value_detrend = ifelse(trends_data1$date<"2016-01-01",trends_data1$value+(trends_data1$coef*trends_data1$time_var),trends_data1$value)
+trends_data1 = left_join(trends_data1,coef_df,by=c("cat"))
+trends_data1$value_detrend = ifelse(trends_data1$date<"2016-01-01",trends_data1$value_adj2+(trends_data1$coef*trends_data1$time_var),trends_data1$value_adj2)
 
  # smooth over jumps, seasonally adjust by category, by state
-seasonally_adjust_data = function(stat1){
 
-  library(estimatr)
-  library(gtrendsR)
-  library(tidyverse)
-  library(fuzzyjoin)
-  library(lubridate)
-  library(KFAS)
-  library(xts)
-  library(parallelly)
-  library(parallel)
-  library(mFilter)
-  library(fredr)
-  library(forecast)
-  library(glmnet)
-  library(caret)
-  library(vtable)
+
   
-  trends_sa = data.frame()
+trends_sa = data.frame()
 
-   for(cat1 in unique(trends_data1$cat[trends_data1$cat%in%nk_categories$id])){
+for(cat1 in unique(trends_data1$cat[trends_data1$cat%in%nk_categories$id])){
 
-     print(paste0(stat1," ",cat1))
-     test_cat = trends_data1[trends_data1$cat==cat1&trends_data1$state==stat1,] %>%
-       select(date,value,value_detrend) %>%
-       mutate(date=as.Date(date))
+ print(paste0(cat1))
+ test_cat = trends_data1[trends_data1$cat==cat1,] %>%
+   select(date,value,value_detrend) %>%
+   mutate(date=as.Date(date))
 
-     hits <- test_cat$value_detrend
-     #--------------------------------------------------------------
+ hits <- test_cat$value_detrend
+ #--------------------------------------------------------------
 
-     #do some other convenience operations---------------------------
-     dates <- test_cat$date
-     hits <- ts(hits,start=c(year(dates[1]),month(dates[1])),frequency=12)
+ #do some other convenience operations---------------------------
+ dates <- test_cat$date
+ hits <- ts(hits,start=c(year(dates[1]),month(dates[1]),day(dates[1])),frequency=52)
 
-     decompose_air = decompose(hits, "multiplicative")
-     adjust_air = hits / decompose_air$seasonal
-     adjust_air = ifelse(is.nan(adjust_air)|is.infinite(adjust_air),0,adjust_air)
+ decompose_air = decompose(hits, "multiplicative")
+ adjust_air = hits / decompose_air$seasonal
+ adjust_air = ifelse(is.nan(adjust_air)|is.infinite(adjust_air),0,adjust_air)
 
-     hits_smooth = as.numeric(modelbased::smoothing(as.numeric(adjust_air), method = "smooth"))
-     hits_smooth = scales::rescale(hits_smooth,c(max(c(0,min(hits_smooth))),min(c(100,max(hits_smooth)))))
+ hits_smooth = as.numeric(modelbased::smoothing(as.numeric(adjust_air), method = "smooth"))
 
-     #plot level
-     #print(autoplot(cbind(hits, tripsLevel$signal)) + labs(caption = paste0(stat1," ",cat1)))
+ test_cat = cbind(test_cat,hits_smooth)
+ colnames(test_cat)[ncol(test_cat)] = "value_sa"
 
-     test_cat = cbind(test_cat,hits_smooth)
-     colnames(test_cat)[ncol(test_cat)] = "value_sa"
+ hits_loess = hpfilter(as.numeric(hits_smooth),freq=(1600*(12^4)))$trend
+ test_cat = cbind(test_cat,hits_loess)
+ colnames(test_cat)[ncol(test_cat)] = "value_loess"
 
-     hits_loess = hpfilter(as.numeric(hits_smooth),freq=14400)$trend
-     test_cat = cbind(test_cat,hits_loess)
-     colnames(test_cat)[ncol(test_cat)] = "value_loess"
+ trends_sa = bind_rows(trends_sa,test_cat %>% mutate(category=cat1,value_sa=as.numeric(value_sa)))
 
-     trends_sa = bind_rows(trends_sa,test_cat %>% mutate(state=stat1,category=cat1,value_sa=as.numeric(value_sa)))
-
-   }
-
-   return(trends_sa)
-
- }
-
-trends_sa1 = mclapply(paste0("US-",state.abb),seasonally_adjust_data,mc.cores=8)
-
-trends_sa1_join = trends_sa1 %>%
-   bind_rows()
-
+}
 
 
 # get rid of the categories with little to no data
-drop_sd_cats = trends_sa1_join %>% 
-  group_by(category,state) %>% 
+drop_sd_cats = trends_sa %>% 
+  group_by(category) %>% 
   summarize(sd=sd(value_sa,na.rm=TRUE)) %>% 
   group_by(category) %>% 
   summarize(sd=mean(sd,na.rm=TRUE)) %>% 
   filter(sd<1)
 
-trends_sa2 = trends_sa1_join %>% 
+trends_sa2 = trends_sa %>% 
   filter(!(category%in%drop_sd_cats$category))
 
-keep_sd_cats = trends_sa2 %>% 
-  group_by(category,state) %>% 
-  mutate(change=value_sa-dplyr::lag(value_sa,12),
-         stdev=sd(value_sa,na.rm=TRUE)/mean(value_sa,na.rm=TRUE)) %>% 
-  summarize(perc=sum(change==0,na.rm=TRUE)/n(),
-            change_mag=mean(stdev,na.rm=TRUE)) %>% 
-  ungroup() %>% 
-  filter((perc<.1&change_mag<3)|(category%in%nk_categories$id)) %>% 
-  mutate(state=gsub("US-","",state))
-
 trends_sa2 = trends_sa2 %>% 
-  group_by(state,category) %>% 
+  group_by(category) %>% 
   mutate(deviation=(value_sa/value_loess-1)*100,
          deviation_sd=sd(deviation[year(date)%in%c(2010:2019)],na.rm=TRUE),
          deviation=deviation/deviation_sd)
 
-plot_cat = function(stat,cat1){
+plot_cat = function(cat1){
   
-  plt1 = ggplot(state_trends %>% 
-                  dplyr::filter(state==paste0("US-",stat)&category%in%cat1) %>% 
-                  mutate(cat=factor(category,levels=trends_cats$id,labels=trends_cats$category)),aes(x=date)) + 
-    geom_line(aes(y=value,color="Raw")) +
-    geom_line(aes(y=value_detrend,color="Detrend")) +
-    geom_line(aes(y=value_sa,color="SA")) +
+  plt1 = ggplot(trends_sa %>% 
+                  dplyr::filter(category%in%cat1) %>% 
+                  mutate(category=factor(category,levels=trends_cats$id,labels=trends_cats$category)),aes(x=date)) + 
+    geom_line(aes(y=value,color="Raw")) + 
+    geom_line(aes(y=value_detrend,color="Detrend")) + 
+    geom_line(aes(y=value_sa,color="SA")) + 
     geom_line(aes(y=value_loess,color="LOESS")) +
-    facet_wrap(~cat,scales="free_y") +
-    labs(subtitle = paste0(stat," ",cat1)) +
-    #ylim(c(0,100)) +
+    facet_wrap(~category,scales="free_y") +
+    labs(subtitle = paste0(cat1)) +
     geom_vline(xintercept=as.Date("2007-09-01")) + 
     geom_vline(xintercept = as.Date("2010-06-01")) +
     theme_bw()
@@ -274,7 +218,8 @@ plot_cat = function(stat,cat1){
   
 }
 
-write_csv(trends_sa2,paste0(data_folder,"Processing/trends_full_sa_",gsub("-","",Sys.Date()),".csv"))
+
+write_csv(trends_sa2,paste0("Data/Processing/trends_full_sa_",gsub("-","",Sys.Date()),".csv"))
 #trends_sa3 = read_csv(paste0(data_folder,"Processing/trends_full_sa_20230925.csv"))
 
 
