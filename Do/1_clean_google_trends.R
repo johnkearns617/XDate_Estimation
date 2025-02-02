@@ -23,6 +23,7 @@ library(signal)
 library(plm)
 
 conflicted::conflict_prefer("filter","dplyr")
+conflicted::conflicts_prefer(base::print)
 
 data(categories) # categories from Google Trends
 fred_key = "156b9cd1b9a52db3b9fc0bab8aca2b39"
@@ -152,24 +153,33 @@ trends_sa = data.frame()
 
 for(cat1 in unique(trends_data1$cat[trends_data1$cat%in%nk_categories$id])){
 
+  if(cat1=="987"){next}
+  
  print(paste0(cat1))
  test_cat = trends_data1[trends_data1$cat==cat1,] %>%
    select(date,value,value_detrend) %>%
    mutate(date=as.Date(date))
 
- hits <- test_cat$value_detrend
- #--------------------------------------------------------------
-
- #do some other convenience operations---------------------------
- dates <- test_cat$date
- hits <- ts(hits,start=c(year(dates[1]),month(dates[1]),day(dates[1])),frequency=52)
-
- decompose_air = decompose(hits, "multiplicative")
- adjust_air = hits / decompose_air$seasonal
- adjust_air = ifelse(is.nan(adjust_air)|is.infinite(adjust_air),0,adjust_air)
-
- hits_smooth = as.numeric(modelbased::smoothing(as.numeric(adjust_air), method = "smooth"))
-
+ # hits <- test_cat$value_detrend
+ # #--------------------------------------------------------------
+ # 
+ # #do some other convenience operations---------------------------
+ # dates <- test_cat$date
+ # hits <- ts(hits,start=c(year(dates[1]),month(dates[1]),day(dates[1])),
+ #            end=c(year(tail(dates,1)),month(tail(dates,1)),day(tail(dates,1))),
+ #            frequency = 7)
+ # 
+ # decompose_air = decompose(hits, "additive")
+ # adjust_air = hits - decompose_air$seasonal
+ # adjust_air = ifelse(is.nan(adjust_air)|is.infinite(adjust_air),0,adjust_air)
+ 
+ #hits_smooth = as.numeric(smooth(adjust_air,kind="3RSS",endrule="Tukey"))
+ 
+ hits_smooth = boiwsa(test_cat$value_detrend,test_cat$date,auto.ao.seacrh = FALSE)
+ hits_smooth = hits_smooth$sa
+ 
+ hits_smooth = as.numeric(smooth(hits_smooth,kind="3RSS",endrule="Tukey"))
+ 
  test_cat = cbind(test_cat,hits_smooth)
  colnames(test_cat)[ncol(test_cat)] = "value_sa"
 
@@ -220,7 +230,7 @@ plot_cat = function(cat1){
 
 
 write_csv(trends_sa2,paste0("Data/Processing/trends_full_sa_",gsub("-","",Sys.Date()),".csv"))
-#trends_sa3 = read_csv(paste0(data_folder,"Processing/trends_full_sa_20230925.csv"))
+#trends_sa2 = read_csv(paste0("Data/Processing/trends_full_sa_20250128.csv"))
 
 
 # ideas:
