@@ -27,6 +27,7 @@ library(httr)
 library(jsonlite)
 
 conflicted::conflict_prefer("filter","dplyr")
+conflicted::conflicts_prefer(jsonlite::fromJSON)
 
 data(categories) # categories from Google Trends
 fred_key = "156b9cd1b9a52db3b9fc0bab8aca2b39"
@@ -306,6 +307,199 @@ for(yr in c(2005:year(Sys.Date()))){
   }
   
 }
+
+debt_subject_to_limit = data.frame()
+for(yr in c(2005:year(Sys.Date()))){
+  
+  print(as.character(yr)) 
+  
+  request = paste0("https://api.fiscaldata.treasury.gov/services/api/fiscal_service/v1/",
+                   "accounting/dts/debt_subject_to_limit",
+                   "?sort=-record_date",
+                   "&format=json",
+                   "&filter=record_calendar_year:eq:",as.character(yr),
+                   "&page[size]=10000")
+  response=GET(request) 
+  out=fromJSON(rawToChar(response$content))
+  
+  for(page_num in c(1:out$meta$`total-pages`)){
+    
+    request_2 = paste0("https://api.fiscaldata.treasury.gov/services/api/fiscal_service/v1/",
+                       "accounting/dts/debt_subject_to_limit",
+                       "?sort=-record_date",
+                       "&format=csv",
+                       "&filter=record_calendar_year:eq:",as.character(yr),
+                       "&page[number]=",page_num,
+                       "&page[size]=10000")
+    
+    data = read_csv(request_2)
+    
+    debt_subject_to_limit = new_bind(debt_subject_to_limit,data)
+    
+  }
+  
+}
+
+deficit_summary = data.frame()
+for(yr in c(2015:year(Sys.Date()))){
+  
+  print(as.character(yr)) 
+  
+  request = paste0("https://api.fiscaldata.treasury.gov/services/api/fiscal_service/v1/",
+                   "accounting/mts/mts_table_1",
+                   "?sort=-record_date",
+                   "&format=json",
+                   "&filter=record_calendar_year:eq:",as.character(yr),
+                   "&page[size]=10000")
+  response=GET(request) 
+  out=fromJSON(rawToChar(response$content))
+  
+  for(page_num in c(1:out$meta$`total-pages`)){
+    
+    request_2 = paste0("https://api.fiscaldata.treasury.gov/services/api/fiscal_service/v1/",
+                       "accounting/mts/mts_table_1",
+                       "?sort=-record_date",
+                       "&format=csv",
+                       "&filter=record_calendar_year:eq:",as.character(yr),
+                       "&page[number]=",page_num,
+                       "&page[size]=10000")
+    
+    data = read_csv(request_2)
+    
+    deficit_summary = new_bind(deficit_summary,data)
+    
+  }
+  
+}
+
+outlays = data.frame()
+for(yr in c(2015:year(Sys.Date()))){
+  
+  print(as.character(yr)) 
+  
+  request = paste0("https://api.fiscaldata.treasury.gov/services/api/fiscal_service/v1/",
+                   "accounting/mts/mts_table_5",
+                   "?sort=-record_date",
+                   "&format=json",
+                   "&filter=record_calendar_year:eq:",as.character(yr),
+                   "&page[size]=10000")
+  response=GET(request) 
+  out=fromJSON(rawToChar(response$content))
+  
+  for(page_num in c(1:out$meta$`total-pages`)){
+    
+    request_2 = paste0("https://api.fiscaldata.treasury.gov/services/api/fiscal_service/v1/",
+                       "accounting/mts/mts_table_5",
+                       "?sort=-record_date",
+                       "&format=csv",
+                       "&filter=record_calendar_year:eq:",as.character(yr),
+                       "&page[number]=",page_num,
+                       "&page[size]=10000")
+    
+    data = read_csv(request_2)
+    
+    outlays = new_bind(outlays,data)
+    
+  }
+  
+}
+
+receipts = data.frame()
+for(yr in c(2015:year(Sys.Date()))){
+  
+  print(as.character(yr)) 
+  
+  request = paste0("https://api.fiscaldata.treasury.gov/services/api/fiscal_service/v1/",
+                   "accounting/mts/mts_table_4",
+                   "?sort=-record_date",
+                   "&format=json",
+                   "&filter=record_calendar_year:eq:",as.character(yr),
+                   "&page[size]=10000")
+  response=GET(request) 
+  out=fromJSON(rawToChar(response$content))
+  
+  for(page_num in c(1:out$meta$`total-pages`)){
+    
+    request_2 = paste0("https://api.fiscaldata.treasury.gov/services/api/fiscal_service/v1/",
+                       "accounting/mts/mts_table_4",
+                       "?sort=-record_date",
+                       "&format=csv",
+                       "&filter=record_calendar_year:eq:",as.character(yr),
+                       "&page[number]=",page_num,
+                       "&page[size]=10000")
+    
+    data = read_csv(request_2)
+    
+    receipts = new_bind(receipts,data)
+    
+  }
+  
+}
+
+fed_invest_programs = data.frame()
+for(yr in c(2017:year(Sys.Date()))){
+  
+  print(as.character(yr)) 
+  
+  request = paste0("https://api.fiscaldata.treasury.gov/services/api/fiscal_service/v1/",
+                   "accounting/od/fip_principal_outstanding_table1",
+                   "?sort=-record_date",
+                   "&format=json",
+                   "&filter=record_calendar_year:eq:",as.character(yr),
+                   "&page[size]=10000")
+  response=GET(request) 
+  out=fromJSON(rawToChar(response$content))
+  
+  for(page_num in c(1:out$meta$`total-pages`)){
+    
+    request_2 = paste0("https://api.fiscaldata.treasury.gov/services/api/fiscal_service/v1/",
+                       "accounting/od/fip_principal_outstanding_table1",
+                       "?sort=-record_date",
+                       "&format=csv",
+                       "&filter=record_calendar_year:eq:",as.character(yr),
+                       "&page[number]=",page_num,
+                       "&page[size]=10000")
+    
+    data = read_csv(request_2)
+    
+    fed_invest_programs = new_bind(fed_invest_programs,data)
+    
+  }
+  
+}
+
+spending_by_function = data.frame()
+for(yr in c(2015:year(Sys.Date()))){
+  
+  print(as.character(yr)) 
+  
+  request = paste0("https://api.fiscaldata.treasury.gov/services/api/fiscal_service/v1/",
+                   "accounting/mts/mts_table_9",
+                   "?sort=-record_date",
+                   "&format=json",
+                   "&filter=record_calendar_year:eq:",as.character(yr),
+                   "&page[size]=10000")
+  response=GET(request) 
+  out=fromJSON(rawToChar(response$content))
+  
+  for(page_num in c(1:out$meta$`total-pages`)){
+    
+    request_2 = paste0("https://api.fiscaldata.treasury.gov/services/api/fiscal_service/v1/",
+                       "accounting/mts/mts_table_9",
+                       "?sort=-record_date",
+                       "&format=csv",
+                       "&filter=record_calendar_year:eq:",as.character(yr),
+                       "&page[number]=",page_num,
+                       "&page[size]=10000")
+    
+    data = read_csv(request_2)
+    
+    spending_by_function = new_bind(spending_by_function,data)
+    
+  }
+  
+}
+
 
 
 overall_debt = data.frame()

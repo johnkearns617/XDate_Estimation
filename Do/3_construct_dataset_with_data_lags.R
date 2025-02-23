@@ -28,7 +28,7 @@ library(sinkr)
 conflicted::conflict_prefer("filter","dplyr")
 
 # trends data
-state_trends = read_csv(paste0("Data/Processing/trends_full_sa_20250129.csv")) %>% 
+state_trends = read_csv(paste0("Data/Processing/trends_full_sa_20250217.csv")) %>% 
   mutate(release_date=date+6)
 
 # start with GDP data

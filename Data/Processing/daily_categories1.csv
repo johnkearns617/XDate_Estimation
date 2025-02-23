@@ -1,0 +1,720 @@
+transaction_type,transaction_catg,transaction_catg_desc,cbo_category
+Deposits,Agriculture Loan Repayments (misc),null,Other Spending
+Deposits,Commodity Credit Corporation programs,null,Other Spending
+Deposits,Customs and Certain Excise Taxes,null,Customs Duties
+Deposits,Deposits by States,Supplemental Security Income,State Deposits
+Deposits,Deposits by States,Unemployment,State Deposits
+Deposits,Education Department programs,null,Other Spending
+Deposits,Energy Department programs,null,Other Spending
+Deposits,Estate and Gift Taxes,null,Estate and Gift Taxes
+Deposits,Federal Reserve Earnings,null,Miscellaneous Receipts
+Deposits,"Foreign Deposits, Military Sales",null,Other Spending
+Deposits,FTD's Received (Table IV),null,Individual Income Taxes
+Deposits,Housing and Urban Development programs,null,Other Spending
+Deposits,"Individual Income and Employment Taxes, Not Withheld",null,Individual Income Taxes
+Deposits,Interest recd from T&L Depositaries,null,Net Interest
+Deposits,Justice Department programs,null,Other Spending
+Deposits,Postal Service,null,Other Spending
+Deposits,Public Debt Cash Issues (Table III-B),null,
+Deposits,Other Deposits,Air Transport Security Fees,Other Spending
+Deposits,Other Deposits,FSA Tobacco Assessments,Other Spending
+Deposits,Other Deposits,Lend Lease Receipts,Other Spending
+Deposits,Other Deposits,Minerals Management Svc/Collections,Other Spending
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 97),null,Miscellaneous Receipts
+Deposits,Transfers from Depositaries,null,TTL Transfer
+Deposits,Transfers from Federal Reserve Account (Table V),null,TTL Transfer
+Withdrawals,Commodity Credit Corporation programs,null,Other Spending
+Withdrawals,Defense Vendor Payments (EFT),null,National Defense
+Withdrawals,Education Department programs,null,Other Spending
+Withdrawals,Energy Department programs,null,Other Spending
+Withdrawals,Federal Employees Insurance Payments,null,Other Spending
+Withdrawals,Fed. Highway Administration programs,null,Other Spending
+Withdrawals,Federal Salaries (EFT),null,Other Spending
+Withdrawals,Food and Nutrition Service (misc),null,Other Spending
+Withdrawals,Food Stamps,null,Other Spending
+Withdrawals,GSA programs,null,Other Spending
+Withdrawals,Health and Human Services Grants (misc),null,Other Spending
+Withdrawals,Housing and Urban Development programs,null,Other Spending
+Withdrawals,Interest on Treasury Securities,null,Net Interest
+Withdrawals,Justice Department programs,null,Other Spending
+Withdrawals,Labor Dept. prgms (excl. unemployment),null,Other Spending
+Withdrawals,Medicaid,null,Medicaid
+Withdrawals,Medicare,null,Medicare
+Withdrawals,NASA programs,null,Other Spending
+Withdrawals,Postal Service Money Orders and Other,null,Other Spending
+Withdrawals,Public Debt Cash Redemp. (Table III-B),null,
+Withdrawals,Social Security Benefits (EFT),null,Social Security
+Withdrawals,Temporary Assistance for Needy Families (HHS),null,Other Spending
+Withdrawals,Unemployment Insurance Benefits,null,Other Spending
+Withdrawals,Veterans Affairs programs,null,Other Spending
+Withdrawals,Other Withdrawals,Agency for Internat'l Development,Other Spending
+Withdrawals,Other Withdrawals,Emergency Prep & Response (DHS),Other Spending
+Withdrawals,Other Withdrawals,Federal Financing Bank (net),Other Spending
+Withdrawals,Other Withdrawals,Military Active Duty Pay (EFT),Other Spending
+Withdrawals,Other Withdrawals,Minerals Management Service,Other Spending
+Withdrawals,Other Withdrawals,Pension Benefit Guaranty Corp.,Other Spending
+Withdrawals,Other Withdrawals,Small Business Administration,Other Spending
+Withdrawals,Other Withdrawals,Supple. Security Income Benefits (EFT),Other Spending
+Withdrawals,Other Withdrawals,Tennessee Valley Authority (net),Other Spending
+Withdrawals,Other Withdrawals,Thrift Savings Plan Transfer,Other Spending
+Withdrawals,Other Withdrawals,Transportation Security Admin. (DHS),Other Spending
+Withdrawals,Other Withdrawals,U.S. District Courts (net),Other Spending
+Withdrawals,Other Withdrawals,Veterans Benefits (EFT),Other Spending
+Withdrawals,Other Withdrawals,Unclassified,Other Spending
+Withdrawals,Transfers to Depositaries,null,TTL Transfer
+Withdrawals,Transfers to Federal Reserve Account (Table V),null,TTL Transfer
+Deposits,Other Deposits,Pension Benefit Guaranty Corp.,Other Spending
+Deposits,Other Deposits,SEC:Stock Exchange Fees,Other Spending
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 88),null,Miscellaneous Receipts
+Withdrawals,Other Withdrawals,Agriculture Loan Payments (misc),Other Spending
+Withdrawals,Other Withdrawals,District of Columbia,Other Spending
+Withdrawals,Other Withdrawals,Federal Railroad Admin.,Other Spending
+Withdrawals,Other Withdrawals,IRS Tax Refunds Business (EFT),Corporate Income Taxes
+Deposits,Other Deposits,Thrift Savings Plan Transfer,Other Spending
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 75),null,Miscellaneous Receipts
+Withdrawals,Other Withdrawals,State Department,Other Spending
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 43),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 89),null,Miscellaneous Receipts
+Withdrawals,Other Withdrawals,Federal Aviation Administration,Other Spending
+Withdrawals,Other Withdrawals,International Monetary Fund,Other Spending
+Withdrawals,Other Withdrawals,USDA: Forest Service,Other Spending
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 94),null,Miscellaneous Receipts
+Withdrawals,Other Withdrawals,Treasury Dept: Claims Payments,Other Spending
+Deposits,Other Deposits,Defense Finance & Accounting Service,National Defense
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 301),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 35),null,Miscellaneous Receipts
+Deposits,Other Deposits,Interntl Security Assistance (DSCA),Other Spending
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 107),null,Miscellaneous Receipts
+Deposits,Other Deposits,Securities and Exchange Commission,Other Spending
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 142),null,Miscellaneous Receipts
+Deposits,Other Deposits,Federal Housing Admin: Note Sales,Other Spending
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 63),null,Miscellaneous Receipts
+Withdrawals,Other Withdrawals,Interntl Security Assistance (DSCA),Other Spending
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 34),null,Miscellaneous Receipts
+Withdrawals,Other Withdrawals,Federal Transit Admin.,Other Spending
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 151),null,Miscellaneous Receipts
+Withdrawals,Other Withdrawals,FSLIC Resolution Fund (net),Other Spending
+Deposits,Other Deposits,Corps of Engineers,Other Spending
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 110),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 112),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 44),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 74),null,Miscellaneous Receipts
+Deposits,Other Deposits,Natl Railroad Retirement Inv Trust,Payroll Taxes
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 172),null,Miscellaneous Receipts
+Withdrawals,Other Withdrawals,Civil Service Retirement (EFT),Other Spending
+Withdrawals,Other Withdrawals,Military Retirement (EFT),Other Spending
+Withdrawals,Other Withdrawals,Railroad Retirement (EFT),Other Spending
+Deposits,Other Deposits,Fed. Crop Ins. Corp. Fund Premiums,Other Spending
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 78),null,Miscellaneous Receipts
+Deposits,Other Deposits,Gas and Oil Lease Sales Proceeds,Other Spending
+Withdrawals,Other Withdrawals,Minerals Mgmt. Svc/Pmts to States,Other Spending
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 25),null,Miscellaneous Receipts
+Withdrawals,Other Withdrawals,IRS Tax Refunds Individual (EFT),Individual Income Taxes
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 206),null,Miscellaneous Receipts
+Withdrawals,Other Withdrawals,Interior: Office of Surface Mining,Other Spending
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 124),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 50),null,Miscellaneous Receipts
+Deposits,Other Deposits,Interior: Bureau of Land Management,Other Spending
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 122),null,Miscellaneous Receipts
+Withdrawals,Other Withdrawals,Export-Import Bank (net),Other Spending
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 70),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 90),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 79),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 92),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 153),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 95),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 248),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 85),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 99),null,Miscellaneous Receipts
+Deposits,Other Deposits,Railroad Unemployment Ins.,Payroll Taxes
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 45),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 183),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 120),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 165),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 163),null,Miscellaneous Receipts
+Withdrawals,Other Withdrawals,Interior: Bureau of Land Mgmt.,Other Spending
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 56),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 76),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 157),null,Miscellaneous Receipts
+Deposits,Other Deposits,National Credit Union Administration,Other Spending
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 30),null,Miscellaneous Receipts
+Withdrawals,Other Withdrawals,Pmt. to Resolution Funding Corp (Treas),Other Spending
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 271),null,Miscellaneous Receipts
+Withdrawals,Other Withdrawals,HHS: Indian Health Service,Other Spending
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 46),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 91),null,Miscellaneous Receipts
+Withdrawals,Other Withdrawals,Library of Congress,Other Spending
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 83),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 127),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 129),null,Miscellaneous Receipts
+Deposits,Other Deposits,Asset Sale:U.S. Enrichment Corp.,Other Spending
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 37),null,Miscellaneous Receipts
+Withdrawals,Other Withdrawals,Inter-American Development Bank,Other Spending
+Withdrawals,Other Withdrawals,Pmt. to Corp. for Pub. Broadcasting,Other Spending
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 137),null,Miscellaneous Receipts
+Withdrawals,Other Withdrawals,Interior,Other Spending
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 158),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 80),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 57),null,Miscellaneous Receipts
+Withdrawals,Other Withdrawals,Customs and Borders Protection (DHS),Other Spending
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 24),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 68),null,Miscellaneous Receipts
+Withdrawals,Other Withdrawals,Federal Crop Ins. Corp.,Other Spending
+Withdrawals,Other Withdrawals,Overseas Private Investment Co. (net),Other Spending
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 118),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 652),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 22),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 93),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 247),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 156),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 32),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 101),null,Miscellaneous Receipts
+Deposits,Other Deposits,Small Business Admin. Loan Sales,Other Spending
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 121),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 72),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 23),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 199),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 39),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 96),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 13),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 188),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 108),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 84),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 109),null,Miscellaneous Receipts
+Deposits,Other Deposits,Federal Communications Commission,Other Spending
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 210),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 31),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 115),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 113),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 140),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 135),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 54),null,Miscellaneous Receipts
+Deposits,Other Deposits,Emergency Prep & Response (DHS),Other Spending
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 28),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 131),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 73),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 117),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 685),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 128),null,Miscellaneous Receipts
+Withdrawals,Other Withdrawals,Pmt. to Internat'l Development Assn.,Other Spending
+Deposits,Other Deposits,Comptroller of the Currency-Assessment,Other Spending
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 141),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 48),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 144),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 190),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 143),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 40),null,Miscellaneous Receipts
+Withdrawals,Other Withdrawals,HHS Deposit Fund Transfers to States,Medicaid
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 87),null,Miscellaneous Receipts
+Withdrawals,Other Withdrawals,Foreign Military Sales Program,Other Spending
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 162),null,Miscellaneous Receipts
+Deposits,"Change in Balance of Uncollected Funds (closing balance $ 1,263)",null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 65),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 111),null,Miscellaneous Receipts
+Deposits,Other Deposits,Prepayment of Treasury Securities (net),
+Deposits,Other Deposits,Federal Employees Insurance Receipt,Other Spending
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 154),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 27),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 119),null,Miscellaneous Receipts
+Withdrawals,Other Withdrawals,African Development Fund,Other Spending
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 82),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 368),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 103),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 33),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 125),null,Miscellaneous Receipts
+Withdrawals,Other Withdrawals,Centers for Disease Control,Other Spending
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 152),null,Miscellaneous Receipts
+Deposits,Other Deposits,Ofc of Thrift Supervision (Assessments),Other Spending
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 29),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 66),null,Miscellaneous Receipts
+Deposits,Other Deposits,Agency for Internat'l Development,Other Spending
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 81),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 105),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 52),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 160),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 186),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 61),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 150),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 38),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 203),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 195),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 41),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 139),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 145),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 198),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 155),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 123),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 106),null,Miscellaneous Receipts
+Withdrawals,Other Withdrawals,Environmental Protection Agency,Other Spending
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 138),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 126),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 348),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 742),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 134),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 466),null,Miscellaneous Receipts
+Deposits,Other Deposits,Maritime Administration,Other Spending
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 443),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 573),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 592),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 161),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 240),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 300),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 267),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 86),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 148),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 175),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 363),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 55),null,Miscellaneous Receipts
+Deposits,Other Deposits,GSA,Other Spending
+Deposits,Other Deposits,Natl Railroad Retirement Inv Trust/r,Payroll Taxes
+Deposits,Other Deposits,Environmental Protection Agency,Other Spending
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 159),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 290),null,Miscellaneous Receipts
+Withdrawals,Other Withdrawals,National Credit Union Administration,Other Spending
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 60),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 36),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 100),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 184),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 64),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 98),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 194),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 226),null,Miscellaneous Receipts
+Deposits,Other Deposits,Defense Energy Supply Center,Other Spending
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 102),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 114),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 130),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 47),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 220),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 77),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 147),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 216),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 181),null,Miscellaneous Receipts
+Withdrawals,Other Withdrawals,FHA Debentures,Other Spending
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 42),null,Miscellaneous Receipts
+Withdrawals,Other Withdrawals,Deposit Insurance Fund (net),Other Spending
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 201),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 20),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 217),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 231),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 298),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 171),null,Miscellaneous Receipts
+Withdrawals,Other Withdrawals,HUD: Hurricane Relief,Other Spending
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 229),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 149),null,Miscellaneous Receipts
+Deposits,Other Deposits,Commodity Futures Trading Commission,Other Spending
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 132),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 182),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 278),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 146),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 170),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 227),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 219),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 204),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 241),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 164),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 259),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 239),null,Miscellaneous Receipts
+Withdrawals,Other Withdrawals,Pmt. to Resolution Funding Corp (RTC),Other Spending
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 236),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 200),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 273),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 407),null,Miscellaneous Receipts
+Withdrawals,Other Withdrawals,Interior: Office of Territories,Other Spending
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 261),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 193),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 208),null,Miscellaneous Receipts
+Withdrawals,Other Withdrawals,Securities and Exchange Commission,Other Spending
+Deposits,Other Deposits,Library of Congress,Other Spending
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 173),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 104),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 276),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 136),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 189),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 214),null,Miscellaneous Receipts
+Deposits,Other Deposits,Animal Plant Health Inspection svcs,Other Spending
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 178),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 176),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 174),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 243),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 212),null,Miscellaneous Receipts
+Deposits,Other Deposits,U.S. Enrichment Corp.,Other Spending
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 187),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 168),null,Miscellaneous Receipts
+Withdrawals,Other Withdrawals,Puerto Rico-Refund of IRS Collections,Individual Income Taxes
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 277),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 185),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 180),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 71),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 253),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 404),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 257),null,Miscellaneous Receipts
+Deposits,Other Deposits,State Department,Other Spending
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 207),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 169),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 62),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 295),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 279),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 197),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 358),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 741),null,Miscellaneous Receipts
+Deposits,"Change in Balance of Uncollected Funds (closing balance $ 1,262)",null,Miscellaneous Receipts
+Deposits,"Change in Balance of Uncollected Funds (closing balance $ 1,068)",null,Miscellaneous Receipts
+Deposits,"Change in Balance of Uncollected Funds (closing balance $ 1,045)",null,Miscellaneous Receipts
+Deposits,"Change in Balance of Uncollected Funds (closing balance $ 1,005)",null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 462),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 313),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 391),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 254),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 59),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 385),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 26),null,Miscellaneous Receipts
+Deposits,Other Deposits,Farm Credit System Ins. Corp.,Other Spending
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 16),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 18),null,Miscellaneous Receipts
+Deposits,Air Transport Security Fees,null,Miscellaneous Receipts
+Deposits,Other Deposits,GSE Dividends,Other Spending
+Deposits,Other Deposits,Medicare Premiums,Medicare
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 1),null,Miscellaneous Receipts
+Withdrawals,Transportation Security Admin. (DHS),null,Miscellaneous Receipts
+Withdrawals,Other Withdrawals,TARP,Other Spending
+Deposits,Other Deposits,Deposit Insurance Fund,Other Spending
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 8),null,Miscellaneous Receipts
+Withdrawals,Other Withdrawals,Deposit Insurance Fund,Other Spending
+Withdrawals,Other Withdrawals,Federal Financing Bank,Other Spending
+Deposits,Other Deposits,Federal Finance Bank,Other Spending
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 5),null,Miscellaneous Receipts
+Deposits,Other Deposits,Prepayment of Treasury Securities,
+Withdrawals,Other Withdrawals,Prepayment of Treasury Securities,
+Withdrawals,Other Withdrawals,Agriculture,Other Spending
+Withdrawals,Other Withdrawals,Export-Import Bank,Other Spending
+Deposits,Other Deposits,TARP,Other Spending
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 10),null,Miscellaneous Receipts
+Withdrawals,Other Withdrawals,Commerce Programs,Other Spending
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 17),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 11),null,Miscellaneous Receipts
+Deposits,Other Deposits,Overseas Private Investment Co.,Other Spending
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 6),null,Miscellaneous Receipts
+Deposits,Other Deposits,Prem-ESF Money Mkt Guar Facility,Other Spending
+Deposits,Other Deposits,Export-Import Bank,Other Spending
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 9),null,Miscellaneous Receipts
+Withdrawals,Other Withdrawals,GSE Investment,Other Spending
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 4),null,Miscellaneous Receipts
+Withdrawals,Other Withdrawals,Capital Purchase Program (TARP),Other Spending
+Deposits,Other Deposits,International Monetary Fund,Other Spending
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 12),null,Miscellaneous Receipts
+Deposits,Other Deposits,Interior: Office of Surface Mining,Other Spending
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 15),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 21),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 166),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 53),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 58),null,Miscellaneous Receipts
+Withdrawals,Other Withdrawals,Presidential Election Campaign Fund,Other Spending
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 179),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 246),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 238),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 250),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 245),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 299),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 167),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 751),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 237),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 218),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 263),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 215),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 177),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 294),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 329),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 191),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 311),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 49),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 244),null,Miscellaneous Receipts
+Deposits,Other Deposits,Federal Trade Commission,Other Spending
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 205),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 364),null,Miscellaneous Receipts
+Deposits,"Change in Balance of Uncollected Funds (closing balance $ 1,314)",null,Miscellaneous Receipts
+Deposits,"Change in Balance of Uncollected Funds (closing balance $ 1,167)",null,Miscellaneous Receipts
+Deposits,Other Deposits,Veterans Assets Sales,Other Spending
+Deposits,"Change in Balance of Uncollected Funds (closing balance $ 1,268)",null,Miscellaneous Receipts
+Deposits,"Change in Balance of Uncollected Funds (closing balance $ 1,590)",null,Miscellaneous Receipts
+Deposits,"Change in Balance of Uncollected Funds (closing balance $ 1,177)",null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 880),null,Miscellaneous Receipts
+Deposits,"Change in Balance of Uncollected Funds (closing balance $ 1,149)",null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 758),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 406),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 224),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 282),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 274),null,Miscellaneous Receipts
+Deposits,Other Deposits,Interior: Bureau of Reclamation,Other Spending
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 326),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 260),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 230),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 318),null,Miscellaneous Receipts
+Withdrawals,Other Withdrawals,Natl Railroad Retirement Inv Trust,Other Spending
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 51),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 196),null,Miscellaneous Receipts
+Withdrawals,Other Withdrawals,FSLIC Resolution Funds (RTC net),Other Spending
+Deposits,Change in Balance of Uncollected Funds (closing balance $ -2),null,Miscellaneous Receipts
+Withdrawals,Other Withdrawals,National Highway Traffic Safety Admin,Other Spending
+Withdrawals,Other Withdrawals,GSE Obligations/HFA Initiative,Other Spending
+Withdrawals,Other Withdrawals,Maritime Administration,Other Spending
+Withdrawals,Other Withdrawals,Treasury Department programs,Other Spending
+Deposits,Change in Balance of Uncollected Funds (closing balance $0),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ -1),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 3),null,Miscellaneous Receipts
+Deposits,Other Deposits,Interior,Other Spending
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 2),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 7),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $0,null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ ),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 14),null,Miscellaneous Receipts
+Withdrawals,Other Withdrawals,Overseas Private Investment Co.,Other Spending
+Deposits,Change in Balance of Uncollected Funds (closing balance $ 19),null,Miscellaneous Receipts
+Withdrawals,Other Withdrawals,FSLIC Resolution Fund,Other Spending
+Deposits,Change in Balance of Uncollected Funds,null,Miscellaneous Receipts
+Withdrawals,Supple. Nutrition Assist. Program (SNAP),null,Other Spending
+Deposits,Change in Balance of Uncollected Funds (closing balance $ -3),null,Miscellaneous Receipts
+Deposits,Other Deposits,FSLIC Resolution Fund,Other Spending
+Deposits,Change in Balance of Uncollected Funds (closing balance $-2),null,Miscellaneous Receipts
+Withdrawals,Other Withdrawals,Farm Credit Insurance Corp.,Other Spending
+Deposits,Change in Balance of Uncollected Funds (closing balance $-1),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $4),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $-3),null,Miscellaneous Receipts
+Deposits,Change in Balance of Uncollected Funds (closing balance $2),null,Miscellaneous Receipts
+Deposits,GSE MBS Purchase Program Income,null,Net Interest
+Deposits,Other Deposits,USDA: Forest Service,Other Spending
+Withdrawals,Other Withdrawals,Asian Development Bank Payment,Other Spending
+Withdrawals,Other Withdrawals,Pmt. to Int'l Bk for Reconstruction,Other Spending
+Deposits,Cash FTD's Received (Table IV),null,Individual Income Taxes
+Deposits,Interest recd from cash investments,null,Net Interest
+Withdrawals,IRS Tax Refunds Business (EFT),null,Corporate Income Taxes
+Withdrawals,IRS Tax Refunds Individual (EFT),null,Individual Income Taxes
+Withdrawals,GSA Programs,null,Other Spending
+Withdrawals,Veterans Affairs Programs,null,Other Spending
+Withdrawals,Medicare and Other CMS Payments,null,Medicare
+Withdrawals,Medicare Advantage - Part C&D Payments,null,Medicare
+Withdrawals,Marketplace Payments,null,Other Spending
+Deposits,Other Deposits,IRS Other Deposits,Miscellaneous Receipts
+Deposits,Other Deposits,Seized Assets,Other Spending
+Deposits,Other Deposits,Marketplace Receipts,Other Spending
+Deposits,Other Deposits,DHS - Immigration & Customs Enforcement,Other Spending
+Deposits,Foreign Military Sales Program,null,Other Spending
+Withdrawals,Other Withdrawals,FCC - Universal Service Fund,Other Spending
+Deposits,Other Deposits,FCC - Universal Service Fund,Other Spending
+Deposits,Other Deposits,Dept of Transportation (DOT),Other Spending
+Deposits,Dept of Commerce (DOC),null,Other Spending
+Deposits,Dept of Education (ED),null,Other Spending
+Deposits,Dept of Energy (DOE),null,Other Spending
+Deposits,General Services Administration (GSA),null,Other Spending
+Withdrawals,Dept of Commerce (DOC),null,Other Spending
+Withdrawals,Dept of Education (ED),null,Other Spending
+Withdrawals,Dept of Energy (DOE),null,Other Spending
+Withdrawals,General Services Administration (GSA),null,Other Spending
+Withdrawals,Other Withdrawals,Federal Communications Commission,Other Spending
+Withdrawals,ShTransfersCtohFederalmReserve Account (Table V),null,TTL Transfer
+Deposits,Dept of Agriculture (USDA) - misc,null,Other Spending
+Deposits,USDA - Commodity Credit Corporation,null,Other Spending
+Deposits,USDA - Federal Crop Insurance Corp Fund,null,Other Spending
+Deposits,USDA - Loan Repayments,null,Other Spending
+Deposits,USDA - Other Farm Service,null,Other Spending
+Deposits,Dept of Health & Human Serv (HHS) - Misc,null,Other Spending
+Deposits,HHS - Marketplace Receipts,null,Other Spending
+Deposits,HHS - Medicare Premiums,null,Other Spending
+Deposits,Dept of Homeland Security (DHS) - misc,null,Other Spending
+Deposits,DHS - Customs and Certain Excise Taxes,null,Customs Duties
+Deposits,DHS - Fed Emergency Mgmt Agency (FEMA),null,Other Spending
+Deposits,DHS - Transportation Security Admn (TSA),null,Other Spending
+Deposits,Dept of Labor (DOL) - misc,null,Other Spending
+Deposits,DOL - Pension Benefit Guaranty Corp.,null,Other Spending
+Deposits,Dept of Transportation (DOT),null,Other Spending
+Deposits,Dept of Veterans Affairs (VA),null,Other Spending
+Deposits,District of Columbia,null,Other Spending
+Deposits,Environmental Protection Agency (EPA),null,Other Spending
+Deposits,Federal Communications Commission (FCC),null,Other Spending
+Deposits,FCC - Universal Service Fund,null,Other Spending
+Deposits,Federal Deposit Insurance Corp (FDIC),null,Other Spending
+Deposits,National Credit Union Admin (NCUA),null,Other Spending
+Deposits,National Science Foundation (NSF),null,Other Spending
+Deposits,Securities and Exchange Commission (SEC),null,Other Spending
+Deposits,Small Business Administration (SBA),null,Other Spending
+Deposits,State Unemployment Insurance Deposits,null,Other Spending
+Deposits,Unclassified - Deposits,null,Miscellaneous Receipts
+Withdrawals,Air Carrier Worker Support,null,National Defense
+Withdrawals,Coronavirus Relief Fund,null,Other Spending
+Withdrawals,Dept of Agriculture (USDA) - misc,null,Other Spending
+Withdrawals,USDA - Child Nutrition,null,Other Spending
+Withdrawals,USDA - Commodity Credit Corporation,null,Other Spending
+Withdrawals,USDA - Federal Crop Insurance Corp Fund,null,Other Spending
+Withdrawals,USDA - Loan Payments,null,Other Spending
+Withdrawals,USDA - Other Farm Service,null,Other Spending
+Withdrawals,USDA - Supp Nutrition Assist Prog (SNAP),null,Other Spending
+Withdrawals,USDA - Supp Nutrition Assist Prog (WIC),null,Other Spending
+Withdrawals,Dept of Health & Human Serv (HHS) - Misc,null,Other Spending
+Withdrawals,HHS - Centers for Disease Control (CDC),null,Other Spending
+Withdrawals,HHS - Federal Hospital Insr Trust Fund,null,Medicare
+Withdrawals,HHS - Federal Supple Med Insr Trust Fund,null,Medicare
+Withdrawals,HHS - Grants to States for Medicaid,null,Medicaid
+Withdrawals,HHS - Health Resources & Services Admin,null,Other Spending
+Withdrawals,HHS - Indian Health Service,null,Other Spending
+Withdrawals,HHS - Marketplace Payments,null,Other Spending
+Withdrawals,HHS - Medicare Prescription Drugs,null,Medicare
+Withdrawals,HHS - National Institutes of Health,null,Other Spending
+Withdrawals,HHS - Other Public Health Services,null,Other Spending
+Withdrawals,HHS - Othr Admin for Children & Families,null,Other Spending
+Withdrawals,HHS - Othr Cent Medicare & Medicaid Serv,null,Other Spending
+Withdrawals,HHS - Payments to States,null,Medicaid
+Withdrawals,HHS - Temp Assistance for Needy Families,null,Other Spending
+Withdrawals,Dept of Homeland Security (DHS) - misc,null,Other Spending
+Withdrawals,DHS - Customs & Border Protection (CBP),null,Other Spending
+Withdrawals,DHS - Fed Emergency Mgmt Agency (FEMA),null,Other Spending
+Withdrawals,DHS - Transportation Security Admn (TSA),null,Other Spending
+Withdrawals,Dept of Labor (DOL) - misc,null,Other Spending
+Withdrawals,DOL - Pension Benefit Guaranty Corp.,null,Other Spending
+Withdrawals,DOL - Unemployment Benefits,null,Other Spending
+Withdrawals,Unemployment Assist - FEMA Lost Wage Pmt,null,Other Spending
+Withdrawals,Dept of Transportation (DOT) - Misc,null,Other Spending
+Withdrawals,DOT - Federal Aviation Administration,null,Other Spending
+Withdrawals,DOT - Federal Highway Administration,null,Other Spending
+Withdrawals,DOT - Federal Railroad Administration,null,Other Spending
+Withdrawals,DOT - Federal Transit Administration,null,Other Spending
+Withdrawals,DOT - Office of the Secretary,null,Other Spending
+Withdrawals,Dept of Veterans Affairs (VA),null,Other Spending
+Withdrawals,VA - Benefits,null,Other Spending
+Withdrawals,District of Columbia,null,Other Spending
+Withdrawals,Environmental Protection Agency (EPA),null,Other Spending
+Withdrawals,ESF - Economic Recovery Programs,null,Other Spending
+Withdrawals,Federal Communications Commission (FCC),null,Other Spending
+Withdrawals,FCC - Universal Service Fund,null,Other Spending
+Withdrawals,Federal Deposit Insurance Corp (FDIC),null,Other Spending
+Withdrawals,IRS - Economic Impact Payments (EFT),null,Other Spending
+Withdrawals,NASA,null,Other Spending
+Withdrawals,National Credit Union Admin (NCUA),null,Other Spending
+Withdrawals,National Science Foundation (NSF),null,Other Spending
+Withdrawals,Securities and Exchange Commission (SEC),null,Other Spending
+Withdrawals,Small Business Administration (SBA),null,Other Spending
+Withdrawals,Agriculture,null,Other Spending
+Withdrawals,Federal Crop Ins. Corp.,null,Other Spending
+Withdrawals,Interntl Security Assistance (DSCA),null,Other Spending
+Withdrawals,Military Active Duty Pay (EFT),null,Other Spending
+Withdrawals,State Department,null,Other Spending
+Withdrawals,Thrift Savings Plan Transfer,null,Other Spending
+Withdrawals,U.S. District Courts (net),null,Other Spending
+Withdrawals,Unclassified,null,Other Spending
+Deposits,Thrift Savings Plan Transfer,null,Other Spending
+Withdrawals,Coronavirus Relief Fund Title V,null,Other Spending
+Deposits,Commodity Futures Trading Comm (CFTC),null,Other Spending
+Deposits,Dept of Interior (DOI) - misc,null,Other Spending
+Deposits,DOI - Fish and Wildlife and Parks,null,Other Spending
+Deposits,DOI - Gas and Oil Lease Sales Proceeds,null,Other Spending
+Deposits,DOI - Land and Minerals Management,null,Other Spending
+Deposits,DOI - Water and Science,null,Other Spending
+Deposits,Export-Import Bank,null,Other Spending
+Deposits,Farm Credit System Insurance Cor (FCSIC),null,Other Spending
+Deposits,Federal Trade Commission (FTC),null,Other Spending
+Deposits,Independent Agencies - misc,null,Other Spending
+Deposits,Judicial Branch - Courts,null,Other Spending
+Deposits,Legislative Branch - misc,null,Other Spending
+Deposits,Legislative Branch - Library of Congress,null,Other Spending
+Deposits,RRB - Natl Railroad Retirement Inv Trust,null,Other Spending
+Deposits,RRB - Unemployment Insurance,null,Other Spending
+Deposits,Social Security Admin (SSA) - misc,null,Other Spending
+Deposits,SSA - Supplemental Security Income,null,Other Spending
+Deposits,Transfers from TGA (Table V),null,TTL Transfer
+Withdrawals,Airline Worker Support Extension,null,Other Spending
+Withdrawals,Commodity Futures Trading Comm (CFTC),null,Other Spending
+Withdrawals,Corporation for Public Broadcasting,null,Other Spending
+Withdrawals,Dept of Interior (DOI) - misc,null,Other Spending
+Withdrawals,DOI - Fish and Wildlife and Parks,null,Other Spending
+Withdrawals,DOI - Land and Minerals Management,null,Other Spending
+Withdrawals,DOI - Water and Science,null,Other Spending
+Withdrawals,Emergency Capital Investment Program,null,Other Spending
+Withdrawals,Emergency Rental Assistance,null,Other Spending
+Withdrawals,Export-Import Bank,null,Other Spending
+Withdrawals,Farm Credit System Insurance Cor (FCSIC),null,Other Spending
+Withdrawals,Federal Trade Commission (FTC),null,Other Spending
+Withdrawals,Independent Agencies - misc,null,Other Spending
+Withdrawals,IRS - Advanced Child Tax Credit (EFT),null,Other Spending
+Withdrawals,Judicial Branch - Courts,null,Other Spending
+Withdrawals,Legislative Branch - misc,null,Other Spending
+Withdrawals,Legislative Branch - Library of Congress,null,Other Spending
+Withdrawals,Railroad Retirement Board (RRB) - misc,null,Other Spending
+Withdrawals,RRB - Benefit Payments,null,Social Security
+Withdrawals,Social Security Admin (SSA) - misc,null,Other Spending
+Withdrawals,SSA - Benefits Payments,null,Social Security
+Withdrawals,SSA - Supplemental Security Income,null,Other Spending
+Withdrawals,Transportation Services,null,Other Spending
+Withdrawals,Transfers to TGA (Table V),null,TTL Transfer
+Deposits,DHS - Seized Assets,null,Miscellaneous Receipts
+Deposits,Dept of Housing & Urban Dev (HUD) - misc,null,Other Spending
+Deposits,HUD - Federal Housing Admin (FHA),null,Other Spending
+Deposits,Dept of Justice (DOJ),null,Other Spending
+Deposits,Dept of State (DOS),null,Other Spending
+Deposits,Dept of Treasury (TREAS) - misc,null,Other Spending
+Deposits,TREAS - Bureau of Engraving and Printing,null,Other Spending
+Deposits,TREAS - Comptroller of the Currency,null,Other Spending
+Deposits,TREAS - Federal Financing Bank,null,Other Spending
+Deposits,TREAS - GSE Proceeds,null,Other Spending
+Deposits,TREAS - United States Mint,null,Other Spending
+Deposits,Federal Retirement Thrift Savings Plan,null,Other Spending
+Deposits,International Monetary Fund (IMF),null,Other Spending
+Deposits,Int'l Assistance Programs (IAP) - misc,null,Other Spending
+Deposits,IAP - Agency for Int'l Development (AID),null,Other Spending
+Deposits,IAP - US Int'l Devlop Finance Corp (DFC),null,Other Spending
+Deposits,Office of Personnel Mgmt (OPM) - misc,null,Other Spending
+Deposits,OPM - Federal Employee Insurance Receipt,null,Payroll Taxes
+Deposits,Sub-Total Deposits,null,
+Deposits,Public Debt Cash Issues (Table IIIB),null,
+Deposits,null,null,
+Withdrawals,Dept of Housing & Urban Dev (HUD) - misc,null,Other Spending
+Withdrawals,HUD - Federal Housing Admin (FHA),null,Other Spending
+Withdrawals,Dept of Justice (DOJ),null,Other Spending
+Withdrawals,Dept of State (DOS),null,Other Spending
+Withdrawals,Dept of Treasury (TREAS) - misc,null,Other Spending
+Withdrawals,TREAS - Bureau of Engraving and Printing,null,Other Spending
+Withdrawals,TREAS - Claims Judgments and Relief Acts,null,Other Spending
+Withdrawals,TREAS - Comptroller of the Currency,null,Other Spending
+Withdrawals,TREAS - Federal Financing Bank,null,Other Spending
+Withdrawals,TREAS - IRS Refunds for Puerto Rico,null,Other Spending
+Withdrawals,TREAS - Pmt to Resolution Funding Corp,null,Other Spending
+Withdrawals,TREAS - United States Mint,null,Other Spending
+Withdrawals,Federal Retirement Thrift Savings Plan,null,Other Spending
+Withdrawals,International Monetary Fund (IMF),null,Other Spending
+Withdrawals,Int'l Assistance Programs (IAP) - misc,null,Other Spending
+Withdrawals,IAP - Agency for Int'l Development (AID),null,Other Spending
+Withdrawals,IAP - Multilateral Assistance,null,Other Spending
+Withdrawals,IAP - US Int'l Devlop Finance Corp (DFC),null,Other Spending
+Withdrawals,Office of Personnel Mgmt (OPM) - misc,null,Other Spending
+Withdrawals,OPM - Civil Serv Retirement & Disability,null,Other Spending
+Withdrawals,OPM - Federal Employee Insurance Payment,null,Other Spending
+Withdrawals,Sub-Total Withdrawals,null,
+Withdrawals,Public Debt Cash Redemp. (Table IIIB),null,
+Withdrawals,null,null,
+Deposits,TREAS - Troubled Asset Relief Pro (TARP),null,Other Spending
+Withdrawals,TREAS - Troubled Asset Relief Pro (TARP),null,Other Spending
+Deposits,Dept of Defense (DoD),null,National Defense
+Deposits,Dept of Health & Human Serv (HHS) - misc,null,Other Spending
+Deposits,Taxes - Corporate Income,null,Corporate Income Taxes
+Deposits,Taxes - Estate and Gift,null,Estate and Gift Taxes
+Deposits,Taxes - Federal Unemployment (FUTA),null,Payroll Taxes
+Deposits,"Taxes - IRS Collected Estate, Gift, misc",null,Estate and Gift Taxes
+Deposits,Taxes - Miscellaneous Excise,null,Excuse Taxes
+Deposits,Taxes - Non Withheld Ind/SECA Electronic,null,Individual Income Taxes
+Deposits,Taxes - Non Withheld Ind/SECA Other,null,Individual Income Taxes
+Deposits,Taxes - Railroad Retirement,null,Payroll Taxes
+Deposits,Taxes - Withheld Individual/FICA,null,Individual Income Taxes
+Deposits,IAP - Foreign Military Sales,null,Other Spending
+Deposits,United States Postal Service (USPS),null,Other Spending
+Deposits,US Army Corps of Engineers,null,National Defense
+Withdrawals,Dept of Defense (DoD) - misc,null,National Defense
+Withdrawals,DoD - Military Active Duty Pay,null,National Defense
+Withdrawals,DoD - Military Retirement,null,National Defense
+Withdrawals,Dept of Health & Human Serv (HHS) - misc,null,Other Spending
+Withdrawals,Dept of Transportation (DOT) - misc,null,Other Spending
+Withdrawals,Taxes - Business Tax Refunds (EFT),null,Corporate Income Taxes
+Withdrawals,Taxes - Individual Tax Refunds (EFT),null,Individual Income Taxes
+Withdrawals,IAP - Foreign Military Sales,null,Other Spending
+Withdrawals,United States Postal Service (USPS),null,Other Spending
+Withdrawals,US Army Corps of Engineers,null,National Defense
+Deposits,Dept of Defense (DoD) - misc,null,National Defense
+Deposits,DoD - Health,null,National Defense
+Withdrawals,DoD - Health,null,National Defense

@@ -2,14 +2,6 @@
 # John Kearns
 # Goal: Write script to join all of the economic data, and construct the dataset as of a given date, and run imputation of past values
 
-
-
-master_dir = "/Users/johnkearns/Documents/GitHub/State_GDP_Trends/"
-do_folder = paste0(master_dir,"Do/")
-data_folder = paste0(master_dir,"Data/")
-results_folder = paste0(master_dir,"Results/")
-charts_folder = paste0(master_dir,"Charts/")
-
 # load packages
 library(estimatr)
 library(gtrendsR)
@@ -31,7 +23,6 @@ library(signal)
 library(plm)
 library(blsAPI)
 library(rjson)
-library(sinkr)
 library(missMDA)
 library(FactoMineR)
 library(mice)
@@ -59,7 +50,7 @@ fcast_df = imputed_df %>%
 pred_df = data.frame()
 for(col in colnames(fcast_df)[256:271]){
 
-for(dat in as.character(ceiling_date((national_econ %>% filter(series_id=="GDPC1"&date>="2007-01-01"))$date,"quarter")-1)){
+for(dat in c(as.character(ceiling_date((national_econ %>% filter(series_id=="GDPC1"&date>="2007-01-01"))$date,"quarter")-1),"2024-12-31")){
   
   print(paste0(col," ",dat))
   
@@ -69,7 +60,8 @@ for(dat in as.character(ceiling_date((national_econ %>% filter(series_id=="GDPC1
     arrange(date) %>%
     mutate(year=year(date),
            qtr=quarter(date)) %>%
-    select(-c(PCE,PRS85006112)) %>% 
+    select(-c(PCE,PRS85006112)) %>%
+    select(-one_of("ADPMNUSNERSA")) %>% 
     group_by(year,qtr) %>%
     mutate_at(vars(PAYEMS:gt_999),~mean(.,na.rm=TRUE)) %>%
     summarize_all(~.[1]) %>%
@@ -89,14 +81,14 @@ for(dat in as.character(ceiling_date((national_econ %>% filter(series_id=="GDPC1
   
   
   X = model.matrix(as.formula(paste0(col,"~",paste(colnames(fcast_df1)[c(4:246)],collapse="+"))),
-                   fcast_df1 %>% filter(date<dat&year(date)>=2006&!is.na(!!sym(col))))[, -1]
-  y = (fcast_df1 %>% filter(date<dat&year(date)>=2006&!is.na(!!sym(col))))[[col]]
+                   fcast_df1 %>% filter(date<"2020-01-01"&date<dat&year(date)>=2006&!is.na(!!sym(col))))[, -1]
+  y = (fcast_df1 %>% filter(date<"2020-01-01"&date<dat&year(date)>=2006&!is.na(!!sym(col))))[[col]]
   
   if(length(y)<4){next}
   
   weight = (1:nrow(X))/nrow(X)
   weight = ifelse(weight<.5,.5,weight)
-  fit_lasso_state = glmnet(X, y, alpha = 1,pmax=50)
+  fit_lasso_state = glmnet(X, y, alpha = 1,pmax=20)
   # weight by how recent the data is
   
   selected_coefs_state = data.frame(varImp(fit_lasso_state,lambda=min(fit_lasso_state$lambda), scale = FALSE)) %>% filter(Overall!=0)

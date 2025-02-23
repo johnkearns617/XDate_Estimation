@@ -21,6 +21,7 @@ library(vtable)
 library(seasonal)
 library(signal)
 library(plm)
+library(boiwsa)
 
 conflicted::conflict_prefer("filter","dplyr")
 conflicted::conflicts_prefer(base::print)
@@ -211,10 +212,10 @@ trends_sa2 = trends_sa2 %>%
 
 plot_cat = function(cat1){
   
-  plt1 = ggplot(trends_sa %>% 
+  plt1 = ggplot(trends_sa2 %>% 
                   dplyr::filter(category%in%cat1) %>% 
                   mutate(category=factor(category,levels=trends_cats$id,labels=trends_cats$category)),aes(x=date)) + 
-    geom_line(aes(y=value,color="Raw")) + 
+    #geom_line(aes(y=value,color="Raw")) + 
     geom_line(aes(y=value_detrend,color="Detrend")) + 
     geom_line(aes(y=value_sa,color="SA")) + 
     geom_line(aes(y=value_loess,color="LOESS")) +

@@ -47,7 +47,6 @@ write_csv(df,paste0("Data/Processing/data_asof",floor_date(Sys.Date(), "month")-
 
 set.seed(178)
 
-
 impute_function = function(df){
   test_dineof=df
   
@@ -63,16 +62,16 @@ impute_function = function(df){
     if(col1=="IHLIDXUS"&as.Date(dat)<"2021-01-01"){next}
     
     value = data.frame(date=test_dineof$date)
-    for(i in 1:10){
+    for(i in 1:30){
       if("IHLIDXUS"%in%colnames(test_dineof)&"ADPMNUSNERSA"%in%colnames(test_dineof)){
         if(col1=="IHLIDXUS"){potential_cols = colnames(test_dineof %>% select(-c(col1,IHLIDXUS,ADPMNUSNERSA,gt_1003:gt_999)) %>% filter(date==max(date)) %>% select(-date) %>% select_if(!is.na(.)))}else{
         potential_cols = colnames(test_dineof %>% select(-c(col1,IHLIDXUS,ADPMNUSNERSA,gt_1003:gt_999)) %>% filter(date==test_dineof$date[(nrow(test_dineof)-3):nrow(test_dineof)][head(which(is.na(test_dineof[[col1]][(nrow(test_dineof)-3):nrow(test_dineof)])),1)]) %>% select(-date) %>% select_if(!is.na(.)))
           }
         } else{
-          potential_cols = colnames(test_dineof %>% select(-c(col1,gt_1003:gt_999)) %>% filter(date==test_dineof$date[(nrow(test_dineof)-3):nrow(test_dineof)][min(head(which(is.na(test_dineof[[col1]][(nrow(test_dineof)-3):nrow(test_dineof)])),1),1)]) %>% select(-date) %>% select_if(!is.na(.)))
+          potential_cols = colnames(test_dineof %>% select(-c(col1,gt_1003:gt_999)) %>% select(-one_of("ADPMNUSNERSA","IHLIDXUS")) %>% filter(date==test_dineof$date[(nrow(test_dineof)-3):nrow(test_dineof)][max(head(which(is.na(test_dineof[[col1]][(nrow(test_dineof)-3):nrow(test_dineof)])),1),1)]) %>% select(-date) %>% select_if(!is.na(.)))
           }
       cols = c(sample(potential_cols,min(c(15,floor(length(potential_cols)/2)))),sample(colnames(test_dineof %>% select(gt_1003:gt_999)),15))
-      test = lm_robust(as.formula(paste0(paste0(col1,"~lag+lag2+lag3+lag4+lag5+lag6+"),paste(cols,collapse="+"))),
+      test = lm_robust(as.formula(paste0(paste0(col1,"~lag+lag2+"),paste(cols,collapse="+"))),
                        data=test_dineof %>% select(col1,cols) %>% 
                          mutate(lag=dplyr::lag(!!sym(col1),1),
                                 lag2=dplyr::lag(!!sym(col1),2),
@@ -93,7 +92,7 @@ impute_function = function(df){
     
     value1 = data.frame(
       date=value$date,
-      replacement=rowMeans(value[,2:ncol(value)])
+      replacement=rowMeans(value[,2:ncol(value)],na.rm=TRUE)
     )
     
     for(i in 1:nrow(value)){
@@ -128,9 +127,9 @@ left_join(imputed_df %>%
 
 write_csv(imputed_df,paste0("Data/Processing/imputed_data_asof",floor_date(Sys.Date(), "month")-1,".csv"))
 
-for(dat in c(as.character(ceiling_date((national_econ %>% filter(series_id=="GDPC1"&date>="2007-01-01"))$date,"quarter")-1)[53:72],"2024-12-31")){
+for(dat in c(as.character(ceiling_date((national_econ %>% filter(series_id=="GDPC1"&date>="2007-01-01"))$date,"quarter")-1),"2024-12-31")){
   
-  print(paste0(col," ",dat))
+  print(paste0(dat))
   
   df = make_df(ceiling_date(as.Date(dat), "quarter")-1) %>% 
     group_by(year,qtr) %>%
