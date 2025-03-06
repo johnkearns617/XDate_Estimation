@@ -26,8 +26,12 @@ library(rjson)
 library(missMDA)
 library(FactoMineR)
 library(mice)
+library(DALEX)
 
 conflicted::conflict_prefer("filter","dplyr")
+conflicted::conflicts_prefer(DALEX::explain)
+conflicted::conflict_prefer("select","dplyr")
+
 
 set.seed(178)
 
@@ -48,9 +52,9 @@ fcast_df = imputed_df %>%
               select(date,A261RX1Q020SBEA:SLCEC1))
 
 pred_df = data.frame()
-for(col in colnames(fcast_df)[256:271]){
+for(col in colnames(fcast_df %>% select(A261RX1Q020SBEA:SLCEC1))){
 
-for(dat in c(as.character(ceiling_date((national_econ %>% filter(series_id=="GDPC1"&date>="2007-01-01"))$date,"quarter")-1),"2024-12-31")){
+for(dat in c("2024-12-31","2025-01-01","2025-01-31","2025-02-04","2025-02-28",'2025-03-05')){
   
   print(paste0(col," ",dat))
   
@@ -61,7 +65,7 @@ for(dat in c(as.character(ceiling_date((national_econ %>% filter(series_id=="GDP
     mutate(year=year(date),
            qtr=quarter(date)) %>%
     select(-c(PCE,PRS85006112)) %>%
-    select(-one_of("ADPMNUSNERSA")) %>% 
+    #select(-one_of("ADPMNUSNERSA")) %>% 
     group_by(year,qtr) %>%
     mutate_at(vars(PAYEMS:gt_999),~mean(.,na.rm=TRUE)) %>%
     summarize_all(~.[1]) %>%
@@ -71,13 +75,14 @@ for(dat in c(as.character(ceiling_date((national_econ %>% filter(series_id=="GDP
                 pivot_wider(names_from=series_id,values_from=value) %>% 
                 select(date,A261RX1Q020SBEA:SLCEC1)) %>%
     arrange(date) %>%
-    mutate_at(vars(PAYEMS:JTSJOL,INDPRO:DGS10,col),~((./dplyr::lag(.,1)-1)*100)) %>%
+    mutate_at(vars(PAYEMS:JTSJOL,ADPMNUSNERSA,INDPRO:DGS10,col),~((./dplyr::lag(.,1)-1)*100)) %>%
     mutate_at(vars(UNRATE:DTCDFSA066MSFRBPHI,gt_1003:gt_999),~(.-dplyr::lag(.,1))) %>%
     mutate(lag1=dplyr::lag(!!sym(col),1),
            lag2=dplyr::lag(!!sym(col),2),
            lag3=dplyr::lag(!!sym(col),3),
            lag4=dplyr::lag(!!sym(col),4)) %>%
-    ungroup()
+    ungroup() %>% 
+    mutate(IHLIDXUS=ifelse(is.nan(IHLIDXUS),0,IHLIDXUS))
   
   
   X = model.matrix(as.formula(paste0(col,"~",paste(colnames(fcast_df1)[c(4:246)],collapse="+"))),
@@ -99,7 +104,7 @@ for(dat in c(as.character(ceiling_date((national_econ %>% filter(series_id=="GDP
   selected_coefs_state$category = sapply(selected_coefs_state$var,which_category)
   selected_coefs_state = selected_coefs_state %>% arrange(-Overall)
   
-  test = lm_robust(as.formula(paste0(col,"~lag1+lag2+",paste(rownames(selected_coefs_state),collapse="+"))),
+  test = lm_robust(as.formula(paste0(col,"~lag1+lag2+ADPMNUSNERSA+",paste(rownames(selected_coefs_state),collapse="+"))),
                    data = fcast_df1 %>% filter(date<=dat))
   
   pred_df = bind_rows(
@@ -117,6 +122,67 @@ pred_df$error[pred_df$var==col]=sqrt(mean((pred_df$pred[pred_df$var==col]-pred_d
 }
 
 
+q1_preds = data.frame()
+for(dat in c("2025-01-01","2025-01-31","2025-02-04","2025-02-28","2025-03-05")){
+imputed_df = read_csv(paste0("Data/Processing/imputed_data_asof",dat,".csv"))
 
+fcast_df1 = imputed_df %>% 
+  arrange(date) %>%
+  mutate(year=year(date),
+         qtr=quarter(date)) %>%
+  select(-c(PCE,PRS85006112)) %>%
+  #select(-one_of("ADPMNUSNERSA")) %>% 
+  group_by(year,qtr) %>%
+  mutate_at(vars(PAYEMS:gt_999),~mean(.,na.rm=TRUE)) %>%
+  summarize_all(~.[1]) %>%
+  ungroup() %>% 
+  left_join(national_econ %>% 
+              select(date,series_id,value) %>%
+              pivot_wider(names_from=series_id,values_from=value) %>% 
+              select(date,A261RX1Q020SBEA:SLCEC1)) %>%
+  arrange(date) %>%
+  mutate_at(vars(PAYEMS:JTSJOL,ADPMNUSNERSA,INDPRO:DGS10,col),~((./dplyr::lag(.,1)-1)*100)) %>%
+  mutate_at(vars(UNRATE:DTCDFSA066MSFRBPHI,gt_1003:gt_999),~(.-dplyr::lag(.,1))) %>%
+  mutate(lag1=dplyr::lag(!!sym(col),1),
+         lag2=dplyr::lag(!!sym(col),2),
+         lag3=dplyr::lag(!!sym(col),3),
+         lag4=dplyr::lag(!!sym(col),4)) %>%
+  ungroup() %>% 
+  mutate(IHLIDXUS=ifelse(is.nan(IHLIDXUS),0,IHLIDXUS))
+
+q1_preds = bind_rows(
+  q1_preds,
+  data.frame(obs_date=dat,fcast_df1 %>% filter(date=="2025-01-01"))
+)
+
+}
+
+# Create an explainer
+explainer <- explain(test, 
+                     data = fcast_df1 %>% filter(date<"2025-01-01"&!is.na(GDPC1)&!is.na(lag2)) %>% select(names(test$coefficients)[-1]), 
+                     y = (fcast_df1 %>% filter(date<"2025-01-01"&!is.na(GDPC1)&!is.na(lag2)))$GDPC1)
+
+# Compute variable contributions for multiple observations (e.g., over time)
+breakdown_list <- lapply(1:nrow(q1_preds), function(i) {
+  breakdown <- predict_parts(explainer, new_observation = (q1_preds %>% slice(i) %>% select(names(test$coefficients)[-1])), type = "break_down")
+  breakdown$observation <- i  # Add observation index (time)
+  breakdown
+})
+
+# Combine results
+breakdown_df <- do.call(rbind, breakdown_list)
+
+# Plot contribution of variables over observations
+plotly::ggplotly(ggplot(breakdown_df %>% filter(variable!="prediction"), aes(x = observation, y = contribution, fill = variable_name)) +
+  geom_bar(stat = "identity", position = "stack") +
+  geom_line(data=pred_df %>% ungroup() %>% filter(date>="2025-01-01") %>% mutate(date=1:n()),
+            aes(x=date,y=pred),inherit.aes = FALSE) +
+  geom_point(data=pred_df %>% ungroup() %>% filter(date>="2025-01-01") %>% mutate(date=1:n()),
+              aes(x=date,y=pred),inherit.aes = FALSE) +
+  labs(title = "Variable Contribution Over Time",
+       x = "Observation (Time)", 
+       y = "Contribution to Fitted Value") +
+  theme_minimal()
+)
 
 

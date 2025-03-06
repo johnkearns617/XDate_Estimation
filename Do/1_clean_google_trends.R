@@ -32,17 +32,6 @@ fred_key = "156b9cd1b9a52db3b9fc0bab8aca2b39"
 # initialize FRED link
 fredr_set_key(fred_key)
 
-# read in categories to pull
-ci_str_detect <- function(x, y) {
-  str_detect(y, pattern = sub('(?<=.{3})', '.', x, perl = TRUE))
-}
-
-which_category = function(num){
-  
-  return(trends_cats$category[trends_cats$id==num][1])
-  
-}
-
 nk_categories = read_csv(paste0("Data/Raw/Nakazawa_Categories.csv")) %>% 
   left_join(categories %>% mutate(name=gsub(" ","",name)),by=c("variables"="name")) %>% 
   filter(!is.na(id)) %>% 
@@ -128,7 +117,7 @@ reg_df = trends_data1 %>%
 lm1 = lm(value_adj2~time_var*factor(cat),reg_df)
   
 tmp = broom::tidy(lm1) %>% 
-  slice(2,220:nrow(tidy(lm1))) %>% 
+  slice(which(grepl("time_var",broom::tidy(lm1)$term))) %>% # look at only the time coefficients (ignore category FE)
   mutate(term=gsub("time_var:factor\\(cat\\)","",term),
          estimate=estimate+estimate[1]) %>% 
   select(cat=term,coef=estimate) %>% 
@@ -138,7 +127,7 @@ tmp$cat[1] = 77
 coef_df = bind_rows(coef_df,tmp)
 
 time_match = reg_df %>% 
-  filter(cat==249) %>% 
+  filter(cat==249) %>% # just need one set, the specific category doesnt matter
   mutate(date=rev(as.Date(date))) %>% 
   select(time_var,date)
 trends_data1 = left_join(trends_data1,time_match,by=c("date"="date")) %>% 
@@ -146,52 +135,16 @@ trends_data1 = left_join(trends_data1,time_match,by=c("date"="date")) %>%
 trends_data1 = left_join(trends_data1,coef_df,by=c("cat"))
 trends_data1$value_detrend = ifelse(trends_data1$date<"2016-01-01",trends_data1$value_adj2+(trends_data1$coef*trends_data1$time_var),trends_data1$value_adj2)
 
- # smooth over jumps, seasonally adjust by category, by state
-
-
-  
 trends_sa = data.frame()
 
-for(cat1 in unique(trends_data1$cat[trends_data1$cat%in%nk_categories$id])){
+# mclapply
+numberOfCores = detectCores()
+trends_sa = mclapply(setdiff(unique(trends_data1$cat[trends_data1$cat%in%nk_categories$id]),987),
+                        seas_adjust_gt,
+                      trends_df=trends_data1,
+                        mc.cores = numberOfCores)
 
-  if(cat1=="987"){next}
-  
- print(paste0(cat1))
- test_cat = trends_data1[trends_data1$cat==cat1,] %>%
-   select(date,value,value_detrend) %>%
-   mutate(date=as.Date(date))
-
- # hits <- test_cat$value_detrend
- # #--------------------------------------------------------------
- # 
- # #do some other convenience operations---------------------------
- # dates <- test_cat$date
- # hits <- ts(hits,start=c(year(dates[1]),month(dates[1]),day(dates[1])),
- #            end=c(year(tail(dates,1)),month(tail(dates,1)),day(tail(dates,1))),
- #            frequency = 7)
- # 
- # decompose_air = decompose(hits, "additive")
- # adjust_air = hits - decompose_air$seasonal
- # adjust_air = ifelse(is.nan(adjust_air)|is.infinite(adjust_air),0,adjust_air)
- 
- #hits_smooth = as.numeric(smooth(adjust_air,kind="3RSS",endrule="Tukey"))
- 
- hits_smooth = boiwsa(test_cat$value_detrend,test_cat$date,auto.ao.seacrh = FALSE)
- hits_smooth = hits_smooth$sa
- 
- hits_smooth = as.numeric(smooth(hits_smooth,kind="3RSS",endrule="Tukey"))
- 
- test_cat = cbind(test_cat,hits_smooth)
- colnames(test_cat)[ncol(test_cat)] = "value_sa"
-
- hits_loess = hpfilter(as.numeric(hits_smooth),freq=(1600*(12^4)))$trend
- test_cat = cbind(test_cat,hits_loess)
- colnames(test_cat)[ncol(test_cat)] = "value_loess"
-
- trends_sa = bind_rows(trends_sa,test_cat %>% mutate(category=cat1,value_sa=as.numeric(value_sa)))
-
-}
-
+trends_sa = bind_rows(trends_sa)
 
 # get rid of the categories with little to no data
 drop_sd_cats = trends_sa %>% 
@@ -209,26 +162,6 @@ trends_sa2 = trends_sa2 %>%
   mutate(deviation=(value_sa/value_loess-1)*100,
          deviation_sd=sd(deviation[year(date)%in%c(2010:2019)],na.rm=TRUE),
          deviation=deviation/deviation_sd)
-
-plot_cat = function(cat1){
-  
-  plt1 = ggplot(trends_sa2 %>% 
-                  dplyr::filter(category%in%cat1) %>% 
-                  mutate(category=factor(category,levels=trends_cats$id,labels=trends_cats$category)),aes(x=date)) + 
-    #geom_line(aes(y=value,color="Raw")) + 
-    geom_line(aes(y=value_detrend,color="Detrend")) + 
-    geom_line(aes(y=value_sa,color="SA")) + 
-    geom_line(aes(y=value_loess,color="LOESS")) +
-    facet_wrap(~category,scales="free_y") +
-    labs(subtitle = paste0(cat1)) +
-    geom_vline(xintercept=as.Date("2007-09-01")) + 
-    geom_vline(xintercept = as.Date("2010-06-01")) +
-    theme_bw()
-  
-  print(plt1) 
-  
-}
-
 
 write_csv(trends_sa2,paste0("Data/Processing/trends_full_sa_",gsub("-","",Sys.Date()),".csv"))
 #trends_sa2 = read_csv(paste0("Data/Processing/trends_full_sa_20250128.csv"))

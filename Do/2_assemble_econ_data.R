@@ -36,26 +36,6 @@ bls_key = "913f38a6f2e245e593a66a3b2604f6d3"
 # initialize FRED link
 fredr_set_key(fred_key)
 
-seasonal_adj = function(df,mode="additive"){
-  
-  hits <- df$value
-  #--------------------------------------------------------------
-  
-  #do some other convenience operations---------------------------
-  dates <- df$date
-  hits <- ts(hits,start=c(year(dates[1]),month(dates[1])),frequency=12)
-  
-  decompose_air = decompose(hits, mode)
-  if(mode=="additive"){
-  adjust_air = hits - decompose_air$seasonal
-  }else{
-    adjust_air = hits / decompose_air$seasonal
-  }
-  adjust_air = ifelse(is.nan(adjust_air)|is.infinite(adjust_air),0,adjust_air)
-  
-  return(adjust_air)
-}
-
 bls_naics_codes = read_csv("https://data.bls.gov/cew/doc/titles/industry/industry_titles.csv")
 bls_area_codes = read_csv("https://data.bls.gov/cew/doc/titles/area/area_titles.csv")
 
@@ -270,12 +250,6 @@ national_econ = national_econ %>%
 
 # Treasury data
 
-new_bind <- function(a, b) {
-  common_cols <- intersect(names(a), names(b))
-  b[common_cols] <- map2_df(b[common_cols], 
-                            map(a[common_cols], class), ~{class(.x) <- .y;.x})
-  bind_rows(a, b)  
-}
 op_cash_dep_withdraw = data.frame()
 for(yr in c(2005:year(Sys.Date()))){
   
@@ -600,4 +574,244 @@ for(yr in c(2001:year(Sys.Date()))){
   
 }
 
+investment_funds = data.frame()
+for(yr in c(2017:year(Sys.Date()))){
+  
+  print(as.character(yr)) 
+  
+  request = paste0("https://api.fiscaldata.treasury.gov/services/api/fiscal_service/v1/",
+                   "accounting/od/fip_principal_outstanding_table1",
+                   "?sort=-record_date",
+                   "&format=json",
+                   "&filter=record_calendar_year:eq:",as.character(yr),
+                   "&page[size]=10000")
+  response=GET(request) 
+  out=fromJSON(rawToChar(response$content))
+  
+  for(page_num in c(1:out$meta$`total-pages`)){
+    
+    request_2 = paste0("https://api.fiscaldata.treasury.gov/services/api/fiscal_service/v1/",
+                       "accounting/od/fip_principal_outstanding_table1",
+                       "?sort=-record_date",
+                       "&format=csv",
+                       "&filter=record_calendar_year:eq:",as.character(yr),
+                       "&page[number]=",page_num,
+                       "&page[size]=10000")
+    
+    data = read_csv(request_2)
+    
+    investment_funds = new_bind(investment_funds,data)
+    
+  }
+  
+}
+
+op_cash_balance = data.frame()
+for(yr in c(2005:year(Sys.Date()))){
+  
+  print(as.character(yr)) 
+  
+  request = paste0("https://api.fiscaldata.treasury.gov/services/api/fiscal_service/v1/",
+                   "accounting/dts/operating_cash_balance",
+                   "?sort=-record_date",
+                   "&format=json",
+                   "&filter=record_calendar_year:eq:",as.character(yr),
+                   "&page[size]=10000")
+  response=GET(request) 
+  out=fromJSON(rawToChar(response$content))
+  
+  for(page_num in c(1:out$meta$`total-pages`)){
+    
+    request_2 = paste0("https://api.fiscaldata.treasury.gov/services/api/fiscal_service/v1/",
+                       "accounting/dts/operating_cash_balance",
+                       "?sort=-record_date",
+                       "&format=csv",
+                       "&filter=record_calendar_year:eq:",as.character(yr),
+                       "&page[number]=",page_num,
+                       "&page[size]=10000")
+    
+    data = read_csv(request_2)
+    
+    op_cash_balance = new_bind(op_cash_balance,data)
+    
+  }
+  
+}
+
+tax_deposits1 = data.frame()
+for(yr in c(2005:2023)){
+  
+  print(as.character(yr)) 
+  
+  request = paste0("https://api.fiscaldata.treasury.gov/services/api/fiscal_service/v1/",
+                   "accounting/dts/federal_tax_deposits",
+                   "?sort=-record_date",
+                   "&format=json",
+                   "&filter=record_calendar_year:eq:",as.character(yr),
+                   "&page[size]=10000")
+  response=GET(request) 
+  out=fromJSON(rawToChar(response$content))
+  
+  for(page_num in c(1:out$meta$`total-pages`)){
+    
+    request_2 = paste0("https://api.fiscaldata.treasury.gov/services/api/fiscal_service/v1/",
+                       "accounting/dts/federal_tax_deposits",
+                       "?sort=-record_date",
+                       "&format=csv",
+                       "&filter=record_calendar_year:eq:",as.character(yr),
+                       "&page[number]=",page_num,
+                       "&page[size]=10000")
+    
+    data = read_csv(request_2)
+    
+    tax_deposits1 = new_bind(tax_deposits1,data)
+    
+  }
+  
+}
+
+tax_deposits2 = data.frame()
+for(yr in c(2023:year(Sys.Date()))){
+  
+  print(as.character(yr)) 
+  
+  request = paste0("https://api.fiscaldata.treasury.gov/services/api/fiscal_service/v1/",
+                   "accounting/dts/inter_agency_tax_transfers",
+                   "?sort=-record_date",
+                   "&format=json",
+                   "&filter=record_calendar_year:eq:",as.character(yr),
+                   "&page[size]=10000")
+  response=GET(request) 
+  out=fromJSON(rawToChar(response$content))
+  
+  for(page_num in c(1:out$meta$`total-pages`)){
+    
+    request_2 = paste0("https://api.fiscaldata.treasury.gov/services/api/fiscal_service/v1/",
+                       "accounting/dts/inter_agency_tax_transfers",
+                       "?sort=-record_date",
+                       "&format=csv",
+                       "&filter=record_calendar_year:eq:",as.character(yr),
+                       "&page[number]=",page_num,
+                       "&page[size]=10000")
+    
+    data = read_csv(request_2)
+    
+    tax_deposits2 = new_bind(tax_deposits2,data)
+    
+  }
+  
+}
+
+tax_deposits1a = tax_deposits1 %>% 
+  mutate(group=case_when(
+    tax_deposit_type%in%c("Withheld Income and Employment Taxes","Individual Income Taxes","Railroad Retirement Taxes","Federal Unemployment Taxes")~"revenue_Individual Income_Payroll",
+    tax_deposit_type%in%c("Corporation Income Taxes")~"revenue_Corporate Income Taxes",
+    tax_deposit_type%in%c("Estate and Gift Taxes & Misc IRS Rcpts.","Change in Balance of Unclassified Taxes")~"revenue_Estate_Gift_Customs_Misc",
+    tax_deposit_type%in%c("Excise Taxes")~"revenue_Excise Taxes"
+  )) %>% 
+  filter(!is.na(group)) %>% 
+  select(record_date,group,today_amt=tax_deposit_today_amt,mtd_amt=tax_deposit_mtd_amt,record_calendar_year,record_fiscal_year,record_calendar_month,record_calendar_day) %>% 
+  mutate_at(vars(record_calendar_month:record_calendar_day),as.numeric)
+
+
+tax_deposits2a = tax_deposits2 %>% 
+  mutate(group=case_when(
+    classification%in%c("Taxes - Withheld Individual/FICA","Taxes - Railroad Retirement")~"revenue_Individual Income_Payroll",
+    classification%in%c("Taxes - Corporate Income")~"revenue_Corporate Income Taxes",
+    classification%in%c("Taxes - Miscellaneous Excise")~"revenue_Excise Taxes"
+  )) %>% 
+  filter(!is.na(group)) %>% 
+  select(record_date,group,today_amt,mtd_amt,record_calendar_year,record_fiscal_year,record_calendar_month,record_calendar_day) %>% 
+  mutate_at(vars(record_calendar_month:record_calendar_day),as.numeric)
+
+
+tax_refunds = data.frame()
+for(yr in c(2005:year(Sys.Date()))){
+  
+  print(as.character(yr)) 
+  
+  request = paste0("https://api.fiscaldata.treasury.gov/services/api/fiscal_service/v1/",
+                   "accounting/dts/income_tax_refunds_issued",
+                   "?sort=-record_date",
+                   "&format=json",
+                   "&filter=record_calendar_year:eq:",as.character(yr),
+                   "&page[size]=10000")
+  response=GET(request) 
+  out=fromJSON(rawToChar(response$content))
+  
+  for(page_num in c(1:out$meta$`total-pages`)){
+    
+    request_2 = paste0("https://api.fiscaldata.treasury.gov/services/api/fiscal_service/v1/",
+                       "accounting/dts/income_tax_refunds_issued",
+                       "?sort=-record_date",
+                       "&format=csv",
+                       "&filter=record_calendar_year:eq:",as.character(yr),
+                       "&page[number]=",page_num,
+                       "&page[size]=10000")
+    
+    data = read_csv(request_2)
+    
+    tax_refunds = new_bind(tax_refunds,data)
+    
+  }
+  
+}
+
+tax_refunds = tax_refunds %>% 
+  mutate(group=case_when(
+    tax_refund_type%in%c("Individual","IRS Tax Refunds Individual","IRS - Advanced Child Tax Credit (EFT)","IRS - Advanced Child Tax Credit (Checks)","Taxes - Individual Tax Refunds (Checks)","Taxes - Individual Tax Refunds (EFT)")~"revenue_Individual Income_Payroll",
+    tax_refund_type%in%c("Business","IRS Tax Refunds Business","Taxes - Business Tax Refunds (Checks)","Taxes - Business Tax Refunds (EFT)")~"revenue_Corporate Income Taxes",
+    tax_refund_type%in%c("IRS - Economic Impact Payments (Checks)", "IRS - Economic Impact Payments (EFT)")~"revenue_Estate_Gift_Customs_Misc"
+  )) %>% 
+  filter(!is.na(group)) %>% 
+  select(record_date,group,today_amt=tax_refund_today_amt,mtd_amt=tax_refund_mtd_amt,record_calendar_year,record_fiscal_year,record_calendar_month,record_calendar_day) %>% 
+  mutate_at(vars(record_calendar_month:record_calendar_day),as.numeric) %>% 
+  mutate(today_amt=-1*today_amt,
+         mtd_amt=-1*mtd_amt)
+
+tax_deposits = bind_rows(
+  tax_deposits1a,
+  tax_deposits2a,
+  tax_refunds
+)
+
+
+daily_gas_activity = data.frame()
+for(var in c("gas_held_by_public_daily_activity","gas_intragov_holdings_daily_activity")){
+for(yr in c(2024:year(Sys.Date()))){
+  
+  print(as.character(yr)) 
+  
+  request = paste0("https://api.fiscaldata.treasury.gov/services/api/fiscal_service/v1/",
+                   "accounting/od/",var,
+                   "?sort=-record_date",
+                   "&format=json",
+                   "&filter=record_calendar_year:eq:",as.character(yr),
+                   "&page[size]=10000")
+  response=GET(request) 
+  out=fromJSON(rawToChar(response$content))
+  
+  for(page_num in c(1:out$meta$`total-pages`)){
+    
+    request_2 = paste0("https://api.fiscaldata.treasury.gov/services/api/fiscal_service/v1/",
+                       "accounting/od/",var,
+                       "?sort=-record_date",
+                       "&format=csv",
+                       "&filter=record_calendar_year:eq:",as.character(yr),
+                       "&page[number]=",page_num,
+                       "&page[size]=10000")
+    
+    data = read_csv(request_2)
+    
+    daily_gas_activity = new_bind(daily_gas_activity,data)
+    
+  }
+  
+}
+}
+
 cbo_proj = read_csv("https://raw.githubusercontent.com/US-CBO/eval-projections/refs/heads/main/input_data/baselines.csv")
+
+cbo_econ = read_csv("Data/Raw/Quarterly_January2025.csv") %>% 
+  mutate(date=as.Date(as.yearqtr(date,format="%Yq%q")))
+
