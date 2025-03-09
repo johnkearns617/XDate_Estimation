@@ -10,14 +10,11 @@ bls_key = Sys.getenv("BLS_KEY")
 
 fredr_set_key(fred_key)
 
-print(reticulate::py_config())
-reticulate::py_config()
+reticulate::use_python(reticulate::py_discover_config()$python, required = TRUE)
+reticulate::py_discover_config()
 
 reticulate::py_require(c('google-api-python-client',
-                         'json',
                          'pandas',
-                         'pprint',
-                         'datetime',
                          'dill'))
 reticulate::py_run_file("Do/1a_pull_trends_data.py")
 
