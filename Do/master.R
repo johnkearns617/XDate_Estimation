@@ -12,6 +12,10 @@ fredr_set_key(fred_key)
 
 reticulate::py_discover_config()
 
+reticulate::py_require(c('google-api-python-client',
+                         'pandas',
+                         'dill'))
+
 reticulate::py_run_file("Do/1a_pull_trends_data.py")
 
 source('0_model_functions.R')
