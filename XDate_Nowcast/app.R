@@ -114,9 +114,9 @@ server <- function(input, output) {
     output$gdp_nowcast = renderPlotly({
       plotly::ggplotly(ggplot(breakdown_df %>% filter(variable!="prediction"), aes(x = eval_date, y = contribution, fill = variable_name)) +
                          geom_bar(stat = "identity", position = "stack") +
-                         geom_line(data=pred_df %>% ungroup() %>% filter(date>="2025-01-01") %>% mutate(date=1:n()),
+                         geom_line(data=gdp_pred_df %>% ungroup() %>% filter(date>="2025-01-01") %>% mutate(date=1:n()),
                                    aes(x=date,y=pred),inherit.aes = FALSE) +
-                         geom_point(data=pred_df %>% ungroup() %>% filter(date>="2025-01-01") %>% mutate(date=1:n()),
+                         geom_point(data=gdp_pred_df %>% ungroup() %>% filter(date>="2025-01-01") %>% mutate(date=1:n()),
                                     aes(x=date,y=pred),inherit.aes = FALSE) +
                          labs(title = "Variable Contribution Over Time",
                               x = "Observation (Time)", 
