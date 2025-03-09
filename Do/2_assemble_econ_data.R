@@ -38,6 +38,8 @@ states_codes = bls_area_codes %>%
   filter(grepl("-- Statewide",area_title)&grepl(paste(state.name,collapse="|"),area_title)) %>% 
   distinct(area_title,.keep_all = TRUE)
 
+# load old data
+load("Data/Processing/fiscal_service_data_old.RData")
 
 #### get other national economic variables ####
 national_econ = data.frame()
