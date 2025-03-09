@@ -6,11 +6,10 @@ from datetime import datetime
 import dill # for loading and saving a trained model
 from pathlib import Path
 
-master_dir = str(Path(__file__).resolve().parent.parent)
-do_folder = master_dir+"/Do/"
-data_folder = master_dir+"/Data/"
-results_folder = master_dir+"/Results/"
-charts_folder = master_dir+"/Charts/"
+do_folder = "Do/"
+data_folder = "Data/"
+results_folder = "Results/"
+charts_folder = "Charts/"
 
 SERVER = 'https://trends.googleapis.com'
 
@@ -100,9 +99,9 @@ def main():
   response = service.getGraph(terms='/m/02mjmr').execute()
   pprint.pprint(response)
 
-cats = pd.read_csv(master_dir+"/Data/nk_categories.csv")
+cats = pd.read_csv("Data/nk_categories.csv")
 
-trends_cats = pd.read_csv(master_dir+"/Data/google_trend_categories.txt", sep=': ')
+trends_cats = pd.read_csv("Data/google_trend_categories.txt", sep=': ')
 trends_cats.columns = ['category','id']
 
 len(cats.num.unique().tolist())
