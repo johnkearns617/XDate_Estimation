@@ -697,3 +697,263 @@ daily_forecast_lower = bind_rows(
     select(-date)
 )
 
+
+# ideas:
+# weight recent data more heavily
+# predict state tax and spending components
+
+
+
+# # write code to make pseudo-out-of-sample RMSE measurement and test set
+# AR_model_function = function(data,extra_vars=c(),gdp_var="rgdp_yoy_pchange") {
+#   
+#   mod = lm_robust(as.formula(paste0(gdp_var,"~lag1_",gdp_var,paste(c("",extra_vars),collapse="+"),"+factor(state)")),data=data)
+#   
+#   return(mod)
+#   
+# }
+# 
+# ELNET_model_function = function(X,Y,extra_vars=c(),gdp_var="rgdp_yoy_pchange") {
+#   
+#   control <- trainControl(method = "repeatedcv",
+#                           number = 5,
+#                           repeats = 5,
+#                           search = "random",
+#                           verboseIter = TRUE)
+#   
+#   # Training ELastic Net Regression model
+#   mod <- train(as.formula(paste0(gdp_var,"~lag1_",gdp_var,paste(c("",extra_vars),collapse="+"),paste(c("",state.abb),collapse="+"))),
+#                data = cbind(X, Y),
+#                method = "glmnet",
+#                preProcess = c("center", "scale"),
+#                tuneLength = 25,
+#                penalty.factor=ifelse(nchar(colnames(X))==2,0,1),
+#                trControl = control)
+#   
+#   return(mod)
+#   
+# }
+# 
+# pseudo_OOS_RMSE = function(data_type=c("test","train"),model_type=c("AR"),extra_vars=c(),gdp_var="rgdp_yoy_pchange"){
+#   
+#   if(data_type=="train"){
+#     
+#     data = reg_data %>% filter(date<"2020-01-01")
+#     
+#     if(model_type=="ELNET"){
+#       
+#       data = data %>% 
+#         mutate(dummy=1) %>%
+#         spread(key=state,value=dummy, fill=0)
+#       
+#     }
+#     
+#     rmse_df = data.frame()
+#     for(dat in as.Date((data %>% filter(date>="2017-04-01") %>% distinct(date))$date,format="%Y-%m-%d")){
+#       
+#       if(model_type=="AR"){
+#         mod = AR_model_function(data %>% filter(date<dat),extra_vars,gdp_var)
+#       
+#         rmse_df = bind_rows(rmse_df,cbind(data %>% filter(date==dat),
+#                                         pred_gdp=predict(mod,data %>% filter(date==dat))))
+#       
+#         }
+#     
+#     if(model_type=="ELNET"){
+#       
+#       X <- data %>%
+#         filter(date>"2016-03-31"&date<dat) %>% 
+#         select(c(paste0("lag1_",gdp_var),extra_vars,state.abb)) %>% 
+#         mutate_at(vars(-state.abb), funs(c(scale(.,center=TRUE,scale=FALSE))))
+#       Y <- data %>% 
+#         filter(date>"2016-03-31"&date<dat) %>% 
+#         select(gdp_var)
+#       
+#       mod = ELNET_model_function(X,Y,extra_vars,gdp_var)
+#       
+#       rmse_df = bind_rows(rmse_df,cbind(data %>% filter(date==dat),
+#                                         pred_gdp=predict(mod,data %>% filter(date==dat))))
+#       
+#       
+#     }
+#     }
+#     
+#     if(model_type=="ELNET"){
+#       RMSE = rmse_df %>%
+#         mutate_at(vars(AK:WY), ~ ifelse(. == 0, NA, .)) %>%
+#         gather("state", "present", AK:WY, na.rm = TRUE) %>% 
+#         select(-present) %>% 
+#         group_by(state) %>% 
+#         summarize(rmse = sqrt(sum((pred_gdp-rgdp_yoy_pchange)^2)/n())) %>% 
+#         ungroup() %>% 
+#         summarize(rmse=mean(rmse))
+#       
+#       RMSE = RMSE$rmse[1]
+#     }
+#     
+#     if(model_type=="AR"){
+#       
+#       RMSE = rmse_df %>% 
+#         group_by(state) %>% 
+#         summarize(rmse = sqrt(sum((pred_gdp-rgdp_yoy_pchange)^2)/n())) %>% 
+#         ungroup() %>% 
+#         summarize(rmse=mean(rmse))
+#       
+#       RMSE = RMSE$rmse[1]
+#       
+#     }
+#     
+#     
+#     
+#   }
+#   
+#   if(data_type=="test"){
+#     
+#     
+#     if(model_type=="AR"){
+#       mod = AR_model_function(reg_data %>% filter(date<"2020-01-01"),extra_vars,gdp_var)
+#     
+#       data = reg_data %>% filter(date>="2020-01-01")
+#     
+#     rmse_df = cbind(data,
+#                     pred_gdp=predict(mod,data))
+#     
+#     }
+#     
+#     if(model_type=="ELNET"){
+#       
+#         data = reg_data %>% 
+#           mutate(dummy=1) %>%
+#           spread(key=state,value=dummy, fill=0)
+#       
+#       X <- data %>%
+#         filter(date<"2020-01-01"&date>"2016-03-31") %>% 
+#         select(c(paste0("lag1_",gdp_var),extra_vars,state.abb)) %>% 
+#         mutate_at(vars(-state.abb), funs(c(scale(.,center=TRUE,scale=FALSE))))
+#       Y <- data %>% 
+#         filter(date<"2020-01-01"&date>"2016-03-31") %>% 
+#         select(gdp_var)
+#       
+#       mod = ELNET_model_function(X,Y,extra_vars,gdp_var)
+#       
+#       data = data %>% filter(date>="2020-01-01")
+#       
+#       rmse_df = cbind(data,
+#                       pred_gdp=predict(mod,data))
+#       
+#     }
+#     
+#     
+#     if(model_type=="AR"){
+#     RMSE = rmse_df %>% 
+#       group_by(state) %>% 
+#       summarize(rmse = sqrt(sum((pred_gdp-rgdp_yoy_pchange)^2)/n())) %>% 
+#       ungroup() %>% 
+#       summarize(rmse=mean(rmse))
+#     
+#     RMSE = RMSE$rmse[1]
+#     }
+#     
+#     if(model_type=="ELNET"){
+#       RMSE = rmse_df %>%
+#         mutate_at(vars(AK:WY), ~ ifelse(. == 0, NA, .)) %>%
+#         gather("state", "present", AK:WY, na.rm = TRUE) %>% 
+#         select(-present) %>% 
+#         group_by(state) %>% 
+#         summarize(rmse = sqrt(sum((pred_gdp-rgdp_yoy_pchange)^2)/n())) %>% 
+#         ungroup() %>% 
+#         summarize(rmse=mean(rmse))
+#       
+#       RMSE = RMSE$rmse[1]
+#     }
+#     
+#   }
+#   
+#   return(list(RMSE=RMSE,model=mod,pred_df=rmse_df %>% select(-c(hits_sa_yoy_pchange_674:hits_sa_yoy_pchange_340))))
+# }
+# 
+# plot_forecast = function(model,data){
+#   
+#   predictions = cbind(data,pred_gdp=predict(model,data))
+#   
+#   if(!("state"%in%colnames(predictions))){
+#     
+#     predictions = predictions %>% 
+#       mutate_at(vars(AK:WY), ~ ifelse(. == 0, NA, .)) %>%
+#       gather("state", "present", AK:WY, na.rm = TRUE) %>% 
+#       select(-present)
+#       
+#   }
+#   
+#   predictions = predictions %>% 
+#     select(date,state,rgdp_yoy_pchange,pred_gdp)
+#   
+#   plot1 = ggplot(predictions,aes(x=date)) +
+#     geom_line(aes(y=rgdp_yoy_pchange,color="Actual RGSP"),size=1) +
+#     geom_line(aes(y=pred_gdp,color="Predicted RGSP"),size=1) +
+#     facet_wrap(~state) +
+#     labs(x="Quarter",y="Annual Real GSP Growth (%)",caption="Source: BEA, Google")
+#   
+#   return(plot1)
+# }
+# 
+# #### AR without Google Trends or External Info ####
+# train_AR_eval = pseudo_OOS_RMSE(data_type="train",model_type="AR")
+# print(train_AR_eval$RMSE)
+# # 0.97
+# 
+# test_AR_eval = pseudo_OOS_RMSE(data_type="test",model_type="AR")
+# print(test_AR_eval$RMSE)
+# # 5.16
+# 
+# model_AR_forecast = plot_forecast(test_AR_eval$model,reg_data %>% filter(date>"2016-03-31"))
+# ggsave(paste0(charts_folder,"AR_model_plots.png"),model_AR_forecast,width=20,height=10,units="in")
+# 
+# #### AR with Google Trends, No External Info, No Dimensionality Reduction ####
+# train_AR_GT_eval = pseudo_OOS_RMSE(data_type="train",model_type="AR",extra_vars=colnames(reg_data)[grep("hits_sa",colnames(reg_data))])
+# print(train_AR_GT_eval$RMSE)
+# # 4.18 without clipping, 3.80 with clipping
+# # note that we do need dimension reduction here
+# # and there is a problem with huge outliers (I think clipping is okay)
+# 
+# test_AR_GT_eval = pseudo_OOS_RMSE(data_type="test",model_type="AR",extra_vars=colnames(reg_data)[grep("hits_sa",colnames(reg_data))])
+# print(test_AR_GT_eval$RMSE)
+# # 5.49 without clipping, 5.11 with clipping
+# 
+# model_AR_GT_forecast = plot_forecast(test_AR_GT_eval$model,reg_data %>% filter(date>"2016-03-31"))
+# ggsave(paste0(charts_folder,"AR_GT_model_plots.png"),model_AR_GT_forecast,width=20,height=10,units="in")
+# 
+# #### ELNET without Google Trends ####
+# train_ELNET_eval = pseudo_OOS_RMSE(data_type="train",model_type="ELNET")
+# print(train_ELNET_eval$RMSE)
+# # 1.34 without clipping, 1.28 with clipping
+# 
+# test_ELNET_eval = pseudo_OOS_RMSE(data_type="test",model_type="ELNET")
+# print(test_ELNET_eval$RMSE)
+# # XXX without clipping, 5.05 with clipping
+# 
+# model_ELNET_forecast = plot_forecast(test_ELNET_eval$model,reg_data %>% filter(date>"2016-03-31") %>%  mutate(dummy=1) %>%
+#                                        spread(key=state,value=dummy, fill=0))
+# ggsave(paste0(charts_folder,"ELNET_model_plots.png"),model_ELNET_forecast,width=20,height=10,units="in")
+# 
+# 
+# #### ELNET with Google Trends ####
+# train_ELNET_GT_eval = pseudo_OOS_RMSE(data_type="train",model_type="ELNET",extra_vars=colnames(reg_data)[grep("hits_sa",colnames(reg_data))])
+# print(train_ELNET_GT_eval$RMSE)
+# # 1.59 without clipping, 1.24 with clipping
+# 
+# test_ELNET_GT_eval = pseudo_OOS_RMSE(data_type="test",model_type="ELNET",extra_vars=colnames(reg_data)[grep("hits_sa",colnames(reg_data))])
+# print(test_ELNET_GT_eval$RMSE)
+# # XXX without clipping, 5.47 with clipping
+# 
+# model_ELNET_GT_forecast = plot_forecast(test_ELNET_GT_eval$model,reg_data %>% filter(date>"2016-03-31") %>%  mutate(dummy=1) %>%
+#                                        spread(key=state,value=dummy, fill=0))
+# ggsave(paste0(charts_folder,"ELNET_GT_model_plots.png"),model_ELNET_GT_forecast,width=20,height=10,units="in")
+# 
+
+# make summary statistics table
+
+#save.image(paste0(data_folder,"Processing/get_google_trends_20230929.RData"))
+
+
+

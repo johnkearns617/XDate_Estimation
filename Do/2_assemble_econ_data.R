@@ -46,7 +46,7 @@ states_codes = bls_area_codes %>%
 
 #### get other national economic variables ####
 national_econ = data.frame()
-for(metric in c("PAYEMS","JTSJOL","UNRATE","ADPMNUSNERSA","PRS85006112",
+for(metric in c("PAYEMS","CE16OV","JTSJOL","UNRATE","ADPMNUSNERSA","PRS85006112",
                 "GACDISA066MSFRBNY","DTCDISA066MSFRBNY","GACDFSA066MSFRBPHI","DTCDFSA066MSFRBPHI","INDPRO",
                 "DGORDER","WHLSLRIMSA","TOTBUSIMNSA","AMDMVS","AMTMUO",
                 "RRSFS","PCE","HSN1F","IHLIDXUS","HOUST","TTLCONS","PERMIT",

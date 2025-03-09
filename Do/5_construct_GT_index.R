@@ -54,7 +54,7 @@ fcast_df = imputed_df %>%
 pred_df = data.frame()
 for(col in colnames(fcast_df %>% select(A261RX1Q020SBEA:SLCEC1))){
 
-for(dat in c("2024-12-31","2025-01-01","2025-01-31","2025-02-04","2025-02-28",'2025-03-05')){
+for(dat in c("2024-12-31","2025-01-01","2025-01-31","2025-02-04","2025-02-28",'2025-03-05','2025-03-09')){
   
   print(paste0(col," ",dat))
   
@@ -123,7 +123,7 @@ pred_df$error[pred_df$var==col]=sqrt(mean((pred_df$pred[pred_df$var==col]-pred_d
 
 
 q1_preds = data.frame()
-for(dat in c("2025-01-01","2025-01-31","2025-02-04","2025-02-28","2025-03-05")){
+for(dat in c("2025-01-01","2025-01-31","2025-02-04","2025-02-28","2025-03-05","2025-03-09")){
 imputed_df = read_csv(paste0("Data/Processing/imputed_data_asof",dat,".csv"))
 
 fcast_df1 = imputed_df %>% 
