@@ -14,10 +14,10 @@ jobs:
 
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Setup R
-        uses: r-lib/actions/setup-r@v2
+        uses: r-lib/actions/setup-r@v4
         with:
           r-version: "4.4.2"
 
@@ -36,7 +36,7 @@ jobs:
           pip install google-api-python-client json pandas pprint datetime dill pathlib # or other packages needed by your script
 
       - name: Cache packages
-        uses: actions/cache@v2
+        uses: actions/cache@v4
         with:
           path: ${{ env.RENV_PATHS_ROOT }}
           key: ${{ runner.os }}-renv-${{ hashFiles('**/renv.lock') }}
