@@ -6,11 +6,11 @@ from datetime import datetime
 import dill # for loading and saving a trained model
 from pathlib import Path
 
-master_dir = Path(__file__).resolve().parent.parent
-do_folder = master_dir+"Do/"
-data_folder = master_dir+"Data/"
-results_folder = master_dir+"Results/"
-charts_folder = master_dir+"Charts/"
+master_dir = str(Path(__file__).resolve().parent.parent)
+do_folder = master_dir+"/Do/"
+data_folder = master_dir+"/Data/"
+results_folder = master_dir+"/Results/"
+charts_folder = master_dir+"/Charts/"
 
 SERVER = 'https://trends.googleapis.com'
 
@@ -21,7 +21,7 @@ DISCOVERY_URL = SERVER + DISCOVERY_URL_SUFFIX
 
 def main():
   service = build('trends', 'v1beta',
-                  developerKey='AIzaSyDpLV8TcJwfhDloE1VjtvoUQl1Z_mY0ryE',
+                  developerKey=r.gt_key,
                   discoveryServiceUrl=DISCOVERY_URL)
 
   # Single Graph Example, no restrictions
@@ -100,9 +100,9 @@ def main():
   response = service.getGraph(terms='/m/02mjmr').execute()
   pprint.pprint(response)
 
-cats = pd.read_csv(master_dir+"Data/nk_categories.csv")
+cats = pd.read_csv(master_dir+"/Data/nk_categories.csv")
 
-trends_cats = pd.read_csv(master_dir+"Data/google_trend_categories.txt", sep=': ')
+trends_cats = pd.read_csv(master_dir+"/Data/google_trend_categories.txt", sep=': ')
 trends_cats.columns = ['category','id']
 
 len(cats.num.unique().tolist())

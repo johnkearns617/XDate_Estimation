@@ -35,8 +35,6 @@ conflicted::conflicts_prefer(dplyr::select)
 
 set.seed(178)
 
-fredr_set_key(fred_key)
-
 # write_csv(op_cash_dep_withdraw %>% 
 #             distinct(transaction_type,transaction_catg,transaction_catg_desc) %>% 
 #             left_join(daily_categories %>% mutate(transaction_catg_desc="null")),

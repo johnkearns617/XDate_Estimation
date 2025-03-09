@@ -30,11 +30,6 @@ conflicted::conflict_prefer("filter","dplyr")
 conflicted::conflicts_prefer(jsonlite::fromJSON)
 
 data(categories) # categories from Google Trends
-fred_key = "156b9cd1b9a52db3b9fc0bab8aca2b39"
-bls_key = "913f38a6f2e245e593a66a3b2604f6d3"
-
-# initialize FRED link
-fredr_set_key(fred_key)
 
 bls_naics_codes = read_csv("https://data.bls.gov/cew/doc/titles/industry/industry_titles.csv")
 bls_area_codes = read_csv("https://data.bls.gov/cew/doc/titles/area/area_titles.csv")

@@ -31,9 +31,6 @@ conflicted::conflict_prefer("filter","dplyr")
 
 set.seed(178)
 
-fredr_set_key(fred_key)
-
-
 # recreate EPIC methodology
 
 

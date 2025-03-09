@@ -27,10 +27,6 @@ conflicted::conflict_prefer("filter","dplyr")
 conflicted::conflicts_prefer(base::print)
 
 data(categories) # categories from Google Trends
-fred_key = "156b9cd1b9a52db3b9fc0bab8aca2b39"
-
-# initialize FRED link
-fredr_set_key(fred_key)
 
 nk_categories = read_csv(paste0("Data/Raw/Nakazawa_Categories.csv")) %>% 
   left_join(categories %>% mutate(name=gsub(" ","",name)),by=c("variables"="name")) %>% 
