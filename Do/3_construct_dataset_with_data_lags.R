@@ -27,7 +27,7 @@ library(rjson)
 conflicted::conflict_prefer("filter","dplyr")
 
 # trends data
-state_trends = read_csv(paste0("Data/Processing/trends_full_sa_20250305.csv")) %>% 
+state_trends = read_csv(paste0("Data/Processing/gt_trends/trends_full_sa_",gsub("-","",Sys.Date()),".csv")) %>% 
   mutate(release_date=date+6)
 
 # start with GDP data

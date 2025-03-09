@@ -255,3 +255,5 @@ ggplot(my_chart %>% filter(date<="2025-09-30"),aes(x=date)) +
   geom_line(aes(y=running_bal)) +
   theme_bw() +
   labs(x="",y="Fiscal Space Remaining ($B)")
+
+save(breakdown_df,my_chart,outlay_daily_df_groups,feb_forecast,deficit_summary,imputed_daily_receipts,receipt_daily_df,actual_receipt,daily_forecast,daily_forecast_upper,daily_forecast_lower,file=paste0("Data/Processing/image_saves/data_asof_",Sys.Date(),".RData"))

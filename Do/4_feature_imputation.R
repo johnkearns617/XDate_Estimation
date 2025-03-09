@@ -43,25 +43,25 @@ df = make_df(floor_date(Sys.Date(), "month")-1) %>%
   select_if(~sd(.,na.rm=TRUE)!=0|is.character(.)|is.Date(.)) %>% 
   filter(date>="2004-01-01")
 
-write_csv(df,paste0("Data/Processing/data_asof",floor_date(Sys.Date(), "month")-1,".csv"))
+write_csv(df,paste0("Data/Processing/raw_data/data_asof",floor_date(Sys.Date(), "month")-1,".csv"))
 
 set.seed(178)
 
-imputed_df = impute_function(df,"2025-02-28")
-
-left_join(imputed_df %>% 
-            pivot_longer(PAYEMS:gt_999) %>% 
-            filter(date>="2024-10-01"),
-          df %>% 
-            pivot_longer(PAYEMS:gt_999) %>% 
-            filter(date>="2024-10-01"),by=c('date','name')) %>% 
-  left_join(national_econ,by=c('date'='date','name'='series_id')) %>% 
-  filter(is.na(value.y)) %>% 
-  mutate(diff=(value.x-value)/value*100) %>% 
-  summarize(sqrt(mean((diff^2),na.rm=TRUE)))
+imputed_df = impute_function(df,Sys.Date())
+# 
+# left_join(imputed_df %>% 
+#             pivot_longer(PAYEMS:gt_999) %>% 
+#             filter(date>="2024-10-01"),
+#           df %>% 
+#             pivot_longer(PAYEMS:gt_999) %>% 
+#             filter(date>="2024-10-01"),by=c('date','name')) %>% 
+#   left_join(national_econ,by=c('date'='date','name'='series_id')) %>% 
+#   filter(is.na(value.y)) %>% 
+#   mutate(diff=(value.x-value)/value*100) %>% 
+#   summarize(sqrt(mean((diff^2),na.rm=TRUE)))
 # RMSE of 2.5%
 
-write_csv(imputed_df,paste0("Data/Processing/imputed_data_asof",floor_date(Sys.Date(), "month")-1,".csv"))
+write_csv(imputed_df,paste0("Data/Processing/imputed_data/imputed_data_asof",Sys.Date(),".csv"))
 
 # for(dat in c(as.character(ceiling_date((national_econ %>% filter(series_id=="GDPC1"&date>="2007-01-01"))$date,"quarter")-1))){
 #   
