@@ -53,6 +53,7 @@ jobs:
         run: |
           source("Do/master.R")
         shell: Rscript {0}
+        working-directory: ./
 
       - name: Commit New Data Files
         run: |
