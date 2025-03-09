@@ -33,7 +33,7 @@ jobs:
       - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install google-api-python-client pandas pprint datetime dill pathlib # or other packages needed by your script
+          pip install google-api-python-client pandas dill # or other packages needed by your script
 
       - name: Cache packages
         uses: actions/cache@v4
