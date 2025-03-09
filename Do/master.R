@@ -10,7 +10,7 @@ bls_key = Sys.getenv("BLS_KEY")
 
 fredr_set_key(fred_key)
 
-reticulate::use_python(Sys.getenv('PYTHON'), required = TRUE)
+reticulate::use_python(reticulate::py_discover_config()$python, required = TRUE)
 reticulate::py_config()
 
 reticulate::py_require(c('google-api-python-client',
