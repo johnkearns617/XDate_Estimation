@@ -159,5 +159,5 @@ trends_sa2 = trends_sa2 %>%
          deviation_sd=sd(deviation[year(date)%in%c(2010:2019)],na.rm=TRUE),
          deviation=deviation/deviation_sd)
 
-write_csv(trends_sa2,paste0("Data/Processing/gt_trends/trends_full_sa_",gsub("-","",Sys.Date()),".csv"))
+write_csv(trends_sa2,paste0("Data/Processing/gt_data/trends_full_sa_",gsub("-","",Sys.Date()),".csv"))
 #trends_sa2 = read_csv(paste0("Data/Processing/trends_full_sa_20250128.csv"))
