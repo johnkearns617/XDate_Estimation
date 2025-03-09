@@ -10,6 +10,7 @@ jobs:
       FRED_KEY: ${{secrets.FRED_KEY}}
       GT_KEY: ${{secrets.GT_KEY}}
       BLS_KEY: ${{secrets.BLS_KEY}}
+      RENV_PATHS_ROOT: ~/renv
 
     steps:
       - name: Checkout Repository
@@ -20,8 +21,33 @@ jobs:
         with:
           r-version: "4.4.2"
 
-      - name: Install Packages Declared in DESCRIPTION
-        uses: r-lib/actions/setup-r-dependencies@v2
+      - name: Install R dependencies
+        run: |
+          Rscript -e 'install.packages(c("reticulate"))'
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.9.6' # or whatever version you need
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install google-api-python-client json pandas pprint datetime dill pathlib # or other packages needed by your script
+
+      - name: Cache packages
+        uses: actions/cache@v2
+        with:
+          path: ${{ env.RENV_PATHS_ROOT }}
+          key: ${{ runner.os }}-renv-${{ hashFiles('**/renv.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-renv-
+            
+      - name: Restore packages
+        shell: Rscript {0}
+        run: |
+          if (!requireNamespace("renv", quietly = TRUE)) install.packages("renv")
+          renv::restore()
 
       - name: Generate Data
         run: |
