@@ -171,10 +171,12 @@ breakdown_list <- lapply(1:nrow(q1_preds), function(i) {
 })
 
 # Combine results
-breakdown_df <- do.call(rbind, breakdown_list)
+breakdown_df <- do.call(rbind, breakdown_list) %>% 
+  left_join(data.frame(eval_date=unique(q1_preds$obs_date),
+                       observation=1:length(unique(q1_preds$obs_date))))
 
 # Plot contribution of variables over observations
-plotly::ggplotly(ggplot(breakdown_df %>% filter(variable!="prediction"), aes(x = observation, y = contribution, fill = variable_name)) +
+plotly::ggplotly(ggplot(breakdown_df %>% filter(variable!="prediction"), aes(x = eval_date, y = contribution, fill = variable_name)) +
   geom_bar(stat = "identity", position = "stack") +
   geom_line(data=pred_df %>% ungroup() %>% filter(date>="2025-01-01") %>% mutate(date=1:n()),
             aes(x=date,y=pred),inherit.aes = FALSE) +

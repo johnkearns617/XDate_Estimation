@@ -20,8 +20,8 @@ test_df = outlay_daily_df_groups %>%
 
 feb_adj = outlay_daily_df_groups %>% 
   filter(date>=floor_date(min(feb_forecast$date,na.rm=TRUE),"month")) %>% 
-  full_join(feb_forecast %>% select(outlay_day_amt,receipt_day_amt,record_calendar_day)) %>% 
-  group_by(record_calendar_day) %>% 
+  full_join(feb_forecast %>% select(outlay_day_amt,receipt_day_amt,record_calendar_month,record_calendar_day)) %>% 
+  group_by(record_calendar_day,record_calendar_month) %>% 
   mutate(scalar=total_day/sum(total_day)) %>% 
   ungroup() %>% 
   mutate(scaled_daily=outlay_day_amt*scalar/1000) %>% 
@@ -143,7 +143,7 @@ feb_adj = imputed_daily_receipts %>%
                       record_calendar_year=year(date)),
              by=c("record_calendar_year","record_calendar_month", "record_calendar_day")) %>% 
   filter(date>=floor_date(min(feb_forecast$date,na.rm=TRUE),"month")) %>% 
-  left_join(feb_forecast %>% select(outlay_day_amt,receipt_day_amt,record_calendar_day)) %>% 
+  left_join(feb_forecast %>% select(outlay_day_amt,receipt_day_amt,record_calendar_month,record_calendar_day)) %>% 
   arrange(date) %>% 
   rowwise() %>% 
   mutate(misc1=`Miscellaneous Receipts`*total_day/1000,
@@ -236,4 +236,5 @@ plotly::ggplotly(
                     breaks=colors_df$group)
 )
 
-# ADD FEBRURARY TO CHART AND OTHER SIMULATED MONTHS
+save(breakdown_df,colors_df,my_chart,outlay_daily_df_groups,feb_forecast,deficit_summary,imputed_daily_receipts,receipt_daily_df,actual_receipt,daily_forecast,daily_forecast_upper,daily_forecast_lower,file=paste0("Data/Processing/image_saves/data_asof_",Sys.Date(),".RData"))
+
