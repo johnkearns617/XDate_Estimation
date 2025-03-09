@@ -46,3 +46,10 @@ rsconnect/
 .DS_Store
 Data/.DS_Store
 Do/keys.R
+Data/Processing/7_modelling.RData
+Data/Processing/5_construct_GT_index.RData
+.gitignore
+Data/Processing/9_xdate_forecast.RData
+.gitignore
+Data/Processing/10_make_charts.RData
+Data/Processing/9_xdate_forecast_20250228.RData
