@@ -245,8 +245,8 @@ national_econ = national_econ %>%
 
 # Treasury data
 
-op_cash_dep_withdraw = data.frame()
-for(yr in c(2005:year(Sys.Date()))){
+op_cash_dep_withdraw_new = data.frame()
+for(yr in c(2025:year(Sys.Date()))){
   
   print(as.character(yr)) 
   
@@ -271,14 +271,19 @@ for(yr in c(2005:year(Sys.Date()))){
     
     data = read_csv(request_2)
     
-    op_cash_dep_withdraw = new_bind(op_cash_dep_withdraw,data)
+    op_cash_dep_withdraw_new = new_bind(op_cash_dep_withdraw_new,data)
     
   }
   
 }
 
-debt_subject_to_limit = data.frame()
-for(yr in c(2005:year(Sys.Date()))){
+op_cash_dep_withdraw = bind_rows(
+  op_cash_dep_withdraw,
+  op_cash_dep_withdraw_new
+)
+
+debt_subject_to_limit_new = data.frame()
+for(yr in c(2025:year(Sys.Date()))){
   
   print(as.character(yr)) 
   
@@ -303,14 +308,19 @@ for(yr in c(2005:year(Sys.Date()))){
     
     data = read_csv(request_2)
     
-    debt_subject_to_limit = new_bind(debt_subject_to_limit,data)
+    debt_subject_to_limit_new = new_bind(debt_subject_to_limit_new,data)
     
   }
   
 }
 
-deficit_summary = data.frame()
-for(yr in c(2015:year(Sys.Date()))){
+debt_subject_to_limit = bind_rows(
+  debt_subject_to_limit,
+  debt_subject_to_limit_new
+)
+
+deficit_summary_new = data.frame()
+for(yr in c(2025:year(Sys.Date()))){
   
   print(as.character(yr)) 
   
@@ -335,14 +345,19 @@ for(yr in c(2015:year(Sys.Date()))){
     
     data = read_csv(request_2)
     
-    deficit_summary = new_bind(deficit_summary,data)
+    deficit_summary_new = new_bind(deficit_summary_new,data)
     
   }
   
 }
 
-outlays = data.frame()
-for(yr in c(2015:year(Sys.Date()))){
+deficit_summary = bind_rows(
+  deficit_summary,
+  deficit_summary_new
+)
+
+outlays_new = data.frame()
+for(yr in c(2025:year(Sys.Date()))){
   
   print(as.character(yr)) 
   
@@ -367,14 +382,19 @@ for(yr in c(2015:year(Sys.Date()))){
     
     data = read_csv(request_2)
     
-    outlays = new_bind(outlays,data)
+    outlays_new = new_bind(outlays_new,data)
     
   }
   
 }
 
-receipts = data.frame()
-for(yr in c(2015:year(Sys.Date()))){
+outlays = bind_rows(
+  outlays,
+  outlays_new
+)
+
+receipts_new = data.frame()
+for(yr in c(2025:year(Sys.Date()))){
   
   print(as.character(yr)) 
   
@@ -399,14 +419,19 @@ for(yr in c(2015:year(Sys.Date()))){
     
     data = read_csv(request_2)
     
-    receipts = new_bind(receipts,data)
+    receipts_new = new_bind(receipts_new,data)
     
   }
   
 }
 
-fed_invest_programs = data.frame()
-for(yr in c(2017:year(Sys.Date()))){
+receipts = bind_rows(
+  receipts,
+  receipts_new
+)
+
+fed_invest_programs_new = data.frame()
+for(yr in c(2025:year(Sys.Date()))){
   
   print(as.character(yr)) 
   
@@ -431,14 +456,19 @@ for(yr in c(2017:year(Sys.Date()))){
     
     data = read_csv(request_2)
     
-    fed_invest_programs = new_bind(fed_invest_programs,data)
+    fed_invest_programs_new = new_bind(fed_invest_programs_new,data)
     
   }
   
 }
 
-spending_by_function = data.frame()
-for(yr in c(2015:year(Sys.Date()))){
+fed_invest_programs = bind_rows(
+  fed_invest_programs,
+  fed_invest_programs_new
+)
+
+spending_by_function_new = data.frame()
+for(yr in c(2025:year(Sys.Date()))){
   
   print(as.character(yr)) 
   
@@ -463,16 +493,19 @@ for(yr in c(2015:year(Sys.Date()))){
     
     data = read_csv(request_2)
     
-    spending_by_function = new_bind(spending_by_function,data)
+    spending_by_function_new = new_bind(spending_by_function_new,data)
     
   }
   
 }
 
+spending_by_function = bind_rows(
+  spending_by_function,
+  spending_by_function_new
+)
 
-
-overall_debt = data.frame()
-for(yr in c(2001:year(Sys.Date()))){
+overall_debt_new = data.frame()
+for(yr in c(2025:year(Sys.Date()))){
   
   print(as.character(yr)) 
   
@@ -497,15 +530,20 @@ for(yr in c(2001:year(Sys.Date()))){
     
     data = read_csv(request_2)
     
-    overall_debt = new_bind(overall_debt,data)
+    overall_debt_new = new_bind(overall_debt_new,data)
     
   }
   
 }
 
+overall_debt = bind_rows(
+  overall_debt,
+  overall_debt_new
+)
 
-treasury_securities = data.frame()
-for(yr in c(2001:year(Sys.Date()))){
+
+treasury_securities_new = data.frame()
+for(yr in c(2025:year(Sys.Date()))){
   
   print(as.character(yr)) 
   
@@ -530,15 +568,20 @@ for(yr in c(2001:year(Sys.Date()))){
     
     data = read_csv(request_2)
     
-    treasury_securities = new_bind(treasury_securities,data)
+    treasury_securities_new = new_bind(treasury_securities_new,data)
     
   }
   
 }
 
+treasury_securities = bind_rows(
+  treasury_securities,
+  treasury_securities_new
+)
 
-debt_level = data.frame()
-for(yr in c(2001:year(Sys.Date()))){
+
+debt_level_new = data.frame()
+for(yr in c(2025:year(Sys.Date()))){
   
   print(as.character(yr)) 
   
@@ -563,14 +606,19 @@ for(yr in c(2001:year(Sys.Date()))){
     
     data = read_csv(request_2)
     
-    debt_level = new_bind(debt_level,data)
+    debt_level_new = new_bind(debt_level_new,data)
     
   }
   
 }
 
-investment_funds = data.frame()
-for(yr in c(2017:year(Sys.Date()))){
+debt_level = bind_rows(
+  debt_level,
+  debt_level_new
+)
+
+investment_funds_new = data.frame()
+for(yr in c(2025:year(Sys.Date()))){
   
   print(as.character(yr)) 
   
@@ -595,14 +643,19 @@ for(yr in c(2017:year(Sys.Date()))){
     
     data = read_csv(request_2)
     
-    investment_funds = new_bind(investment_funds,data)
+    investment_funds_new = new_bind(investment_funds_new,data)
     
   }
   
 }
 
-op_cash_balance = data.frame()
-for(yr in c(2005:year(Sys.Date()))){
+investment_funds = bind_rows(
+  investment_funds,
+  investment_funds_new
+)
+
+op_cash_balance_new = data.frame()
+for(yr in c(2025:year(Sys.Date()))){
   
   print(as.character(yr)) 
   
@@ -627,46 +680,51 @@ for(yr in c(2005:year(Sys.Date()))){
     
     data = read_csv(request_2)
     
-    op_cash_balance = new_bind(op_cash_balance,data)
+    op_cash_balance_new = new_bind(op_cash_balance_new,data)
     
   }
   
 }
 
-tax_deposits1 = data.frame()
-for(yr in c(2005:2023)){
-  
-  print(as.character(yr)) 
-  
-  request = paste0("https://api.fiscaldata.treasury.gov/services/api/fiscal_service/v1/",
-                   "accounting/dts/federal_tax_deposits",
-                   "?sort=-record_date",
-                   "&format=json",
-                   "&filter=record_calendar_year:eq:",as.character(yr),
-                   "&page[size]=10000")
-  response=GET(request) 
-  out=fromJSON(rawToChar(response$content))
-  
-  for(page_num in c(1:out$meta$`total-pages`)){
-    
-    request_2 = paste0("https://api.fiscaldata.treasury.gov/services/api/fiscal_service/v1/",
-                       "accounting/dts/federal_tax_deposits",
-                       "?sort=-record_date",
-                       "&format=csv",
-                       "&filter=record_calendar_year:eq:",as.character(yr),
-                       "&page[number]=",page_num,
-                       "&page[size]=10000")
-    
-    data = read_csv(request_2)
-    
-    tax_deposits1 = new_bind(tax_deposits1,data)
-    
-  }
-  
-}
+op_cash_balance = bind_rows(
+  op_cash_balance,
+  op_cash_balance_new
+)
 
-tax_deposits2 = data.frame()
-for(yr in c(2023:year(Sys.Date()))){
+# tax_deposits1 = data.frame()
+# for(yr in c(2005:2023)){
+#   
+#   print(as.character(yr)) 
+#   
+#   request = paste0("https://api.fiscaldata.treasury.gov/services/api/fiscal_service/v1/",
+#                    "accounting/dts/federal_tax_deposits",
+#                    "?sort=-record_date",
+#                    "&format=json",
+#                    "&filter=record_calendar_year:eq:",as.character(yr),
+#                    "&page[size]=10000")
+#   response=GET(request) 
+#   out=fromJSON(rawToChar(response$content))
+#   
+#   for(page_num in c(1:out$meta$`total-pages`)){
+#     
+#     request_2 = paste0("https://api.fiscaldata.treasury.gov/services/api/fiscal_service/v1/",
+#                        "accounting/dts/federal_tax_deposits",
+#                        "?sort=-record_date",
+#                        "&format=csv",
+#                        "&filter=record_calendar_year:eq:",as.character(yr),
+#                        "&page[number]=",page_num,
+#                        "&page[size]=10000")
+#     
+#     data = read_csv(request_2)
+#     
+#     tax_deposits1 = new_bind(tax_deposits1,data)
+#     
+#   }
+#   
+# }
+
+tax_deposits2_new = data.frame()
+for(yr in c(2025:year(Sys.Date()))){
   
   print(as.character(yr)) 
   
@@ -691,11 +749,21 @@ for(yr in c(2023:year(Sys.Date()))){
     
     data = read_csv(request_2)
     
-    tax_deposits2 = new_bind(tax_deposits2,data)
+    tax_deposits2_new = new_bind(tax_deposits2_new,data)
     
   }
   
 }
+
+tax_deposits2 = bind_rows(
+  tax_deposits2,
+  tax_deposits2_new
+)
+
+tax_deposits2 = bind_rows(
+  tax_deposits2,
+  tax_deposits2_new
+)
 
 tax_deposits1a = tax_deposits1 %>% 
   mutate(group=case_when(
@@ -720,8 +788,8 @@ tax_deposits2a = tax_deposits2 %>%
   mutate_at(vars(record_calendar_month:record_calendar_day),as.numeric)
 
 
-tax_refunds = data.frame()
-for(yr in c(2005:year(Sys.Date()))){
+tax_refunds_new = data.frame()
+for(yr in c(2025:year(Sys.Date()))){
   
   print(as.character(yr)) 
   
@@ -746,11 +814,16 @@ for(yr in c(2005:year(Sys.Date()))){
     
     data = read_csv(request_2)
     
-    tax_refunds = new_bind(tax_refunds,data)
+    tax_refunds_new = new_bind(tax_refunds_new,data)
     
   }
   
 }
+
+tax_refunds = bind_rows(
+  tax_refunds,
+  tax_refunds_new
+)
 
 tax_refunds = tax_refunds %>% 
   mutate(group=case_when(
@@ -771,9 +844,9 @@ tax_deposits = bind_rows(
 )
 
 
-daily_gas_activity = data.frame()
+daily_gas_activity_new = data.frame()
 for(var in c("gas_held_by_public_daily_activity","gas_intragov_holdings_daily_activity")){
-for(yr in c(2024:year(Sys.Date()))){
+for(yr in c(2025:year(Sys.Date()))){
   
   print(as.character(yr)) 
   
@@ -798,12 +871,17 @@ for(yr in c(2024:year(Sys.Date()))){
     
     data = read_csv(request_2)
     
-    daily_gas_activity = new_bind(daily_gas_activity,data)
+    daily_gas_activity_new = new_bind(daily_gas_activity_new,data)
     
   }
   
 }
 }
+
+daily_gas_activity = bind_rows(
+  daily_gas_activity,
+  daily_gas_activity_new
+)
 
 cbo_proj = read_csv("https://raw.githubusercontent.com/US-CBO/eval-projections/refs/heads/main/input_data/baselines.csv")
 
