@@ -2,11 +2,14 @@
 # John Kearns
 # Goal: Write script to run all scripts needed to run google trends and debt models
 
-source('Do/keys.R')
+fred_key = Sys.getenv('FRED_KEY')
+gt_key = Sys.getenv("GT_KEY")
+bls_key = Sys.getenv("BLS_KEY")
 
 fredr_set_key(fred_key)
 
-reticulate::use_python('/usr/bin/python3')
+use_python(Sys.getenv('PYTHON'), required = TRUE)
+py_config()
 
 reticulate::py_require(c('google-api-python-client',
                          'json',
