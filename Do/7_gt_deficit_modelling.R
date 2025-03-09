@@ -31,8 +31,6 @@ conflicted::conflict_prefer("filter","dplyr")
 
 set.seed(178)
 
-fredr_set_key(fred_key)
-
 outlays_fred = fredr(paste0("MTSO133FMS")) %>% 
   mutate(fiscal_year=as.integer(quarter(date, with_year = TRUE, fiscal_start = 10)),
          value=value/1000)

@@ -2,6 +2,10 @@
 # John Kearns
 # Goal: Write script to run all scripts needed to run google trends and debt models
 
+source('Do/keys.R')
+
+fredr_set_key(fred_key)
+
 reticulate::use_python('/usr/bin/python3')
 
 reticulate::py_require(c('google-api-python-client',
