@@ -148,6 +148,7 @@ for cat in nums:
         df['cat'] = cat
         trends_df2 = pd.concat([trends_df2, df], ignore_index=True)
         print([cat,end_date])
+    time.sleep(1)
 
 
 full_trends_df = pd.concat([trends_df2]).reset_index(drop=True)
