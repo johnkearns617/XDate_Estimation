@@ -51,7 +51,7 @@ fcast_df = imputed_df %>%
               pivot_wider(names_from=series_id,values_from=value) %>% 
               select(date,A261RX1Q020SBEA:SLCEC1))
 
-pred_df = data.frame()
+gdp_pred_df = data.frame()
 #for(col in colnames(fcast_df %>% select(A261RX1Q020SBEA:SLCEC1))){
 for(col in c("GDPC1")){
     
@@ -59,7 +59,7 @@ for(dat in c("2024-12-31","2025-01-01","2025-01-31","2025-02-04","2025-02-28",'2
   
   print(paste0(col," ",dat))
   
-  imputed_df = read_csv(paste0("Data/Processing/imputed_data_asof",dat,".csv"))
+  imputed_df = read_csv(paste0("Data/Processing/imputed_data/imputed_data_asof",dat,".csv"))
   
   fcast_df1 = imputed_df %>% 
     arrange(date) %>%
@@ -108,8 +108,8 @@ for(dat in c("2024-12-31","2025-01-01","2025-01-31","2025-02-04","2025-02-28",'2
   test = lm_robust(as.formula(paste0(col,"~lag1+lag2+ADPMNUSNERSA+",paste(rownames(selected_coefs_state),collapse="+"))),
                    data = fcast_df1 %>% filter(date<=dat))
   
-  pred_df = bind_rows(
-    pred_df,
+  gdp_pred_df = bind_rows(
+    gdp_pred_df,
     data.frame(
       date=dat,
       var=col,
@@ -118,8 +118,8 @@ for(dat in c("2024-12-31","2025-01-01","2025-01-31","2025-02-04","2025-02-28",'2
     )
   )
 }
-sqrt(mean((pred_df$pred-pred_df$actual)^2,na.rm=TRUE))
-pred_df$error[pred_df$var==col]=sqrt(mean((pred_df$pred[pred_df$var==col]-pred_df$actual[pred_df$var==col])^2,na.rm=TRUE))/mean(pred_df$actual[pred_df$var==col],na.rm=TRUE)
+sqrt(mean((gdp_pred_df$pred-gdp_pred_df$actual)^2,na.rm=TRUE))
+gdp_pred_df$error[gdp_pred_df$var==col]=sqrt(mean((gdp_pred_df$pred[gdp_pred_df$var==col]-gdp_pred_df$actual[gdp_pred_df$var==col])^2,na.rm=TRUE))/mean(gdp_pred_df$actual[gdp_pred_df$var==col],na.rm=TRUE)
 }
 
 
@@ -178,9 +178,9 @@ breakdown_df <- do.call(rbind, breakdown_list) %>%
 # Plot contribution of variables over observations
 plotly::ggplotly(ggplot(breakdown_df %>% filter(variable!="prediction"), aes(x = eval_date, y = contribution, fill = variable_name)) +
   geom_bar(stat = "identity", position = "stack") +
-  geom_line(data=pred_df %>% ungroup() %>% filter(date>="2025-01-01") %>% mutate(date=1:n()),
+  geom_line(data=gdp_pred_df %>% ungroup() %>% filter(date>="2025-01-01") %>% mutate(date=1:n()),
             aes(x=date,y=pred),inherit.aes = FALSE) +
-  geom_point(data=pred_df %>% ungroup() %>% filter(date>="2025-01-01") %>% mutate(date=1:n()),
+  geom_point(data=gdp_pred_df %>% ungroup() %>% filter(date>="2025-01-01") %>% mutate(date=1:n()),
               aes(x=date,y=pred),inherit.aes = FALSE) +
   labs(title = "Variable Contribution Over Time",
        x = "Observation (Time)", 

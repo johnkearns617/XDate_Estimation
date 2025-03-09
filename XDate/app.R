@@ -12,9 +12,7 @@
 library(shiny)
 library(plotly)
 
-setwd("/Users/johnkearns/Documents/GitHub/XDate_Estimation")
-
-load("Data/Processing/image_saves/data_asof_2025-03-09.RData")
+load(url("https://github.com/johnkearns617/XDate_Estimation/raw/refs/heads/main/Data/Processing/image_saves/data_asof_2025-03-09.RData"))
 
 # Define UI for application that draws a histogram
 ui <- fluidPage(
