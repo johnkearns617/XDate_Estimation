@@ -10,7 +10,6 @@ bls_key = Sys.getenv("BLS_KEY")
 
 fredr_set_key(fred_key)
 
-reticulate::use_python(reticulate::py_discover_config()$python, required = TRUE)
 reticulate::py_discover_config()
 
 reticulate::py_run_file("Do/1a_pull_trends_data.py")
