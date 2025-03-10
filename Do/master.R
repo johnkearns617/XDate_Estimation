@@ -16,11 +16,11 @@ reticulate::py_require(c('google-api-python-client',
                          'pandas',
                          'dill'))
 
-#reticulate::py_run_file("Do/1a_pull_trends_data.py")
+reticulate::py_run_file("Do/1a_pull_trends_data.py")
 
 source('Do/0_model_functions.R')
 
-#source('Do/1_clean_google_trends.R')
+source('Do/1_clean_google_trends.R')
 
 source('Do/2_assemble_econ_data.R')
 
