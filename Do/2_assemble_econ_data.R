@@ -279,10 +279,10 @@ for(yr in c(2025:year(Sys.Date()))){
   
 }
 
-op_cash_dep_withdraw = bind_rows(
+op_cash_dep_withdraw = data.table::rbindlist(list(
   op_cash_dep_withdraw,
   op_cash_dep_withdraw_new
-)
+))
 
 debt_subject_to_limit_new = data.frame()
 for(yr in c(2025:year(Sys.Date()))){
@@ -316,10 +316,10 @@ for(yr in c(2025:year(Sys.Date()))){
   
 }
 
-debt_subject_to_limit = bind_rows(
+debt_subject_to_limit = data.table::rbindlist(list(
   debt_subject_to_limit,
   debt_subject_to_limit_new
-)
+))
 
 deficit_summary_new = data.frame()
 for(yr in c(2025:year(Sys.Date()))){
@@ -353,10 +353,10 @@ for(yr in c(2025:year(Sys.Date()))){
   
 }
 
-deficit_summary = bind_rows(
+deficit_summary = data.table::rbindlist(list(
   deficit_summary,
   deficit_summary_new
-)
+))
 
 outlays_new = data.frame()
 for(yr in c(2025:year(Sys.Date()))){
@@ -390,10 +390,10 @@ for(yr in c(2025:year(Sys.Date()))){
   
 }
 
-outlays = bind_rows(
+outlays = data.table::rbindlist(list(
   outlays,
   outlays_new
-)
+))
 
 receipts_new = data.frame()
 for(yr in c(2025:year(Sys.Date()))){
@@ -427,10 +427,10 @@ for(yr in c(2025:year(Sys.Date()))){
   
 }
 
-receipts = bind_rows(
+receipts = data.table::rbindlist(list(
   receipts,
   receipts_new
-)
+))
 
 fed_invest_programs_new = data.frame()
 for(yr in c(2025:year(Sys.Date()))){
@@ -464,10 +464,10 @@ for(yr in c(2025:year(Sys.Date()))){
   
 }
 
-fed_invest_programs = bind_rows(
+fed_invest_programs = data.table::rbindlist(list(
   fed_invest_programs,
   fed_invest_programs_new
-)
+))
 
 spending_by_function_new = data.frame()
 for(yr in c(2025:year(Sys.Date()))){
@@ -501,10 +501,10 @@ for(yr in c(2025:year(Sys.Date()))){
   
 }
 
-spending_by_function = bind_rows(
+spending_by_function = data.table::rbindlist(list(
   spending_by_function,
   spending_by_function_new
-)
+))
 
 overall_debt_new = data.frame()
 for(yr in c(2025:year(Sys.Date()))){
@@ -538,10 +538,10 @@ for(yr in c(2025:year(Sys.Date()))){
   
 }
 
-overall_debt = bind_rows(
+overall_debt = data.table::rbindlist(list(
   overall_debt,
   overall_debt_new
-)
+))
 
 
 treasury_securities_new = data.frame()
@@ -576,10 +576,10 @@ for(yr in c(2025:year(Sys.Date()))){
   
 }
 
-treasury_securities = bind_rows(
+treasury_securities = data.table::rbindlist(list(
   treasury_securities,
   treasury_securities_new
-)
+))
 
 
 debt_level_new = data.frame()
@@ -614,10 +614,10 @@ for(yr in c(2025:year(Sys.Date()))){
   
 }
 
-debt_level = bind_rows(
+debt_level = data.table::rbindlist(list(
   debt_level,
   debt_level_new
-)
+))
 
 investment_funds_new = data.frame()
 for(yr in c(2025:year(Sys.Date()))){
@@ -651,10 +651,10 @@ for(yr in c(2025:year(Sys.Date()))){
   
 }
 
-investment_funds = bind_rows(
+investment_funds = data.table::rbindlist(list(
   investment_funds,
   investment_funds_new
-)
+))
 
 op_cash_balance_new = data.frame()
 for(yr in c(2025:year(Sys.Date()))){
@@ -688,10 +688,10 @@ for(yr in c(2025:year(Sys.Date()))){
   
 }
 
-op_cash_balance = bind_rows(
+op_cash_balance = data.table::rbindlist(list(
   op_cash_balance,
   op_cash_balance_new
-)
+))
 
 # tax_deposits1 = data.frame()
 # for(yr in c(2005:2023)){
@@ -757,15 +757,10 @@ for(yr in c(2025:year(Sys.Date()))){
   
 }
 
-tax_deposits2 = bind_rows(
+tax_deposits2 = data.table::rbindlist(list(
   tax_deposits2,
   tax_deposits2_new
-)
-
-tax_deposits2 = bind_rows(
-  tax_deposits2,
-  tax_deposits2_new
-)
+))
 
 tax_deposits1a = tax_deposits1 %>% 
   mutate(group=case_when(
@@ -822,10 +817,10 @@ for(yr in c(2025:year(Sys.Date()))){
   
 }
 
-tax_refunds = bind_rows(
+tax_refunds = data.table::rbindlist(list(
   tax_refunds,
   tax_refunds_new
-)
+))
 
 tax_refunds = tax_refunds %>% 
   mutate(group=case_when(
@@ -839,11 +834,11 @@ tax_refunds = tax_refunds %>%
   mutate(today_amt=-1*today_amt,
          mtd_amt=-1*mtd_amt)
 
-tax_deposits = bind_rows(
+tax_deposits = data.table::rbindlist(list(
   tax_deposits1a,
   tax_deposits2a,
   tax_refunds
-)
+))
 
 
 daily_gas_activity_new = data.frame()
@@ -880,10 +875,10 @@ for(yr in c(2025:year(Sys.Date()))){
 }
 }
 
-daily_gas_activity = bind_rows(
+daily_gas_activity = data.table::rbindlist(list(
   daily_gas_activity,
   daily_gas_activity_new
-)
+))
 
 cbo_proj = read_csv("https://raw.githubusercontent.com/US-CBO/eval-projections/refs/heads/main/input_data/baselines.csv")
 
