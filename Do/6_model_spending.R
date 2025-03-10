@@ -71,10 +71,6 @@ data_check %>%
 # Nov: -14% vs. -17%
 # Dec: -3% vs. 0%
   
-
-deficit_fred = fredr(paste0("MTSDS133FMS")) %>% 
-  mutate(fiscal_year=as.integer(quarter(date, with_year = TRUE, fiscal_start = 10)))
-  
 monthly_shares = deficit_fred %>% 
   filter(fiscal_year>=2002&fiscal_year<=2023) %>% 
   group_by(fiscal_year) %>% 

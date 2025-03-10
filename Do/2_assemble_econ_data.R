@@ -885,3 +885,14 @@ cbo_proj = read_csv("https://raw.githubusercontent.com/US-CBO/eval-projections/r
 cbo_econ = read_csv("Data/Raw/Quarterly_January2025.csv") %>% 
   mutate(date=as.Date(as.yearqtr(date,format="%Yq%q")))
 
+outlays_fred = fredr(paste0("MTSO133FMS")) %>% 
+  mutate(fiscal_year=as.integer(quarter(date, with_year = TRUE, fiscal_start = 10)),
+         value=value/1000)
+
+receipts_fred = fredr(paste0("MTSR133FMS")) %>% 
+  mutate(fiscal_year=as.integer(quarter(date, with_year = TRUE, fiscal_start = 10)),
+         value=value/1000)
+
+deficit_fred = fredr(paste0("MTSDS133FMS")) %>% 
+  mutate(fiscal_year=as.integer(quarter(date, with_year = TRUE, fiscal_start = 10)))
+

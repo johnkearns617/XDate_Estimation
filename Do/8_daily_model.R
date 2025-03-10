@@ -95,7 +95,9 @@ receipt_daily_df = dts %>%
   arrange(date) %>% 
   mutate(record_calendar_day_perc=(as.numeric(record_calendar_day))/as.numeric(days_in_month(date)),
          inv_record_calendar_day=1-record_calendar_day_perc,
-         date=floor_date(date,"month"))  %>% 
+         date=floor_date(date,"month"),
+         record_calendar_month=as.numeric(record_calendar_month),
+         record_calendar_day=as.numeric(record_calendar_day))  %>% 
   left_join(nowcast_deficit %>% select(date,pred=receipts,actual=actual_receipts)) %>% 
   group_by(record_calendar_day,record_calendar_month) %>% 
   mutate(avg_share=median(share,na.rm=TRUE)) %>% 
@@ -125,9 +127,10 @@ outlay_daily_df = dts %>%
          actual_date=date,
          date=floor_date(date,"month"))  %>% 
   left_join(nowcast_deficit %>% select(date,pred=outlays,actual=actual_outlays)) %>% 
-  mutate(record_calendar_day=as.numeric(record_calendar_day))
+  mutate(record_calendar_day=as.numeric(record_calendar_day),
+         record_calendar_month=as.numeric(record_calendar_month)) 
 
-outlay_daily_df = outlay_daily_df %>% 
+outlay_daily_df = outlay_daily_df %>%
   rowwise() %>% 
   mutate(avg_share=mean(outlay_daily_df[outlay_daily_df$record_calendar_month==record_calendar_month&outlay_daily_df$record_calendar_day<=record_calendar_day,] %>% group_by(record_fiscal_year) %>% slice(n()) %>% ungroup() %>% select(share) %>% pull())) %>% 
   ungroup() %>% 
@@ -164,8 +167,8 @@ for(dat in as.character(unique(outlay_daily_df$date[is.na(outlay_daily_df$actual
       mutate(receipt_day_amt=receipt_day_amt,
              receipt_mtd_amt=receipt_mtd_amt)
   ) %>% 
-    filter(record_fiscal_year==ifelse(month(dat1)>=10,year(dat1)+1,year(dat1))&record_calendar_month==month(dat1)) %>% 
-    mutate(date = as.Date(paste0(ifelse(record_calendar_month%in%10:12,record_fiscal_year-1,record_fiscal_year),"-",record_calendar_month,"-",record_calendar_day))) 
+    filter(record_fiscal_year==ifelse(month(dat1)>=10,year(dat1)+1,year(dat1))&as.numeric(record_calendar_month)==month(dat1)) %>% 
+    mutate(date = as.Date(paste0(year(dat1),"-",record_calendar_month,"-",record_calendar_day))) 
   
   if((max(tmp_df$date,na.rm=TRUE)+1)<(ceiling_date(tmp_df$date[1],"month")-1)){
     

@@ -32,7 +32,7 @@ conflicted::conflict_prefer("filter","dplyr")
 
 # get data
 # code currently written to get data as of end of November 2024. Function can take any date
-df = make_df(floor_date(Sys.Date(), "month")-1) %>% 
+df = make_df(Sys.Date()) %>% 
   group_by(year,qtr) %>%
   fill(PRS85006112,.direction="down") %>% 
   ungroup() %>% 
@@ -42,7 +42,7 @@ df = make_df(floor_date(Sys.Date(), "month")-1) %>%
   select_if(~sd(.,na.rm=TRUE)!=0|is.character(.)|is.Date(.)) %>% 
   filter(date>="2004-01-01")
 
-write_csv(df,paste0("Data/Processing/raw_data/data_asof",floor_date(Sys.Date(), "month")-1,".csv"))
+write_csv(df,paste0("Data/Processing/raw_data/data_asof",Sys.Date(),".csv"))
 
 set.seed(178)
 
