@@ -56,7 +56,7 @@ gdp_pred_df = data.frame()
 for(col in c("GDPC1")){
 
   avail_files = gsub("imputed_data_asof|.csv","",list.files("Data/Processing/imputed_data"))
-  avail_files = avail_files[which(avail_files>="2024-12-31"&avail_files<="2025-03-31")]
+  avail_files = avail_files[which(avail_files>"2024-12-31"&avail_files<="2025-03-31")]
   
 for(dat in avail_files){
   
