@@ -54,8 +54,11 @@ fcast_df = imputed_df %>%
 gdp_pred_df = data.frame()
 #for(col in colnames(fcast_df %>% select(A261RX1Q020SBEA:SLCEC1))){
 for(col in c("GDPC1")){
-    
-for(dat in c("2024-12-31","2025-01-01","2025-01-31","2025-02-04","2025-02-28",'2025-03-05','2025-03-09')){
+
+  avail_files = gsub("imputed_data_asof|.csv","",list.files("Data/Processing/imputed_data"))
+  avail_files = avail_files[which(avail_files>="2024-12-31"&avail_files<="2025-03-31")]
+  
+for(dat in avail_files){
   
   print(paste0(col," ",dat))
   
@@ -124,7 +127,7 @@ gdp_pred_df$error[gdp_pred_df$var==col]=sqrt(mean((gdp_pred_df$pred[gdp_pred_df$
 
 
 q1_preds = data.frame()
-for(dat in c("2025-01-01","2025-01-31","2025-02-04","2025-02-28","2025-03-05","2025-03-09")){
+for(dat in avail_files){
 imputed_df = read_csv(paste0("Data/Processing/imputed_data/imputed_data_asof",dat,".csv"))
 
 fcast_df1 = imputed_df %>% 
