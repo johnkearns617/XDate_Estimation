@@ -8,6 +8,8 @@ fred_key = Sys.getenv('FRED_KEY')
 gt_key = Sys.getenv("GT_KEY")
 bls_key = Sys.getenv("BLS_KEY")
 
+Sys.setenv(TZ='America/New_York')
+
 fredr_set_key(fred_key)
 
 reticulate::py_discover_config()
