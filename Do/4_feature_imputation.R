@@ -62,22 +62,22 @@ imputed_df = impute_function(df,Sys.Date())
 
 write_csv(imputed_df,paste0("Data/Processing/imputed_data/imputed_data_asof",Sys.Date(),".csv"))
 
-# for(dat in c(as.character(ceiling_date((national_econ %>% filter(series_id=="GDPC1"&date>="2007-01-01"))$date,"quarter")-1))){
-#   
-#   print(paste0(dat))
-#   
-#   df = make_df(ceiling_date(as.Date(dat), "quarter")-1) %>% 
+# # for(dat in c(as.character(ceiling_date((national_econ %>% filter(series_id=="GDPC1"&date>="2007-01-01"))$date,"quarter")-1))){
+# #   
+# #   print(paste0(dat))
+# #   
+#   df = make_df(ceiling_date(as.Date(dat), "quarter")-1) %>%
 #     group_by(year,qtr) %>%
-#     fill(PRS85006112,.direction="down") %>% 
-#     ungroup() %>% 
+#     fill(PRS85006112,.direction="down") %>%
+#     ungroup() %>%
 #     select(-c(MTSR133FMS:W017RC1Q027SBEA,A261RX1Q020SBEA:SLCEC1,B096RC1Q027SBEA:A091RC1Q027SBEA,B243RC1Q027SBEA:AD02RC1Q027SBEA,year,qtr)) %>%  # remove indeed and retail variables to speed up code, even though they do improve the model fit
-#     mutate_at(vars(-c(date)),~ifelse(is.infinite(.)|is.nan(.),NA,.)) %>% 
-#     select_if(~sum(!is.na(.))>0|is.character(.)|is.Date(.)) %>% 
-#     select_if(~sd(.,na.rm=TRUE)!=0|is.character(.)|is.Date(.)) %>% 
+#     mutate_at(vars(-c(date)),~ifelse(is.infinite(.)|is.nan(.),NA,.)) %>%
+#     select_if(~sum(!is.na(.))>0|is.character(.)|is.Date(.)) %>%
+#     select_if(~sd(.,na.rm=TRUE)!=0|is.character(.)|is.Date(.)) %>%
 #     filter(date>="2004-01-01")
-#   
-#   imputed_df = impute_function(df)
-#   
+# 
+#   imputed_df = impute_function(df,dat)
+# 
 #   write_csv(imputed_df,paste0("Data/Processing/imputed_data_asof",dat,".csv"))
-#   
-# }
+# #   
+# # }

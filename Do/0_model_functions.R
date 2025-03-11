@@ -210,7 +210,7 @@ impute_function = function(df,dat){
                                                                          lag4=dplyr::lag(!!sym(col1),4),
                                                                          lag5=dplyr::lag(!!sym(col1),5),
                                                                          lag6=dplyr::lag(!!sym(col1),6)) %>% 
-                         fill(lag:lag6,.direction="up"))
+                         fill(lag:lag3,.direction="up"))
         
         value=bind_cols(value,imp)
       }
