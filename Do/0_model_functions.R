@@ -983,4 +983,91 @@ forecast_component = function(nowcast_object,nowcast_total_object,daily_df,cbo_m
   
 }
 
+impute_function_mice = function(df,dat){
+  
+  conflicted::conflicts_prefer(dplyr::first)
+  conflicted::conflicts_prefer(dplyr::between)
+  conflicted::conflicts_prefer(dplyr::last)
+  conflicted::conflicts_prefer(lubridate::year)
+  conflicted::conflicts_prefer(lubridate::quarter)
+  conflicted::conflicts_prefer(lubridate::month)
+  conflicted::conflicts_prefer(lubridate::quarter)
+  
+  require(ranger)
+  require(mlr)
+  require(tuneRanger)
+  require(miceRanger)
+  require(parsnip)
+  
+  test_dineof=df
+  
+  all_df = data.frame()
+  
+  cols = colnames(test_dineof %>% select(-one_of("PRS85006112","A261RX1Q020SBEA","A261RX1Q020SBEA", "GDPC1","PCECC96","DGDSRX1Q020SBEA",
+                                                 "PCDGCC96","PCNDGC96","PCESVC96","GPDIC1", "FPIC1",          
+                                                 "PNFIC1","PRFIC1" ,"EXPGSC1" ,"IMPGSC1","GCEC1" ,         
+                                                 "FGCEC1", "SLCEC1","W006RC1Q027SBEA", "A074RC1Q027SBEA", "W007RC1Q027SBEA" ,"B234RC1Q027SBEA" ,"B235RC1Q027SBEA", "B075RC1Q027SBEA",
+                                                 "W780RC1Q027SBEA" ,"W009RC1Q027SBEA" ,"B094RC1Q027SBEA" ,"W053RC1Q027SBEA" ,"B1040C1Q027SBEA" ,"W011RC1Q027SBEA",
+                                                 "W012RC1Q027SBEA" ,"B233RC1Q027SBEA" ,"B097RC1Q027SBEA" ,"FGEXPND"         ,"A957RC1Q027SBEA" ,"W014RC1Q027SBEA",
+                                                 "W015RC1Q027SBEA" ,"B087RC1Q027SBEA" ,"FGSL"            ,"W017RC1Q027SBEA" ,"A091RC1Q027SBEA" ,"B096RC1Q027SBEA",
+                                                 "B243RC1Q027SBEA" ,"W018RC1Q027SBEA" ,"W019RCQ027SBEA"  ,"AD02RC1Q027SBEA","year","qtr","date")))
+  
+  miceObj <- miceRanger(
+    test_dineof %>% 
+      select(cols) %>% 
+      select_if(~!all(is.na(.))),
+    valueSelector = "meanMatch",
+    returnModels = TRUE
+  )
+  
+  dataList <- completeData(miceObj)
+  
+  tmp = data.frame(date=test_dineof$date)
+  for(col1 in cols){
+    
+    tmp[[col1]] = rowMeans(sapply(dataList,function(x) x[[col1]]))
+    
+    if(length(test_dineof$date[is.na(test_dineof[[col1]])])==0){next}
+    
+    test_dineof[[col1]][is.na(test_dineof[[col1]])] = tmp[[col1]][is.na(test_dineof[[col1]])] 
+    
+  }
+  
+  return(test_dineof)
+  
+}
 
+
+impute_function_kalman = function(df,dat){
+  
+  require(imputeTS)
+  
+  test_dineof=df
+  
+  value = data.frame()
+  cols = colnames(test_dineof %>% select(-one_of("PRS85006112","A261RX1Q020SBEA","A261RX1Q020SBEA", "GDPC1","PCECC96","DGDSRX1Q020SBEA",
+                                                 "PCDGCC96","PCNDGC96","PCESVC96","GPDIC1", "FPIC1",          
+                                                 "PNFIC1","PRFIC1" ,"EXPGSC1" ,"IMPGSC1","GCEC1" ,         
+                                                 "FGCEC1", "SLCEC1","W006RC1Q027SBEA", "A074RC1Q027SBEA", "W007RC1Q027SBEA" ,"B234RC1Q027SBEA" ,"B235RC1Q027SBEA", "B075RC1Q027SBEA",
+                                                 "W780RC1Q027SBEA" ,"W009RC1Q027SBEA" ,"B094RC1Q027SBEA" ,"W053RC1Q027SBEA" ,"B1040C1Q027SBEA" ,"W011RC1Q027SBEA",
+                                                 "W012RC1Q027SBEA" ,"B233RC1Q027SBEA" ,"B097RC1Q027SBEA" ,"FGEXPND"         ,"A957RC1Q027SBEA" ,"W014RC1Q027SBEA",
+                                                 "W015RC1Q027SBEA" ,"B087RC1Q027SBEA" ,"FGSL"            ,"W017RC1Q027SBEA" ,"A091RC1Q027SBEA" ,"B096RC1Q027SBEA",
+                                                 "B243RC1Q027SBEA" ,"W018RC1Q027SBEA" ,"W019RCQ027SBEA"  ,"AD02RC1Q027SBEA","year","qtr","date")))
+                  
+  test =   na_kalman(test_dineof[,cols])
+  tmp=sapply(test_dineof[,cols],function(x) which(is.na(x)))
+  value1 = bind_rows(lapply(names(tmp[which(as.numeric(sapply(tmp,function(x) length(x)))>0)]),
+                            function(x) data.frame(prediction_date = dat,
+                                                   variable=x,
+                                                   date=test_dineof[as.numeric(tmp[x][[1]]),"date"],
+                                                   replacement=as.numeric(unlist(test[as.numeric(tmp[x][[1]]),x])))))
+  
+  for(i in 1:nrow(value1)){
+    
+    test_dineof[[value1$variable[i]]][test_dineof$date==value1$date[i]] = value1$replacement[i]
+    
+  }
+  
+  return(test_dineof)
+  
+}
