@@ -36,7 +36,7 @@ seas_adjust_gt = function(trends_df,cat1){
     select(date,value,value_detrend) %>%
     mutate(date=as.Date(date))
   
-  hits_smooth = boiwsa(test_cat$value_detrend,test_cat$date,auto.ao.seacrh = FALSE)
+  hits_smooth = boiwsa(test_cat$value_detrend,test_cat$date,auto.ao.search = FALSE)
   hits_smooth = hits_smooth$sa
   
   hits_smooth = as.numeric(smooth(hits_smooth,kind="3RSS",endrule="Tukey"))
