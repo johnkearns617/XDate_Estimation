@@ -1090,7 +1090,7 @@ fcast_gdp_ols = function(dat,col){
                 filter(release_date<=dat) %>% 
                 select(date,series_id,value) %>%
                 pivot_wider(names_from=series_id,values_from=value) %>% 
-                select(date,A261RX1Q020SBEA:A960RX1Q020SBEA)) %>%
+                select(date,A261RX1Q020SBEA:SLCEC1)) %>%
     arrange(date) %>%
     mutate_at(vars(PAYEMS:JTSJOL,INDPRO:DGS10,col),~((./dplyr::lag(.,1)-1)*100)) %>%
     mutate_at(vars(UNRATE:DTCDFSA066MSFRBPHI,gt_1003:gt_999),~(.-dplyr::lag(.,1))) %>%

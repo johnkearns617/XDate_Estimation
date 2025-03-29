@@ -49,7 +49,7 @@ fcast_df = imputed_df %>%
   left_join(national_econ %>% 
               select(date,series_id,value) %>%
               pivot_wider(names_from=series_id,values_from=value) %>% 
-              select(date,A261RX1Q020SBEA:A960RX1Q020SBEA))
+              select(date,A261RX1Q020SBEA:SLCEC1))
 
 
 avail_files = gsub("imputed_data_asof|.csv","",list.files("Data/Processing/imputed_data"))
@@ -57,8 +57,6 @@ avail_files = avail_files[which(avail_files>as.character((tail(fcast_df,10) %>% 
   
 gdp_pred_df = list()
 for(dat in avail_files){
-  
-  print(paste0(col," ",dat))
   
   imputed_df1 = read_csv(paste0("Data/Processing/imputed_data/imputed_data_asof",dat,".csv"))
 
@@ -76,7 +74,7 @@ for(dat in avail_files){
                 filter(release_date<=dat) %>% 
                 select(date,series_id,value) %>%
                 pivot_wider(names_from=series_id,values_from=value) %>% 
-                select(date,A261RX1Q020SBEA:A960RX1Q020SBEA))
+                select(date,A261RX1Q020SBEA:SLCEC1))
     
   for(i in as.character(tail(fcast_df1,10) %>% filter(is.na(GDPC1)) %>% pull(date))){
     
