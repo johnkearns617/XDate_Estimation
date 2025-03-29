@@ -482,6 +482,6 @@ plotly::ggplotly(
                       breaks=colors_df$group)
 )
 
-save(breakdown_df,gdp_pred_df,yearly_chart_df,monthly_chart_df,daily_chart_df,colors_df,my_chart,outlay_daily_df_groups,feb_forecast,deficit_summary,imputed_daily_receipts,receipt_daily_df,outlay_daily_df,actual_receipt,daily_forecast,daily_forecast_upper,daily_forecast_lower,national_econ,file=paste0("Data/Processing/image_saves/data_asof_",Sys.Date(),".RData"))
-save(breakdown_df,gdp_pred_df,yearly_chart_df,monthly_chart_df,daily_chart_df,colors_df,my_chart,outlay_daily_df_groups,feb_forecast,deficit_summary,imputed_daily_receipts,receipt_daily_df,outlay_daily_df,actual_receipt,daily_forecast,daily_forecast_upper,daily_forecast_lower,national_econ,file=paste0("Data/Processing/image_saves/chart_data.RData"))
+save(breakdown_df,gdp_data,yearly_chart_df,monthly_chart_df,daily_chart_df,colors_df,my_chart,outlay_daily_df_groups,feb_forecast,deficit_summary,imputed_daily_receipts,receipt_daily_df,outlay_daily_df,actual_receipt,daily_forecast,daily_forecast_upper,daily_forecast_lower,national_econ,file=paste0("Data/Processing/image_saves/data_asof_",Sys.Date(),".RData"))
+save(breakdown_df,gdp_data,yearly_chart_df,monthly_chart_df,daily_chart_df,colors_df,my_chart,outlay_daily_df_groups,feb_forecast,deficit_summary,imputed_daily_receipts,receipt_daily_df,outlay_daily_df,actual_receipt,daily_forecast,daily_forecast_upper,daily_forecast_lower,national_econ,file=paste0("Data/Processing/image_saves/chart_data.RData"))
 

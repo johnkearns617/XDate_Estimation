@@ -1071,3 +1071,84 @@ impute_function_kalman = function(df,dat){
   return(test_dineof)
   
 }
+
+
+
+fcast_gdp_ols = function(dat,col){
+  
+  fcast_df1 = read_csv(paste0("Data/Processing/imputed_data/imputed_data_asof",dat,".csv")) %>% 
+    arrange(date) %>%
+    mutate(year=year(date),
+           qtr=quarter(date)) %>%
+    select(-c(PCE,PRS85006112)) %>%
+    select(-one_of("ADPMNUSNERSA","IHLIDXUS")) %>% 
+    group_by(year,qtr) %>%
+    mutate_at(vars(PAYEMS:gt_999),~mean(.,na.rm=TRUE)) %>%
+    summarize_all(~.[1]) %>%
+    ungroup() %>% 
+    left_join(national_econ %>% 
+                filter(release_date<=dat) %>% 
+                select(date,series_id,value) %>%
+                pivot_wider(names_from=series_id,values_from=value) %>% 
+                select(date,A261RX1Q020SBEA:A960RX1Q020SBEA)) %>%
+    arrange(date) %>%
+    mutate_at(vars(PAYEMS:JTSJOL,INDPRO:DGS10,col),~((./dplyr::lag(.,1)-1)*100)) %>%
+    mutate_at(vars(UNRATE:DTCDFSA066MSFRBPHI,gt_1003:gt_999),~(.-dplyr::lag(.,1))) %>%
+    mutate(lag1=dplyr::lag(!!sym(col),1),
+           lag2=dplyr::lag(!!sym(col),2),
+           lag3=dplyr::lag(!!sym(col),3),
+           lag4=dplyr::lag(!!sym(col),4)) %>%
+    ungroup() 
+   # mutate(IHLIDXUS=ifelse(is.nan(IHLIDXUS),0,IHLIDXUS)) # bring back when not testing
+  
+  dates = tail(fcast_df1,10) %>% filter(is.na(!!sym(col))) %>% pull(date)
+  
+  X = model.matrix(as.formula(paste0(col,"~",paste(colnames(fcast_df1)[c(4:246)],collapse="+"))),
+                   fcast_df1 %>% filter(date<dat&year(date)>=2006&!is.na(!!sym(col))))[, -1]
+  y = (fcast_df1 %>% filter(date<dat&year(date)>=2006&!is.na(!!sym(col))))[[col]]
+  
+  if(length(y)<4){next}
+  
+  weight = (1:nrow(X))/nrow(X)
+  weight = ifelse(weight<.5,.5,weight)
+  fit_lasso_state = glmnet(X, y, alpha = 1,pmax=20)
+  # weight by how recent the data is
+  
+  selected_coefs_state = data.frame(varImp(fit_lasso_state,lambda=min(fit_lasso_state$lambda), scale = FALSE)) %>% filter(Overall!=0)
+  selected_coefs_state$var = as.numeric(gsub("gt_","",rownames(selected_coefs_state)))
+  coef_value_state = coef(fit_lasso_state,s=min(fit_lasso_state$lambda))[,1][-1]
+  coef_value_state = coef_value_state[coef_value_state!=0]
+  selected_coefs_state = cbind(selected_coefs_state,coef_value_state)
+  selected_coefs_state$category = sapply(selected_coefs_state$var,which_category)
+  selected_coefs_state = selected_coefs_state %>% arrange(-Overall)
+  
+  test = lm_robust(as.formula(paste0(col,"~lag1+lag2+",paste(rownames(selected_coefs_state),collapse="+"))),
+                   data = fcast_df1 %>% filter(date<=dat))
+  
+  i=2
+  if(length(dates)>1){
+    
+    fcast_df1$lag1[fcast_df1$date==dates[i]] = predict(test,fcast_df1 %>% filter(date==dates[i-1]))
+    
+  }
+  
+  gdp_pred_df = data.frame(
+    prediction_date=dat,
+    date=dates,
+    var=col,
+    pred=predict(test,fcast_df1 %>% filter(date%in%dates))
+  ) %>% 
+    left_join(national_econ %>% filter(series_id==col) %>% select(date,value) %>% mutate(value=(value/dplyr::lag(value,1)-1)*100))
+  
+  # Create an explainer
+  explainer <- DALEX::explain(test, 
+                       data = fcast_df1 %>% filter(date<dates[1]&!is.na(!!sym(col))&!is.na(lag2)) %>% select(names(test$coefficients)[-1]), 
+                       y = (fcast_df1 %>% filter(date<dates[1]&!is.na(!!sym(col))&!is.na(lag2)))[[col]])
+  
+  tmp = lapply(dates,function(x) predict_parts(explainer, new_observation = fcast_df1 %>% filter(date%in%x), type = "break_down") %>% mutate(date=x,prediction_date=dat,var=col))
+  breakdown = bind_rows(tmp)
+  
+  return(list(gdp_pred_df,explainer,breakdown))
+  
+}
+

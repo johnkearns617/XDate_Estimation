@@ -93,7 +93,7 @@ fcast_df1 = imputed_df %>%
               select(date,A261RX1Q020SBEA:SLCEC1))
 
 gdp_pred = data.frame()
-dat="2020-06-30"
+dat=Sys.Date()
 for(i in as.character(tail(fcast_df1,10) %>% filter(is.na(GDPC1)) %>% pull(date))){
   
   consump = (fcast_gdp_ols(dat,"PCECC96") %>% filter(date==i) %>% pull(pred)/100+1)*(fcast_df1 %>% filter(date<i) %>% slice(n()) %>% pull(PCECC96))

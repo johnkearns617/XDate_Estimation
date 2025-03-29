@@ -114,17 +114,20 @@ server <- function(input, output) {
     })
     
     output$gdp_nowcast = renderPlotly({
-      plotly::ggplotly(ggplot(breakdown_df %>% filter(variable!="prediction"), aes(x = eval_date, y = contribution, fill = variable_name)) +
+      plotly::ggplotly(ggplot(breakdown_df %>% filter(date>=(Sys.Date() %m-% years(1))) %>% mutate(prediction_date=as.Date(prediction_date)), aes(x = prediction_date, y = contribution, fill = variable_name)) +
                          geom_bar(stat = "identity", position = "stack") +
-                         geom_line(data=gdp_pred_df %>% ungroup() %>% filter(date>="2025-01-01") %>% mutate(date=1:n()),
-                                   aes(x=date,y=pred),inherit.aes = FALSE) +
-                         geom_point(data=gdp_pred_df %>% ungroup() %>% filter(date>="2025-01-01") %>% mutate(date=1:n()),
-                                    aes(x=date,y=pred),inherit.aes = FALSE) +
+                         geom_line(data=gdp_data %>% filter(date>=(Sys.Date() %m-% years(1))) %>% ungroup() %>% mutate(prediction_date=as.Date(prediction_date)),
+                                   aes(x=prediction_date,y=(gdp)),inherit.aes = FALSE) +
+                         geom_point(data=gdp_data %>% filter(date>=(Sys.Date() %m-% years(1))) %>% ungroup()  %>% mutate(prediction_date=as.Date(prediction_date)),
+                                    aes(x=prediction_date,y=(gdp)),inherit.aes = FALSE) +
+                         geom_hline(data=gdp_data %>% filter(date>=(Sys.Date() %m-% years(1))) %>% ungroup()  %>% mutate(prediction_date=as.Date(prediction_date)),
+                                    aes(yintercept=(actual)),color="darkblue",inherit.aes = FALSE) +
                          labs(title = "Variable Contribution Over Time",
                               x = "Observation (Time)", 
                               y = "Contribution to Fitted Value") +
-                         theme_minimal()
-      )
+                         theme_minimal() +
+                         facet_wrap(~date,scales="free")
+      ) 
     })
     
 }
