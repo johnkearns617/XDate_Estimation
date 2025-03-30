@@ -3,6 +3,7 @@ name: Daily Data Update
 on:
   schedule:
     - cron:  "0 17 * * *"
+  workflow-dispatch:
 
 jobs: 
   update-data:
