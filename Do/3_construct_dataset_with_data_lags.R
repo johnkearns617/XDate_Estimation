@@ -26,6 +26,8 @@ library(rjson)
 
 conflicted::conflict_prefer("filter","dplyr")
 
+set.seed(178)
+
 # trends data
 state_trends = read_csv(paste0("Data/Processing/gt_data/trends_full_sa_",gsub("-","",Sys.Date()),".csv")) %>% 
   mutate(release_date=date+6)

@@ -28,6 +28,8 @@ conflicted::conflicts_prefer(base::print)
 
 data(categories) # categories from Google Trends
 
+set.seed(178)
+
 nk_categories = read_csv(paste0("Data/Raw/Nakazawa_Categories.csv")) %>% 
   left_join(categories %>% mutate(name=gsub(" ","",name)),by=c("variables"="name")) %>% 
   filter(!is.na(id)) %>% 

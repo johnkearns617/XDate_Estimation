@@ -28,6 +28,8 @@ which_category = function(num){
 
 seas_adjust_gt = function(trends_df,cat1){
   
+  set.seed(178)
+  
   if(cat1=="987"){
     stop("Category 987 has bad data")
   } # 987 has bad data
@@ -173,6 +175,9 @@ make_df = function(end_date){
 
 
 impute_function = function(df,dat){
+  
+  set.seed(178)
+  
   test_dineof=df
   
   flag = 0
@@ -248,19 +253,9 @@ impute_function = function(df,dat){
 #' @return list with input data, regression, predictions, and the monthly shares regression
 #' 
 
-nowcast_headline = function(dataset,cbo_category){
+get_deficit_imputed_data = function(dat,dataset){
   
-  monthly_shares = dataset %>% 
-    filter(fiscal_year>=2002&fiscal_year<=2023) %>% 
-    group_by(fiscal_year) %>% 
-    mutate(total=sum(value,na.rm=TRUE)) %>% 
-    ungroup() %>%  
-    mutate(share=value/total,
-           month=month(date))
-  
-  monthly_shares_reg = lm_robust(share~factor(month),monthly_shares %>% group_by(fiscal_year) %>% filter(n()==12))
-  
-  fcast_df1 = imputed_df %>% 
+  fcast_df1 = read_csv(paste0("Data/Processing/imputed_data/imputed_data_asof",dat,".csv")) %>% 
     arrange(date) %>%
     mutate(year=year(date),
            month=month(date)) %>%
@@ -290,6 +285,23 @@ nowcast_headline = function(dataset,cbo_category){
     mutate(lag1_cbo_proj_diff=dplyr::lag(cbo_proj_diff,1),
            lag2_cbo_proj_diff=dplyr::lag(cbo_proj_diff,2))
   
+  return(fcast_df1)
+}
+
+nowcast_headline = function(dataset,cbo_category){
+  
+  monthly_shares = dataset %>% 
+    filter(fiscal_year>=2002&fiscal_year<=2023) %>% 
+    group_by(fiscal_year) %>% 
+    mutate(total=sum(value,na.rm=TRUE)) %>% 
+    ungroup() %>%  
+    mutate(share=value/total,
+           month=month(date))
+  
+  monthly_shares_reg = lm_robust(share~factor(month),monthly_shares %>% group_by(fiscal_year) %>% filter(n()==12))
+  
+  fcast_df1 = get_deficit_imputed_data(floor_date(Sys.Date(),"year")-1,dataset)
+  
   X = model.matrix(as.formula(paste0("value","~",paste(colnames(fcast_df1)[c(2:252)],collapse="+"))),
                    fcast_df1 %>% filter(date<"2024-01-01"&year(date)>=2006&!is.na(value)))[, -1]
   y = (fcast_df1 %>% filter(date<"2024-01-01"&year(date)>=2006&!is.na(value)))[["value"]]
@@ -309,6 +321,8 @@ nowcast_headline = function(dataset,cbo_category){
   
   test = lm_robust(as.formula(paste0("value","~lag1+lag2+lag3+lag4+cbo_proj_month+",paste(c(rownames(selected_coefs_state)),collapse="+"))),
                    data = fcast_df1 %>% filter(date<='2024-01-01') %>% mutate(weight=(1:n())/n()))
+  
+  fcast_df1 = get_deficit_imputed_data(Sys.Date(),dataset)
   
   pred_df = data.frame(
     date=fcast_df1[['date']],
@@ -358,7 +372,7 @@ nowcast_budget_receipt = function(mts_dataset,col_mts,cbo_component,cbo_category
   
   monthly_shares_reg = lm_robust(share~factor(month),monthly_shares %>% group_by(fiscal_year) %>% filter(n()==12))
   
-  fcast_df1 = imputed_df %>% 
+  fcast_df1 = read_csv(paste0("Data/Processing/imputed_data/imputed_data_asof",floor_date(Sys.Date(),"year")-1,".csv"))  %>% 
     arrange(date) %>%
     mutate(year=year(date),
            month=month(date)) %>%
@@ -411,6 +425,40 @@ nowcast_budget_receipt = function(mts_dataset,col_mts,cbo_component,cbo_category
   
   test = lm_robust(as.formula(paste0("value","~lag1+lag2+lag3+lag4+cbo_proj_month+",paste(c(rownames(selected_coefs_state)),collapse="+"))),
                    data = fcast_df1 %>% filter(date<='2024-01-01') %>% mutate(weight=(1:n())/n()))
+  
+  fcast_df1 = read_csv(paste0("Data/Processing/imputed_data/imputed_data_asof",Sys.Date(),".csv"))  %>% 
+    arrange(date) %>%
+    mutate(year=year(date),
+           month=month(date)) %>%
+    select(-c(PCE,PRS85006112)) %>%
+    select(-one_of("ADPMNUSNERSA")) %>% 
+    left_join(mts_dataset %>% filter(classification_desc==col_mts) %>% 
+                mutate(record_date=floor_date(record_date,"month"),
+                       current_month_net_rcpt_amt=as.numeric(current_month_net_rcpt_amt)/1000000000) %>% 
+                select(record_date,current_month_net_rcpt_amt) %>% 
+                rename(date=record_date,
+                       value=current_month_net_rcpt_amt)) %>% # join the yvariable
+    arrange(date) %>%
+    mutate_at(vars(PAYEMS:JTSJOL,INDPRO:DGS10),~((./dplyr::lag(.,1)-1)*100)) %>%
+    mutate_at(vars(UNRATE:DTCDFSA066MSFRBPHI,gt_1003:gt_999),~(.-dplyr::lag(.,1))) %>%
+    mutate(lag1=dplyr::lag(value,1),
+           lag2=dplyr::lag(value,2),
+           lag3=dplyr::lag(value,3),
+           lag4=dplyr::lag(value,4)) %>%
+    ungroup() %>% 
+    mutate(fiscal_year=as.integer(quarter(date, with_year = TRUE, fiscal_start = 10)))  %>% 
+    left_join(cbo_proj %>% 
+                filter(component==cbo_component&category==cbo_category) %>% 
+                group_by(projected_fiscal_year) %>% 
+                slice(n()) %>% 
+                select(projected_fiscal_year,value) %>% 
+                rename(cbo_proj=value,
+                       fiscal_year=projected_fiscal_year))
+  fcast_df1$cbo_proj_month = as.numeric(predict(monthly_shares_reg,data.frame(month=fcast_df1$month)))*fcast_df1$cbo_proj
+  fcast_df1 = fcast_df1 %>% 
+    mutate(cbo_proj_diff=(value/cbo_proj_month-1)*100) %>% 
+    mutate(lag1_cbo_proj_diff=dplyr::lag(cbo_proj_diff,1),
+           lag2_cbo_proj_diff=dplyr::lag(cbo_proj_diff,2))
   
   if(is.infinite(max(abs(which(is.na(tail(fcast_df1$value,5)))-6)))){
     next
@@ -481,7 +529,7 @@ nowcast_budget_outlay = function(cbo_category){
     
     monthly_shares_reg = lm_robust(share~factor(month),monthly_shares %>% group_by(fiscal_year) %>% filter(n()==12))
     
-    fcast_df1 = imputed_df %>% 
+    fcast_df1 = read_csv(paste0("Data/Processing/imputed_data/imputed_data_asof",floor_date(Sys.Date(),"year")-1,".csv")) %>% 
       arrange(date) %>%
       mutate(year=year(date),
              month=month(date)) %>%
@@ -514,6 +562,40 @@ nowcast_budget_outlay = function(cbo_category){
       mutate(cbo_proj_diff=(value/cbo_proj_month-1)*100) %>% 
       mutate(lag1_cbo_proj_diff=dplyr::lag(cbo_proj_diff,1),
              lag2_cbo_proj_diff=dplyr::lag(cbo_proj_diff,2))
+
+    fcast_df2 = read_csv(paste0("Data/Processing/imputed_data/imputed_data_asof",Sys.Date(),".csv")) %>% 
+      arrange(date) %>%
+      mutate(year=year(date),
+             month=month(date)) %>%
+      select(-c(PCE,PRS85006112)) %>%
+      select(-one_of("ADPMNUSNERSA")) %>% 
+      left_join(mandatory %>% 
+                  mutate(record_date=floor_date(record_date,"month"),
+                         current_month_net_rcpt_amt=as.numeric(current_month_rcpt_outly_amt)/1000000000) %>% 
+                  select(record_date,current_month_net_rcpt_amt) %>% 
+                  rename(date=record_date,
+                         value=current_month_net_rcpt_amt)) %>% # join the yvariable
+      arrange(date) %>%
+      mutate_at(vars(PAYEMS:JTSJOL,INDPRO:DGS10),~((./dplyr::lag(.,1)-1)*100)) %>%
+      mutate_at(vars(UNRATE:DTCDFSA066MSFRBPHI,gt_1003:gt_999),~(.-dplyr::lag(.,1))) %>%
+      mutate(lag1=dplyr::lag(value,1),
+             lag2=dplyr::lag(value,2),
+             lag3=dplyr::lag(value,3),
+             lag4=dplyr::lag(value,4)) %>%
+      ungroup() %>% 
+      mutate(fiscal_year=as.integer(quarter(date, with_year = TRUE, fiscal_start = 10)))  %>% 
+      left_join(cbo_proj %>% 
+                  filter(subcategory=="Medicare") %>% 
+                  group_by(projected_fiscal_year) %>% 
+                  slice(n()) %>% 
+                  select(projected_fiscal_year,value) %>% 
+                  rename(cbo_proj=value,
+                         fiscal_year=projected_fiscal_year))
+    fcast_df2$cbo_proj_month = as.numeric(predict(monthly_shares_reg,data.frame(month=fcast_df2$month)))*fcast_df2$cbo_proj
+    fcast_df2 = fcast_df2 %>% 
+      mutate(cbo_proj_diff=(value/cbo_proj_month-1)*100) %>% 
+      mutate(lag1_cbo_proj_diff=dplyr::lag(cbo_proj_diff,1),
+             lag2_cbo_proj_diff=dplyr::lag(cbo_proj_diff,2))
     
   }
   
@@ -539,7 +621,7 @@ nowcast_budget_outlay = function(cbo_category){
     
     monthly_shares_reg = lm_robust(share~factor(month),monthly_shares %>% group_by(fiscal_year) %>% filter(n()==12))
     
-    fcast_df1 = imputed_df %>% 
+    fcast_df1 = read_csv(paste0("Data/Processing/imputed_data/imputed_data_asof",floor_date(Sys.Date(),"year")-1,".csv")) %>% 
       arrange(date) %>%
       mutate(year=year(date),
              month=month(date)) %>%
@@ -573,6 +655,40 @@ nowcast_budget_outlay = function(cbo_category){
       mutate(lag1_cbo_proj_diff=dplyr::lag(cbo_proj_diff,1),
              lag2_cbo_proj_diff=dplyr::lag(cbo_proj_diff,2))
     
+    fcast_df2 = read_csv(paste0("Data/Processing/imputed_data/imputed_data_asof",Sys.Date(),".csv")) %>% 
+      arrange(date) %>%
+      mutate(year=year(date),
+             month=month(date)) %>%
+      select(-c(PCE,PRS85006112)) %>%
+      select(-one_of("ADPMNUSNERSA")) %>% 
+      left_join(mandatory %>% 
+                  mutate(record_date=floor_date(record_date,"month"),
+                         current_month_net_rcpt_amt=as.numeric(current_month_rcpt_outly_amt)/1000000000) %>% 
+                  select(record_date,current_month_net_rcpt_amt) %>% 
+                  rename(date=record_date,
+                         value=current_month_net_rcpt_amt)) %>% # join the yvariable
+      arrange(date) %>%
+      mutate_at(vars(PAYEMS:JTSJOL,INDPRO:DGS10),~((./dplyr::lag(.,1)-1)*100)) %>%
+      mutate_at(vars(UNRATE:DTCDFSA066MSFRBPHI,gt_1003:gt_999),~(.-dplyr::lag(.,1))) %>%
+      mutate(lag1=dplyr::lag(value,1),
+             lag2=dplyr::lag(value,2),
+             lag3=dplyr::lag(value,3),
+             lag4=dplyr::lag(value,4)) %>%
+      ungroup() %>% 
+      mutate(fiscal_year=as.integer(quarter(date, with_year = TRUE, fiscal_start = 10)))  %>% 
+      left_join(cbo_proj %>% 
+                  filter(subcategory=="Medicaid") %>% 
+                  group_by(projected_fiscal_year) %>% 
+                  slice(n()) %>% 
+                  select(projected_fiscal_year,value) %>% 
+                  rename(cbo_proj=value,
+                         fiscal_year=projected_fiscal_year))
+    fcast_df2$cbo_proj_month = as.numeric(predict(monthly_shares_reg,data.frame(month=fcast_df2$month)))*fcast_df2$cbo_proj
+    fcast_df2 = fcast_df2 %>% 
+      mutate(cbo_proj_diff=(value/cbo_proj_month-1)*100) %>% 
+      mutate(lag1_cbo_proj_diff=dplyr::lag(cbo_proj_diff,1),
+             lag2_cbo_proj_diff=dplyr::lag(cbo_proj_diff,2))
+    
   }
   
   if(cbo_category=="Social Security"){
@@ -596,7 +712,7 @@ nowcast_budget_outlay = function(cbo_category){
     
     monthly_shares_reg = lm_robust(share~factor(month),monthly_shares %>% group_by(fiscal_year) %>% filter(n()==12))
     
-    fcast_df1 = imputed_df %>% 
+    fcast_df1 = read_csv(paste0("Data/Processing/imputed_data/imputed_data_asof",floor_date(Sys.Date(),"year")-1,".csv")) %>% 
       arrange(date) %>%
       mutate(year=year(date),
              month=month(date)) %>%
@@ -629,6 +745,41 @@ nowcast_budget_outlay = function(cbo_category){
       mutate(cbo_proj_diff=(value/cbo_proj_month-1)*100) %>% 
       mutate(lag1_cbo_proj_diff=dplyr::lag(cbo_proj_diff,1),
              lag2_cbo_proj_diff=dplyr::lag(cbo_proj_diff,2))
+    
+    fcast_df2 = read_csv(paste0("Data/Processing/imputed_data/imputed_data_asof",Sys.Date(),".csv")) %>% 
+      arrange(date) %>%
+      mutate(year=year(date),
+             month=month(date)) %>%
+      select(-c(PCE,PRS85006112)) %>%
+      select(-one_of("ADPMNUSNERSA")) %>% 
+      left_join(mandatory %>% 
+                  mutate(record_date=floor_date(record_date,"month"),
+                         current_month_net_rcpt_amt=as.numeric(current_month_rcpt_outly_amt)/1000000000) %>% 
+                  select(record_date,current_month_net_rcpt_amt) %>% 
+                  rename(date=record_date,
+                         value=current_month_net_rcpt_amt)) %>% # join the yvariable
+      arrange(date) %>%
+      mutate_at(vars(PAYEMS:JTSJOL,INDPRO:DGS10),~((./dplyr::lag(.,1)-1)*100)) %>%
+      mutate_at(vars(UNRATE:DTCDFSA066MSFRBPHI,gt_1003:gt_999),~(.-dplyr::lag(.,1))) %>%
+      mutate(lag1=dplyr::lag(value,1),
+             lag2=dplyr::lag(value,2),
+             lag3=dplyr::lag(value,3),
+             lag4=dplyr::lag(value,4)) %>%
+      ungroup() %>% 
+      mutate(fiscal_year=as.integer(quarter(date, with_year = TRUE, fiscal_start = 10)))  %>% 
+      left_join(cbo_proj %>% 
+                  filter(subcategory=="Social Security") %>% 
+                  group_by(projected_fiscal_year) %>% 
+                  slice(n()) %>% 
+                  select(projected_fiscal_year,value) %>% 
+                  rename(cbo_proj=value,
+                         fiscal_year=projected_fiscal_year))
+    fcast_df2$cbo_proj_month = as.numeric(predict(monthly_shares_reg,data.frame(month=fcast_df2$month)))*fcast_df2$cbo_proj
+    fcast_df2 = fcast_df2 %>% 
+      mutate(cbo_proj_diff=(value/cbo_proj_month-1)*100) %>% 
+      mutate(lag1_cbo_proj_diff=dplyr::lag(cbo_proj_diff,1),
+             lag2_cbo_proj_diff=dplyr::lag(cbo_proj_diff,2))
+    
   }
   
   if(cbo_category=="National Defense"){
@@ -652,7 +803,7 @@ nowcast_budget_outlay = function(cbo_category){
     
     monthly_shares_reg = lm_robust(share~factor(month),monthly_shares %>% group_by(fiscal_year) %>% filter(n()==12))
     
-    fcast_df1 = imputed_df %>% 
+    fcast_df1 = read_csv(paste0("Data/Processing/imputed_data/imputed_data_asof",floor_date(Sys.Date(),"year")-1,".csv")) %>% 
       arrange(date) %>%
       mutate(year=year(date),
              month=month(date)) %>%
@@ -685,6 +836,40 @@ nowcast_budget_outlay = function(cbo_category){
       mutate(cbo_proj_diff=(value/cbo_proj_month-1)*100) %>% 
       mutate(lag1_cbo_proj_diff=dplyr::lag(cbo_proj_diff,1),
              lag2_cbo_proj_diff=dplyr::lag(cbo_proj_diff,2))
+    
+    fcast_df2 = read_csv(paste0("Data/Processing/imputed_data/imputed_data_asof",Sys.Date(),".csv")) %>% 
+      arrange(date) %>%
+      mutate(year=year(date),
+             month=month(date)) %>%
+      select(-c(PCE,PRS85006112)) %>%
+      select(-one_of("ADPMNUSNERSA")) %>% 
+      left_join(mandatory %>% 
+                  mutate(record_date=floor_date(record_date,"month"),
+                         current_month_net_rcpt_amt=as.numeric(current_month_rcpt_outly_amt)/1000000000) %>% 
+                  select(record_date,current_month_net_rcpt_amt) %>% 
+                  rename(date=record_date,
+                         value=current_month_net_rcpt_amt)) %>% # join the yvariable
+      arrange(date) %>%
+      mutate_at(vars(PAYEMS:JTSJOL,INDPRO:DGS10),~((./dplyr::lag(.,1)-1)*100)) %>%
+      mutate_at(vars(UNRATE:DTCDFSA066MSFRBPHI,gt_1003:gt_999),~(.-dplyr::lag(.,1))) %>%
+      mutate(lag1=dplyr::lag(value,1),
+             lag2=dplyr::lag(value,2),
+             lag3=dplyr::lag(value,3),
+             lag4=dplyr::lag(value,4)) %>%
+      ungroup() %>% 
+      mutate(fiscal_year=as.integer(quarter(date, with_year = TRUE, fiscal_start = 10)))  %>% 
+      left_join(cbo_proj %>% 
+                  filter(subcategory=="Defense Discretionary") %>% 
+                  group_by(projected_fiscal_year) %>% 
+                  slice(n()) %>% 
+                  select(projected_fiscal_year,value) %>% 
+                  rename(cbo_proj=value,
+                         fiscal_year=projected_fiscal_year))
+    fcast_df2$cbo_proj_month = as.numeric(predict(monthly_shares_reg,data.frame(month=fcast_df2$month)))*fcast_df2$cbo_proj
+    fcast_df2 = fcast_df2 %>% 
+      mutate(cbo_proj_diff=(value/cbo_proj_month-1)*100) %>% 
+      mutate(lag1_cbo_proj_diff=dplyr::lag(cbo_proj_diff,1),
+             lag2_cbo_proj_diff=dplyr::lag(cbo_proj_diff,2))
   }
   
   if(cbo_category=="Net Interest"){
@@ -708,7 +893,7 @@ nowcast_budget_outlay = function(cbo_category){
     
     monthly_shares_reg = lm_robust(share~factor(month),monthly_shares %>% group_by(fiscal_year) %>% filter(n()==12))
     
-    fcast_df1 = imputed_df %>% 
+    fcast_df1 = read_csv(paste0("Data/Processing/imputed_data/imputed_data_asof",floor_date(Sys.Date(),"year")-1,".csv")) %>% 
       arrange(date) %>%
       mutate(year=year(date),
              month=month(date)) %>%
@@ -738,6 +923,40 @@ nowcast_budget_outlay = function(cbo_category){
                          fiscal_year=projected_fiscal_year))
     fcast_df1$cbo_proj_month = as.numeric(predict(monthly_shares_reg,data.frame(month=fcast_df1$month)))*fcast_df1$cbo_proj
     fcast_df1 = fcast_df1 %>% 
+      mutate(cbo_proj_diff=(value/cbo_proj_month-1)*100) %>% 
+      mutate(lag1_cbo_proj_diff=dplyr::lag(cbo_proj_diff,1),
+             lag2_cbo_proj_diff=dplyr::lag(cbo_proj_diff,2))
+    
+    fcast_df2 = read_csv(paste0("Data/Processing/imputed_data/imputed_data_asof",Sys.Date(),".csv")) %>% 
+      arrange(date) %>%
+      mutate(year=year(date),
+             month=month(date)) %>%
+      select(-c(PCE,PRS85006112)) %>%
+      select(-one_of("ADPMNUSNERSA")) %>% 
+      left_join(mandatory %>% 
+                  mutate(record_date=floor_date(record_date,"month"),
+                         current_month_net_rcpt_amt=as.numeric(current_month_rcpt_outly_amt)/1000000000) %>% 
+                  select(record_date,current_month_net_rcpt_amt) %>% 
+                  rename(date=record_date,
+                         value=current_month_net_rcpt_amt)) %>% # join the yvariable
+      arrange(date) %>%
+      mutate_at(vars(PAYEMS:JTSJOL,INDPRO:DGS10),~((./dplyr::lag(.,1)-1)*100)) %>%
+      mutate_at(vars(UNRATE:DTCDFSA066MSFRBPHI,gt_1003:gt_999),~(.-dplyr::lag(.,1))) %>%
+      mutate(lag1=dplyr::lag(value,1),
+             lag2=dplyr::lag(value,2),
+             lag3=dplyr::lag(value,3),
+             lag4=dplyr::lag(value,4)) %>%
+      ungroup() %>% 
+      mutate(fiscal_year=as.integer(quarter(date, with_year = TRUE, fiscal_start = 10)))  %>% 
+      left_join(cbo_proj %>% 
+                  filter(subcategory=="Net Interest") %>% 
+                  group_by(projected_fiscal_year) %>% 
+                  slice(n()) %>% 
+                  select(projected_fiscal_year,value) %>% 
+                  rename(cbo_proj=value,
+                         fiscal_year=projected_fiscal_year))
+    fcast_df2$cbo_proj_month = as.numeric(predict(monthly_shares_reg,data.frame(month=fcast_df2$month)))*fcast_df2$cbo_proj
+    fcast_df2 = fcast_df2 %>% 
       mutate(cbo_proj_diff=(value/cbo_proj_month-1)*100) %>% 
       mutate(lag1_cbo_proj_diff=dplyr::lag(cbo_proj_diff,1),
              lag2_cbo_proj_diff=dplyr::lag(cbo_proj_diff,2))
@@ -787,7 +1006,7 @@ nowcast_budget_outlay = function(cbo_category){
     
     monthly_shares_reg = lm_robust(share~factor(month),monthly_shares %>% group_by(fiscal_year) %>% filter(n()==12))
     
-    fcast_df1 = imputed_df %>% 
+    fcast_df1 = read_csv(paste0("Data/Processing/imputed_data/imputed_data_asof",floor_date(Sys.Date(),"year")-1,".csv")) %>% 
       arrange(date) %>%
       mutate(year=year(date),
              month=month(date)) %>%
@@ -822,6 +1041,76 @@ nowcast_budget_outlay = function(cbo_category){
       mutate(lag1_cbo_proj_diff=dplyr::lag(cbo_proj_diff,1),
              lag2_cbo_proj_diff=dplyr::lag(cbo_proj_diff,2))
     
+    fcast_df1 = read_csv(paste0("Data/Processing/imputed_data/imputed_data_asof",floor_date(Sys.Date(),"year")-1,".csv")) %>% 
+      arrange(date) %>%
+      mutate(year=year(date),
+             month=month(date)) %>%
+      select(-c(PCE,PRS85006112)) %>%
+      select(-one_of("ADPMNUSNERSA")) %>% 
+      left_join(mandatory %>% 
+                  mutate(record_date=floor_date(record_date,"month"),
+                         current_month_net_rcpt_amt=as.numeric(current_month_rcpt_outly_amt)/1000000000) %>% 
+                  select(record_date,current_month_net_rcpt_amt) %>% 
+                  rename(date=record_date,
+                         value=current_month_net_rcpt_amt)) %>% # join the yvariable
+      arrange(date) %>%
+      mutate_at(vars(PAYEMS:JTSJOL,INDPRO:DGS10),~((./dplyr::lag(.,1)-1)*100)) %>%
+      mutate_at(vars(UNRATE:DTCDFSA066MSFRBPHI,gt_1003:gt_999),~(.-dplyr::lag(.,1))) %>%
+      mutate(lag1=dplyr::lag(value,1),
+             lag2=dplyr::lag(value,2),
+             lag3=dplyr::lag(value,3),
+             lag4=dplyr::lag(value,4)) %>%
+      ungroup() %>% 
+      mutate(fiscal_year=as.integer(quarter(date, with_year = TRUE, fiscal_start = 10)))  %>% 
+      left_join(cbo_proj %>% 
+                  filter(subcategory%in%c("Nondefense Discretionary","Other Mandatory")) %>% 
+                  group_by(projected_fiscal_year,subcategory) %>% 
+                  slice(n()) %>% 
+                  group_by(projected_fiscal_year) %>% 
+                  summarize(value=sum(value,na.rm=TRUE)) %>% 
+                  rename(cbo_proj=value,
+                         fiscal_year=projected_fiscal_year))
+    fcast_df1$cbo_proj_month = as.numeric(predict(monthly_shares_reg,data.frame(month=fcast_df1$month)))*fcast_df1$cbo_proj
+    fcast_df1 = fcast_df1 %>% 
+      mutate(cbo_proj_diff=(value/cbo_proj_month-1)*100) %>% 
+      mutate(lag1_cbo_proj_diff=dplyr::lag(cbo_proj_diff,1),
+             lag2_cbo_proj_diff=dplyr::lag(cbo_proj_diff,2))
+    
+    fcast_df2 = read_csv(paste0("Data/Processing/imputed_data/imputed_data_asof",Sys.Date(),".csv")) %>% 
+      arrange(date) %>%
+      mutate(year=year(date),
+             month=month(date)) %>%
+      select(-c(PCE,PRS85006112)) %>%
+      select(-one_of("ADPMNUSNERSA")) %>% 
+      left_join(mandatory %>% 
+                  mutate(record_date=floor_date(record_date,"month"),
+                         current_month_net_rcpt_amt=as.numeric(current_month_rcpt_outly_amt)/1000000000) %>% 
+                  select(record_date,current_month_net_rcpt_amt) %>% 
+                  rename(date=record_date,
+                         value=current_month_net_rcpt_amt)) %>% # join the yvariable
+      arrange(date) %>%
+      mutate_at(vars(PAYEMS:JTSJOL,INDPRO:DGS10),~((./dplyr::lag(.,1)-1)*100)) %>%
+      mutate_at(vars(UNRATE:DTCDFSA066MSFRBPHI,gt_1003:gt_999),~(.-dplyr::lag(.,1))) %>%
+      mutate(lag1=dplyr::lag(value,1),
+             lag2=dplyr::lag(value,2),
+             lag3=dplyr::lag(value,3),
+             lag4=dplyr::lag(value,4)) %>%
+      ungroup() %>% 
+      mutate(fiscal_year=as.integer(quarter(date, with_year = TRUE, fiscal_start = 10)))  %>% 
+      left_join(cbo_proj %>% 
+                  filter(subcategory%in%c("Nondefense Discretionary","Other Mandatory")) %>% 
+                  group_by(projected_fiscal_year,subcategory) %>% 
+                  slice(n()) %>% 
+                  group_by(projected_fiscal_year) %>% 
+                  summarize(value=sum(value,na.rm=TRUE)) %>% 
+                  rename(cbo_proj=value,
+                         fiscal_year=projected_fiscal_year))
+    fcast_df2$cbo_proj_month = as.numeric(predict(monthly_shares_reg,data.frame(month=fcast_df2$month)))*fcast_df2$cbo_proj
+    fcast_df2 = fcast_df2 %>% 
+      mutate(cbo_proj_diff=(value/cbo_proj_month-1)*100) %>% 
+      mutate(lag1_cbo_proj_diff=dplyr::lag(cbo_proj_diff,1),
+             lag2_cbo_proj_diff=dplyr::lag(cbo_proj_diff,2))
+    
   }
   
   X = model.matrix(as.formula(paste0("value","~",paste(colnames(fcast_df1)[c(2:252)],collapse="+"))),
@@ -844,14 +1133,14 @@ nowcast_budget_outlay = function(cbo_category){
   test = lm_robust(as.formula(paste0("value","~lag1+lag2+lag3+lag4+cbo_proj_month+",paste(c(rownames(selected_coefs_state)),collapse="+"))),
                    data = fcast_df1 %>% filter(date<='2024-01-01') %>% mutate(weight=(1:n())/n()))
   
-  if(is.infinite(max(abs(which(is.na(tail(fcast_df1$value,5)))-6)))){
+  if(is.infinite(max(abs(which(is.na(tail(fcast_df2$value,5)))-6)))){
     next
   }else{
-    for(dat in tail(fcast_df1$date,max(abs(which(is.na(tail(fcast_df1$value,5)))-6)))){
+    for(dat in tail(fcast_df2$date,max(abs(which(is.na(tail(fcast_df2$value,5)))-6)))){
       
-      fcast_df1$value[fcast_df1$date==dat] = predict(test,fcast_df1 %>% filter(date==dat))
+      fcast_df2$value[fcast_df2$date==dat] = predict(test,fcast_df2 %>% filter(date==dat))
       
-      fcast_df1 = fcast_df1 %>% 
+      fcast_df2 = fcast_df2 %>% 
         mutate(lag1=dplyr::lag(value,1),
                lag2=dplyr::lag(value,2),
                lag3=dplyr::lag(value,3),
@@ -862,15 +1151,15 @@ nowcast_budget_outlay = function(cbo_category){
   
   
   pred_df = data.frame(
-    date=fcast_df1[['date']],
+    date=fcast_df2[['date']],
     var=cbo_category,
-    pred=predict(test,fcast_df1),
-    actual=fcast_df1[['value']],
-    cbo_proj=fcast_df1[['cbo_proj_month']]
+    pred=predict(test,fcast_df2),
+    actual=fcast_df2[['value']],
+    cbo_proj=fcast_df2[['cbo_proj_month']]
   )
   
   return(list(
-    'data'=fcast_df1,
+    'data'=fcast_df2,
     'reg'=test,
     'pred_df'=pred_df,
     'monthly_shares_reg'=monthly_shares_reg
@@ -1072,16 +1361,13 @@ impute_function_kalman = function(df,dat){
   
 }
 
-
-
-fcast_gdp_ols = function(dat,col){
+get_imputed_data = function(dat,col,testing){
   
   fcast_df1 = read_csv(paste0("Data/Processing/imputed_data/imputed_data_asof",dat,".csv")) %>% 
     arrange(date) %>%
     mutate(year=year(date),
            qtr=quarter(date)) %>%
     select(-c(PCE,PRS85006112)) %>%
-    select(-one_of("ADPMNUSNERSA","IHLIDXUS")) %>% 
     group_by(year,qtr) %>%
     mutate_at(vars(PAYEMS:gt_999),~mean(.,na.rm=TRUE)) %>%
     summarize_all(~.[1]) %>%
@@ -1098,19 +1384,31 @@ fcast_gdp_ols = function(dat,col){
            lag2=dplyr::lag(!!sym(col),2),
            lag3=dplyr::lag(!!sym(col),3),
            lag4=dplyr::lag(!!sym(col),4)) %>%
-    ungroup() 
-   # mutate(IHLIDXUS=ifelse(is.nan(IHLIDXUS),0,IHLIDXUS)) # bring back when not testing
+    ungroup() %>% 
+    mutate(IHLIDXUS=ifelse(is.nan(IHLIDXUS),0,IHLIDXUS)) # bring back when not testing
   
-  dates = tail(fcast_df1,10) %>% filter(is.na(!!sym(col))) %>% pull(date)
+  if(testing){
+    
+    fcast_df1 = fcast_df1 %>% 
+      select(-one_of("ADPMNUSNERSA","IHLIDXUS"))
+    
+  }
   
-  X = model.matrix(as.formula(paste0(col,"~",paste(colnames(fcast_df1)[c(4:246)],collapse="+"))),
-                   fcast_df1 %>% filter(date<dat&year(date)>=2006&!is.na(!!sym(col))))[, -1]
-  y = (fcast_df1 %>% filter(date<dat&year(date)>=2006&!is.na(!!sym(col))))[[col]]
+  return(fcast_df1)
+}
+
+fcast_gdp_ols = function(dat,col,testing=FALSE){
+  
+  set.seed(178)
+  
+  fcast_df1 = get_imputed_data(floor_date(as.Date(dat),"quarter")-1,col,testing)
+  
+  X = model.matrix(as.formula(paste0(col,"~",paste(colnames(fcast_df1 %>% select(PAYEMS:gt_999)),collapse="+"))),
+                   fcast_df1 %>% filter(date<max(c(floor_date(as.Date(dat),"year") %m-% years(1),'2007-01-01'))&year(date)>=2006&!is.na(!!sym(col))))[, -1]
+  y = (fcast_df1 %>% filter(date<max(c(floor_date(as.Date(dat),"year") %m-% years(1),'2007-01-01'))&year(date)>=2006&!is.na(!!sym(col))))[[col]]
   
   if(length(y)<4){next}
   
-  weight = (1:nrow(X))/nrow(X)
-  weight = ifelse(weight<.5,.5,weight)
   fit_lasso_state = glmnet(X, y, alpha = 1,pmax=20)
   # weight by how recent the data is
   
@@ -1123,7 +1421,11 @@ fcast_gdp_ols = function(dat,col){
   selected_coefs_state = selected_coefs_state %>% arrange(-Overall)
   
   test = lm_robust(as.formula(paste0(col,"~lag1+lag2+",paste(rownames(selected_coefs_state),collapse="+"))),
-                   data = fcast_df1 %>% filter(date<=dat))
+                   data = fcast_df1 %>% filter(date<=max(c(floor_date(as.Date(dat),"year") %m-% years(1),'2007-01-01'))))
+  
+  fcast_df1 = get_imputed_data(dat,col,testing)
+  
+  dates = tail(fcast_df1,10) %>% filter(is.na(!!sym(col))) %>% pull(date)
   
   i=2
   if(length(dates)>1){

@@ -13,8 +13,33 @@ library(shiny)
 library(plotly)
 library(zoo)
 library(tidyverse)
+library(funspotr)
+library(data.table)
 
 load(url("https://github.com/johnkearns617/XDate_Estimation/raw/refs/heads/main/Data/Processing/image_saves/chart_data.RData"))
+
+charts = list()
+for(dat in tail(list_files_github_repo(
+  "johnkearns617/XDate_Estimation",
+  branch = NULL,
+  pattern = stringr::regex("(rdata)$", ignore_case = TRUE),
+) %>% 
+select(absolute_paths) %>% 
+filter(grepl("image_saves",absolute_paths)&grepl("data_asof_",absolute_paths)) %>%
+pull(absolute_paths),
+15)){
+  
+  load(url(dat))
+  
+  gsub(".*https://raw.githubusercontent.com/johnkearns617/XDate_Estimation/main/Data/Processing/image_saves/data_asof_ (.+) .RData.*", "\\1", dat)
+  res <- str_match(dat, "https://raw.githubusercontent.com/johnkearns617/XDate_Estimation/main/Data/Processing/image_saves/data_asof_\\s*(.*?)\\s*.RData")[,2]
+  
+  charts[[dat]] = my_chart %>% 
+    mutate(date_run=res)
+  
+}
+
+charts = data.table::rbindlist(charts)
 
 # Define UI for application that draws a histogram
 ui <- fluidPage(
@@ -25,6 +50,7 @@ ui <- fluidPage(
     # Sidebar with a slider input for number of bins 
     sidebarLayout(
         sidebarPanel(
+            h5(paste0("Data as of ",max(breakdown_df$prediction_date))),
             h5("This is where model explanation and links would go")
         ),
 
@@ -32,13 +58,16 @@ ui <- fluidPage(
         mainPanel(
            tabsetPanel(
              tabPanel("XDate",
-                      plotlyOutput('xdate_chart')),
+                      textOutput("xdate"),
+                      plotlyOutput('xdate_chart'),
+                      plotlyOutput('historical_chart')),
              tabPanel("Government Deficits",
                       plotlyOutput('yearly_chart'),
                       plotlyOutput('monthly_chart'),
                       plotlyOutput('daily_chart')),
              tabPanel("GDP Nowcast",
-                      plotlyOutput("gdp_nowcast"))
+                      plotlyOutput("gdp_nowcast"),
+                      dataTableOutput("released_today"))
            )
         )
     )
@@ -54,6 +83,28 @@ server <- function(input, output) {
         theme_bw() +
         labs(x="",y="Fiscal Space Remaining ($B)")
         )
+    })
+    
+    output$xdate = renderText({
+      
+      paste0("The estimated X-Date is: ",my_chart %>% filter(running_bal==0) %>% ungroup() %>% slice(1) %>% pull(date),"\n",
+             "and as early as: ",my_chart %>% filter(running_bal_lower==0) %>% ungroup() %>% slice(1) %>% pull(date))
+      
+    })
+    
+    output$historical_chart = renderPlotly({
+      
+      ggplotly(
+        ggplot(charts,aes(x=date,color=as.Date(date_run),group=date_run)) + 
+        #geom_ribbon(aes(ymin=running_bal_lower,ymax=running_bal_upper),alpha=.3) +
+        geom_line(aes(y=running_bal,alpha=as.Date(date_run))) +
+        geom_line(data=charts %>% mutate(date_run=as.Date(date_run)) %>% filter(date_run==max(date_run)),aes(x=date,y=running_bal),color="black") +
+        scale_color_gradient(low='red',high='green') +
+        theme_bw() +
+        labs(x="",y="Fiscal Space Remaining ($B)") +
+        theme(legend.position="none")
+      )
+      
     })
     
     output$yearly_chart = renderPlotly({
@@ -128,6 +179,26 @@ server <- function(input, output) {
                          theme_minimal() +
                          facet_wrap(~date,scales="free")
       ) 
+    })
+    
+    output$released_today = renderDataTable({
+      
+      national_econ %>% 
+        filter(release_date>=(Sys.Date()-7)) %>% 
+        select(title,series_id,release_date) %>% 
+        full_join(breakdown_df %>% 
+                    filter((prediction_date>=(Sys.Date()-8)|length(unique(prediction_date))<7)&
+                             variable_name%in%((national_econ %>% 
+                                                  filter(release_date>=(Sys.Date()-7)) %>% 
+                                                  select(title,series_id,release_date))$series_id)) %>% 
+                    group_by(date,variable_name) %>% 
+                    slice(1,n()) %>% 
+                    group_by(date,variable_name) %>% 
+                    summarize(impact=contribution[2]-contribution[1]) %>% 
+                    rename(projection_quarter=date),
+                  by=c("series_id"="variable_name")) %>% 
+        arrange(impact)
+      
     })
     
 }

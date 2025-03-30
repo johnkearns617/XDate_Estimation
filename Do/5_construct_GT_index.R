@@ -65,7 +65,6 @@ for(dat in avail_files){
     mutate(year=year(date),
            qtr=quarter(date)) %>%
     select(-c(PCE,PRS85006112)) %>%
-    #select(-one_of("ADPMNUSNERSA")) %>% 
     group_by(year,qtr) %>%
     mutate_at(vars(PAYEMS:gt_999),~mean(.,na.rm=TRUE)) %>%
     summarize_all(~.[1]) %>%

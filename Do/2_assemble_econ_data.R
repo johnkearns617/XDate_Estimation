@@ -31,6 +31,8 @@ conflicted::conflicts_prefer(jsonlite::fromJSON)
 
 data(categories) # categories from Google Trends
 
+set.seed(178)
+
 bls_naics_codes = read_csv("https://data.bls.gov/cew/doc/titles/industry/industry_titles.csv")
 bls_area_codes = read_csv("https://data.bls.gov/cew/doc/titles/area/area_titles.csv")
 

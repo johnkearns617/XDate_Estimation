@@ -30,6 +30,8 @@ library(mice)
 
 conflicted::conflict_prefer("filter","dplyr")
 
+set.seed(178)
+
 # get data
 # code currently written to get data as of end of November 2024. Function can take any date
 df = make_df(Sys.Date()) %>% 
