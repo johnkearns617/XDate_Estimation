@@ -264,6 +264,19 @@ get_deficit_imputed_data = function(dat,dataset,cbo_category,monthly_shares_reg)
     left_join(dataset %>% 
                 select(date,value)) %>% # join the yvariable
     arrange(date) %>%
+    left_join(national_econ %>% 
+                filter(series_id=="GDPC1") %>% 
+                select(date,GDPC1=value)) %>% 
+    group_by(year,quarter(date)) %>% 
+    mutate(GDPC1=GDPC1[1])  %>% 
+    ungroup() %>% 
+    select(-`quarter(date)`) %>% 
+    mutate(GDPC1 = (GDPC1/dplyr::lag(GDPC1,3)-1)*100) %>% 
+    rowwise() %>% 
+    mutate(GDPC1=ifelse(floor_date(date,"quarter")%in%gdp_data$date&is.na(GDPC1),
+                        tail(gdp_data$gdp[gdp_data$date==floor_date(date,"quarter")],1),
+                        GDPC1)) %>% 
+    ungroup() %>% 
     mutate_at(vars(PAYEMS:JTSJOL,INDPRO:DGS10),~((./dplyr::lag(.,1)-1)*100)) %>%
     mutate_at(vars(UNRATE:DTCDFSA066MSFRBPHI,gt_1003:gt_999),~(.-dplyr::lag(.,1))) %>%
     mutate(lag1=dplyr::lag(value,1),
@@ -319,7 +332,7 @@ nowcast_headline = function(dataset,cbo_category){
   selected_coefs_state$category = sapply(selected_coefs_state$var,which_category)
   selected_coefs_state = selected_coefs_state %>% arrange(-Overall)
   
-  test = lm_robust(as.formula(paste0("value","~lag1+lag2+lag3+lag4+cbo_proj_month+",paste(c(rownames(selected_coefs_state)),collapse="+"))),
+  test = lm_robust(as.formula(paste0("value","~lag1+lag2+lag3+lag4+cbo_proj_month+GDPC1+",paste(c(rownames(selected_coefs_state)),collapse="+"))),
                    data = fcast_df1 %>% filter(date<='2024-01-01') %>% mutate(weight=(1:n())/n()))
   
   fcast_df1 = get_deficit_imputed_data(Sys.Date(),dataset,cbo_category,monthly_shares_reg)
@@ -385,6 +398,19 @@ nowcast_budget_receipt = function(mts_dataset,col_mts,cbo_component,cbo_category
                 rename(date=record_date,
                        value=current_month_net_rcpt_amt)) %>% # join the yvariable
     arrange(date) %>%
+    left_join(national_econ %>% 
+                filter(series_id=="GDPC1") %>% 
+                select(date,GDPC1=value)) %>% 
+    group_by(year,quarter(date)) %>% 
+    mutate(GDPC1=GDPC1[1])  %>% 
+    ungroup() %>% 
+    select(-`quarter(date)`) %>% 
+    mutate(GDPC1 = (GDPC1/dplyr::lag(GDPC1,3)-1)*100) %>% 
+    rowwise() %>% 
+    mutate(GDPC1=ifelse(floor_date(date,"quarter")%in%gdp_data$date&is.na(GDPC1),
+                        tail(gdp_data$gdp[gdp_data$date==floor_date(date,"quarter")],1),
+                        GDPC1)) %>% 
+    ungroup() %>% 
     mutate_at(vars(PAYEMS:JTSJOL,INDPRO:DGS10),~((./dplyr::lag(.,1)-1)*100)) %>%
     mutate_at(vars(UNRATE:DTCDFSA066MSFRBPHI,gt_1003:gt_999),~(.-dplyr::lag(.,1))) %>%
     mutate(lag1=dplyr::lag(value,1),
@@ -423,7 +449,7 @@ nowcast_budget_receipt = function(mts_dataset,col_mts,cbo_component,cbo_category
   selected_coefs_state$category = sapply(selected_coefs_state$var,which_category)
   selected_coefs_state = selected_coefs_state %>% arrange(-Overall)
   
-  test = lm_robust(as.formula(paste0("value","~lag1+lag2+lag3+lag4+cbo_proj_month+",paste(c(rownames(selected_coefs_state)),collapse="+"))),
+  test = lm_robust(as.formula(paste0("value","~lag1+lag2+lag3+lag4+cbo_proj_month+GDPC1+",paste(c(rownames(selected_coefs_state)),collapse="+"))),
                    data = fcast_df1 %>% filter(date<='2024-01-01') %>% mutate(weight=(1:n())/n()))
   
   fcast_df1 = read_csv(paste0("Data/Processing/imputed_data/imputed_data_asof",Sys.Date(),".csv"))  %>% 
@@ -439,6 +465,19 @@ nowcast_budget_receipt = function(mts_dataset,col_mts,cbo_component,cbo_category
                 rename(date=record_date,
                        value=current_month_net_rcpt_amt)) %>% # join the yvariable
     arrange(date) %>%
+    left_join(national_econ %>% 
+                filter(series_id=="GDPC1") %>% 
+                select(date,GDPC1=value)) %>% 
+    group_by(year,quarter(date)) %>% 
+    mutate(GDPC1=GDPC1[1])  %>% 
+    ungroup() %>% 
+    select(-`quarter(date)`) %>% 
+    mutate(GDPC1 = (GDPC1/dplyr::lag(GDPC1,3)-1)*100) %>% 
+    rowwise() %>% 
+    mutate(GDPC1=ifelse(floor_date(date,"quarter")%in%gdp_data$date&is.na(GDPC1),
+                        tail(gdp_data$gdp[gdp_data$date==floor_date(date,"quarter")],1),
+                        GDPC1)) %>% 
+    ungroup() %>% 
     mutate_at(vars(PAYEMS:JTSJOL,INDPRO:DGS10),~((./dplyr::lag(.,1)-1)*100)) %>%
     mutate_at(vars(UNRATE:DTCDFSA066MSFRBPHI,gt_1003:gt_999),~(.-dplyr::lag(.,1))) %>%
     mutate(lag1=dplyr::lag(value,1),
@@ -542,6 +581,19 @@ nowcast_budget_outlay = function(cbo_category){
                   rename(date=record_date,
                          value=current_month_net_rcpt_amt)) %>% # join the yvariable
       arrange(date) %>%
+      left_join(national_econ %>% 
+                  filter(series_id=="GDPC1") %>% 
+                  select(date,GDPC1=value)) %>% 
+      group_by(year,quarter(date)) %>% 
+      mutate(GDPC1=GDPC1[1])  %>% 
+      ungroup() %>% 
+      select(-`quarter(date)`) %>% 
+      mutate(GDPC1 = (GDPC1/dplyr::lag(GDPC1,3)-1)*100) %>% 
+      rowwise() %>% 
+      mutate(GDPC1=ifelse(floor_date(date,"quarter")%in%gdp_data$date&is.na(GDPC1),
+                          tail(gdp_data$gdp[gdp_data$date==floor_date(date,"quarter")],1),
+                          GDPC1)) %>% 
+      ungroup() %>% 
       mutate_at(vars(PAYEMS:JTSJOL,INDPRO:DGS10),~((./dplyr::lag(.,1)-1)*100)) %>%
       mutate_at(vars(UNRATE:DTCDFSA066MSFRBPHI,gt_1003:gt_999),~(.-dplyr::lag(.,1))) %>%
       mutate(lag1=dplyr::lag(value,1),
@@ -576,6 +628,19 @@ nowcast_budget_outlay = function(cbo_category){
                   rename(date=record_date,
                          value=current_month_net_rcpt_amt)) %>% # join the yvariable
       arrange(date) %>%
+      left_join(national_econ %>% 
+                  filter(series_id=="GDPC1") %>% 
+                  select(date,GDPC1=value)) %>% 
+      group_by(year,quarter(date)) %>% 
+      mutate(GDPC1=GDPC1[1])  %>% 
+      ungroup() %>% 
+      select(-`quarter(date)`) %>% 
+      mutate(GDPC1 = (GDPC1/dplyr::lag(GDPC1,3)-1)*100) %>% 
+      rowwise() %>% 
+      mutate(GDPC1=ifelse(floor_date(date,"quarter")%in%gdp_data$date&is.na(GDPC1),
+                          tail(gdp_data$gdp[gdp_data$date==floor_date(date,"quarter")],1),
+                          GDPC1)) %>% 
+      ungroup() %>% 
       mutate_at(vars(PAYEMS:JTSJOL,INDPRO:DGS10),~((./dplyr::lag(.,1)-1)*100)) %>%
       mutate_at(vars(UNRATE:DTCDFSA066MSFRBPHI,gt_1003:gt_999),~(.-dplyr::lag(.,1))) %>%
       mutate(lag1=dplyr::lag(value,1),
@@ -634,6 +699,19 @@ nowcast_budget_outlay = function(cbo_category){
                   rename(date=record_date,
                          value=current_month_net_rcpt_amt)) %>% # join the yvariable
       arrange(date) %>%
+      left_join(national_econ %>% 
+                  filter(series_id=="GDPC1") %>% 
+                  select(date,GDPC1=value)) %>% 
+      group_by(year,quarter(date)) %>% 
+      mutate(GDPC1=GDPC1[1])  %>% 
+      ungroup() %>% 
+      select(-`quarter(date)`) %>% 
+      mutate(GDPC1 = (GDPC1/dplyr::lag(GDPC1,3)-1)*100) %>% 
+      rowwise() %>% 
+      mutate(GDPC1=ifelse(floor_date(date,"quarter")%in%gdp_data$date&is.na(GDPC1),
+                          tail(gdp_data$gdp[gdp_data$date==floor_date(date,"quarter")],1),
+                          GDPC1)) %>% 
+      ungroup() %>% 
       mutate_at(vars(PAYEMS:JTSJOL,INDPRO:DGS10),~((./dplyr::lag(.,1)-1)*100)) %>%
       mutate_at(vars(UNRATE:DTCDFSA066MSFRBPHI,gt_1003:gt_999),~(.-dplyr::lag(.,1))) %>%
       mutate(lag1=dplyr::lag(value,1),
@@ -668,6 +746,19 @@ nowcast_budget_outlay = function(cbo_category){
                   rename(date=record_date,
                          value=current_month_net_rcpt_amt)) %>% # join the yvariable
       arrange(date) %>%
+      left_join(national_econ %>% 
+                  filter(series_id=="GDPC1") %>% 
+                  select(date,GDPC1=value)) %>% 
+      group_by(year,quarter(date)) %>% 
+      mutate(GDPC1=GDPC1[1])  %>% 
+      ungroup() %>% 
+      select(-`quarter(date)`) %>% 
+      mutate(GDPC1 = (GDPC1/dplyr::lag(GDPC1,3)-1)*100) %>% 
+      rowwise() %>% 
+      mutate(GDPC1=ifelse(floor_date(date,"quarter")%in%gdp_data$date&is.na(GDPC1),
+                          tail(gdp_data$gdp[gdp_data$date==floor_date(date,"quarter")],1),
+                          GDPC1)) %>% 
+      ungroup() %>% 
       mutate_at(vars(PAYEMS:JTSJOL,INDPRO:DGS10),~((./dplyr::lag(.,1)-1)*100)) %>%
       mutate_at(vars(UNRATE:DTCDFSA066MSFRBPHI,gt_1003:gt_999),~(.-dplyr::lag(.,1))) %>%
       mutate(lag1=dplyr::lag(value,1),
@@ -725,6 +816,19 @@ nowcast_budget_outlay = function(cbo_category){
                   rename(date=record_date,
                          value=current_month_net_rcpt_amt)) %>% # join the yvariable
       arrange(date) %>%
+      left_join(national_econ %>% 
+                  filter(series_id=="GDPC1") %>% 
+                  select(date,GDPC1=value)) %>% 
+      group_by(year,quarter(date)) %>% 
+      mutate(GDPC1=GDPC1[1])  %>% 
+      ungroup() %>% 
+      select(-`quarter(date)`) %>% 
+      mutate(GDPC1 = (GDPC1/dplyr::lag(GDPC1,3)-1)*100) %>% 
+      rowwise() %>% 
+      mutate(GDPC1=ifelse(floor_date(date,"quarter")%in%gdp_data$date&is.na(GDPC1),
+                          tail(gdp_data$gdp[gdp_data$date==floor_date(date,"quarter")],1),
+                          GDPC1)) %>% 
+      ungroup() %>% 
       mutate_at(vars(PAYEMS:JTSJOL,INDPRO:DGS10),~((./dplyr::lag(.,1)-1)*100)) %>%
       mutate_at(vars(UNRATE:DTCDFSA066MSFRBPHI,gt_1003:gt_999),~(.-dplyr::lag(.,1))) %>%
       mutate(lag1=dplyr::lag(value,1),
@@ -759,6 +863,19 @@ nowcast_budget_outlay = function(cbo_category){
                   rename(date=record_date,
                          value=current_month_net_rcpt_amt)) %>% # join the yvariable
       arrange(date) %>%
+      left_join(national_econ %>% 
+                  filter(series_id=="GDPC1") %>% 
+                  select(date,GDPC1=value)) %>% 
+      group_by(year,quarter(date)) %>% 
+      mutate(GDPC1=GDPC1[1])  %>% 
+      ungroup() %>% 
+      select(-`quarter(date)`) %>% 
+      mutate(GDPC1 = (GDPC1/dplyr::lag(GDPC1,3)-1)*100) %>% 
+      rowwise() %>% 
+      mutate(GDPC1=ifelse(floor_date(date,"quarter")%in%gdp_data$date&is.na(GDPC1),
+                          tail(gdp_data$gdp[gdp_data$date==floor_date(date,"quarter")],1),
+                          GDPC1)) %>% 
+      ungroup() %>% 
       mutate_at(vars(PAYEMS:JTSJOL,INDPRO:DGS10),~((./dplyr::lag(.,1)-1)*100)) %>%
       mutate_at(vars(UNRATE:DTCDFSA066MSFRBPHI,gt_1003:gt_999),~(.-dplyr::lag(.,1))) %>%
       mutate(lag1=dplyr::lag(value,1),
@@ -816,6 +933,19 @@ nowcast_budget_outlay = function(cbo_category){
                   rename(date=record_date,
                          value=current_month_net_rcpt_amt)) %>% # join the yvariable
       arrange(date) %>%
+      left_join(national_econ %>% 
+                  filter(series_id=="GDPC1") %>% 
+                  select(date,GDPC1=value)) %>% 
+      group_by(year,quarter(date)) %>% 
+      mutate(GDPC1=GDPC1[1])  %>% 
+      ungroup() %>% 
+      select(-`quarter(date)`) %>% 
+      mutate(GDPC1 = (GDPC1/dplyr::lag(GDPC1,3)-1)*100) %>% 
+      rowwise() %>% 
+      mutate(GDPC1=ifelse(floor_date(date,"quarter")%in%gdp_data$date&is.na(GDPC1),
+                          tail(gdp_data$gdp[gdp_data$date==floor_date(date,"quarter")],1),
+                          GDPC1)) %>% 
+      ungroup() %>% 
       mutate_at(vars(PAYEMS:JTSJOL,INDPRO:DGS10),~((./dplyr::lag(.,1)-1)*100)) %>%
       mutate_at(vars(UNRATE:DTCDFSA066MSFRBPHI,gt_1003:gt_999),~(.-dplyr::lag(.,1))) %>%
       mutate(lag1=dplyr::lag(value,1),
@@ -850,6 +980,19 @@ nowcast_budget_outlay = function(cbo_category){
                   rename(date=record_date,
                          value=current_month_net_rcpt_amt)) %>% # join the yvariable
       arrange(date) %>%
+      left_join(national_econ %>% 
+                  filter(series_id=="GDPC1") %>% 
+                  select(date,GDPC1=value)) %>% 
+      group_by(year,quarter(date)) %>% 
+      mutate(GDPC1=GDPC1[1])  %>% 
+      ungroup() %>% 
+      select(-`quarter(date)`) %>% 
+      mutate(GDPC1 = (GDPC1/dplyr::lag(GDPC1,3)-1)*100) %>% 
+      rowwise() %>% 
+      mutate(GDPC1=ifelse(floor_date(date,"quarter")%in%gdp_data$date&is.na(GDPC1),
+                          tail(gdp_data$gdp[gdp_data$date==floor_date(date,"quarter")],1),
+                          GDPC1)) %>% 
+      ungroup() %>% 
       mutate_at(vars(PAYEMS:JTSJOL,INDPRO:DGS10),~((./dplyr::lag(.,1)-1)*100)) %>%
       mutate_at(vars(UNRATE:DTCDFSA066MSFRBPHI,gt_1003:gt_999),~(.-dplyr::lag(.,1))) %>%
       mutate(lag1=dplyr::lag(value,1),
@@ -906,6 +1049,19 @@ nowcast_budget_outlay = function(cbo_category){
                   rename(date=record_date,
                          value=current_month_net_rcpt_amt)) %>% # join the yvariable
       arrange(date) %>%
+      left_join(national_econ %>% 
+                  filter(series_id=="GDPC1") %>% 
+                  select(date,GDPC1=value)) %>% 
+      group_by(year,quarter(date)) %>% 
+      mutate(GDPC1=GDPC1[1])  %>% 
+      ungroup() %>% 
+      select(-`quarter(date)`) %>% 
+      mutate(GDPC1 = (GDPC1/dplyr::lag(GDPC1,3)-1)*100) %>% 
+      rowwise() %>% 
+      mutate(GDPC1=ifelse(floor_date(date,"quarter")%in%gdp_data$date&is.na(GDPC1),
+                          tail(gdp_data$gdp[gdp_data$date==floor_date(date,"quarter")],1),
+                          GDPC1)) %>% 
+      ungroup() %>% 
       mutate_at(vars(PAYEMS:JTSJOL,INDPRO:DGS10),~((./dplyr::lag(.,1)-1)*100)) %>%
       mutate_at(vars(UNRATE:DTCDFSA066MSFRBPHI,gt_1003:gt_999),~(.-dplyr::lag(.,1))) %>%
       mutate(lag1=dplyr::lag(value,1),
@@ -940,6 +1096,19 @@ nowcast_budget_outlay = function(cbo_category){
                   rename(date=record_date,
                          value=current_month_net_rcpt_amt)) %>% # join the yvariable
       arrange(date) %>%
+      left_join(national_econ %>% 
+                  filter(series_id=="GDPC1") %>% 
+                  select(date,GDPC1=value)) %>% 
+      group_by(year,quarter(date)) %>% 
+      mutate(GDPC1=GDPC1[1])  %>% 
+      ungroup() %>% 
+      select(-`quarter(date)`) %>% 
+      mutate(GDPC1 = (GDPC1/dplyr::lag(GDPC1,3)-1)*100) %>% 
+      rowwise() %>% 
+      mutate(GDPC1=ifelse(floor_date(date,"quarter")%in%gdp_data$date&is.na(GDPC1),
+                          tail(gdp_data$gdp[gdp_data$date==floor_date(date,"quarter")],1),
+                          GDPC1)) %>% 
+      ungroup() %>% 
       mutate_at(vars(PAYEMS:JTSJOL,INDPRO:DGS10),~((./dplyr::lag(.,1)-1)*100)) %>%
       mutate_at(vars(UNRATE:DTCDFSA066MSFRBPHI,gt_1003:gt_999),~(.-dplyr::lag(.,1))) %>%
       mutate(lag1=dplyr::lag(value,1),
@@ -1019,6 +1188,19 @@ nowcast_budget_outlay = function(cbo_category){
                   rename(date=record_date,
                          value=current_month_net_rcpt_amt)) %>% # join the yvariable
       arrange(date) %>%
+      left_join(national_econ %>% 
+                  filter(series_id=="GDPC1") %>% 
+                  select(date,GDPC1=value)) %>% 
+      group_by(year,quarter(date)) %>% 
+      mutate(GDPC1=GDPC1[1])  %>% 
+      ungroup() %>% 
+      select(-`quarter(date)`) %>% 
+      mutate(GDPC1 = (GDPC1/dplyr::lag(GDPC1,3)-1)*100) %>% 
+      rowwise() %>% 
+      mutate(GDPC1=ifelse(floor_date(date,"quarter")%in%gdp_data$date&is.na(GDPC1),
+                          tail(gdp_data$gdp[gdp_data$date==floor_date(date,"quarter")],1),
+                          GDPC1)) %>% 
+      ungroup() %>% 
       mutate_at(vars(PAYEMS:JTSJOL,INDPRO:DGS10),~((./dplyr::lag(.,1)-1)*100)) %>%
       mutate_at(vars(UNRATE:DTCDFSA066MSFRBPHI,gt_1003:gt_999),~(.-dplyr::lag(.,1))) %>%
       mutate(lag1=dplyr::lag(value,1),
@@ -1054,6 +1236,19 @@ nowcast_budget_outlay = function(cbo_category){
                   rename(date=record_date,
                          value=current_month_net_rcpt_amt)) %>% # join the yvariable
       arrange(date) %>%
+      left_join(national_econ %>% 
+                  filter(series_id=="GDPC1") %>% 
+                  select(date,GDPC1=value)) %>% 
+      group_by(year,quarter(date)) %>% 
+      mutate(GDPC1=GDPC1[1])  %>% 
+      ungroup() %>% 
+      select(-`quarter(date)`) %>% 
+      mutate(GDPC1 = (GDPC1/dplyr::lag(GDPC1,3)-1)*100) %>% 
+      rowwise() %>% 
+      mutate(GDPC1=ifelse(floor_date(date,"quarter")%in%gdp_data$date&is.na(GDPC1),
+                          tail(gdp_data$gdp[gdp_data$date==floor_date(date,"quarter")],1),
+                          GDPC1)) %>% 
+      ungroup() %>% 
       mutate_at(vars(PAYEMS:JTSJOL,INDPRO:DGS10),~((./dplyr::lag(.,1)-1)*100)) %>%
       mutate_at(vars(UNRATE:DTCDFSA066MSFRBPHI,gt_1003:gt_999),~(.-dplyr::lag(.,1))) %>%
       mutate(lag1=dplyr::lag(value,1),
@@ -1089,6 +1284,19 @@ nowcast_budget_outlay = function(cbo_category){
                   rename(date=record_date,
                          value=current_month_net_rcpt_amt)) %>% # join the yvariable
       arrange(date) %>%
+      left_join(national_econ %>% 
+                  filter(series_id=="GDPC1") %>% 
+                  select(date,GDPC1=value)) %>% 
+      group_by(year,quarter(date)) %>% 
+      mutate(GDPC1=GDPC1[1])  %>% 
+      ungroup() %>% 
+      select(-`quarter(date)`) %>% 
+      mutate(GDPC1 = (GDPC1/dplyr::lag(GDPC1,3)-1)*100) %>% 
+      rowwise() %>% 
+      mutate(GDPC1=ifelse(floor_date(date,"quarter")%in%gdp_data$date&is.na(GDPC1),
+                          tail(gdp_data$gdp[gdp_data$date==floor_date(date,"quarter")],1),
+                          GDPC1)) %>% 
+      ungroup() %>% 
       mutate_at(vars(PAYEMS:JTSJOL,INDPRO:DGS10),~((./dplyr::lag(.,1)-1)*100)) %>%
       mutate_at(vars(UNRATE:DTCDFSA066MSFRBPHI,gt_1003:gt_999),~(.-dplyr::lag(.,1))) %>%
       mutate(lag1=dplyr::lag(value,1),
@@ -1130,7 +1338,7 @@ nowcast_budget_outlay = function(cbo_category){
   selected_coefs_state$category = sapply(selected_coefs_state$var,which_category)
   selected_coefs_state = selected_coefs_state %>% arrange(-Overall)
   
-  test = lm_robust(as.formula(paste0("value","~lag1+lag2+lag3+lag4+cbo_proj_month+",paste(c(rownames(selected_coefs_state)),collapse="+"))),
+  test = lm_robust(as.formula(paste0("value","~lag1+lag2+lag3+lag4+cbo_proj_month+GDPC1+",paste(c(rownames(selected_coefs_state)),collapse="+"))),
                    data = fcast_df1 %>% filter(date<='2024-01-01') %>% mutate(weight=(1:n())/n()))
   
   if(is.infinite(max(abs(which(is.na(tail(fcast_df2$value,5)))-6)))){
