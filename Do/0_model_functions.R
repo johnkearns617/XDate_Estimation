@@ -253,7 +253,7 @@ impute_function = function(df,dat){
 #' @return list with input data, regression, predictions, and the monthly shares regression
 #' 
 
-get_deficit_imputed_data = function(dat,dataset){
+get_deficit_imputed_data = function(dat,dataset,cbo_category,monthly_shares_reg){
   
   fcast_df1 = read_csv(paste0("Data/Processing/imputed_data/imputed_data_asof",dat,".csv")) %>% 
     arrange(date) %>%
@@ -300,7 +300,7 @@ nowcast_headline = function(dataset,cbo_category){
   
   monthly_shares_reg = lm_robust(share~factor(month),monthly_shares %>% group_by(fiscal_year) %>% filter(n()==12))
   
-  fcast_df1 = get_deficit_imputed_data(floor_date(Sys.Date(),"year")-1,dataset)
+  fcast_df1 = get_deficit_imputed_data(floor_date(Sys.Date(),"year")-1,dataset,cbo_category,monthly_shares_reg)
   
   X = model.matrix(as.formula(paste0("value","~",paste(colnames(fcast_df1)[c(2:252)],collapse="+"))),
                    fcast_df1 %>% filter(date<"2024-01-01"&year(date)>=2006&!is.na(value)))[, -1]
@@ -322,7 +322,7 @@ nowcast_headline = function(dataset,cbo_category){
   test = lm_robust(as.formula(paste0("value","~lag1+lag2+lag3+lag4+cbo_proj_month+",paste(c(rownames(selected_coefs_state)),collapse="+"))),
                    data = fcast_df1 %>% filter(date<='2024-01-01') %>% mutate(weight=(1:n())/n()))
   
-  fcast_df1 = get_deficit_imputed_data(Sys.Date(),dataset)
+  fcast_df1 = get_deficit_imputed_data(Sys.Date(),dataset,cbo_category,monthly_shares_reg)
   
   pred_df = data.frame(
     date=fcast_df1[['date']],
