@@ -41,33 +41,33 @@ EM_DECLARATION = as.Date("2025-01-17")
 nowcast_total_outlays = nowcast_headline(outlays_fred,"outlay")
 nowcast_total_outlays[[3]] %>% drop_na() %>% summarize(my_proj=sqrt(mean(((pred/actual)-1)^2)),cbo_proj=sqrt(mean(((cbo_proj/actual)-1)^2)))
 
-if(length(setdiff(as.character(tail(national_econ %>% arrange(date) %>% distinct(date) %>% pull(date))),as.character(nowcast_total_outlays$pred_df$date[!is.na(nowcast_total_outlays$pred_df$pred)])))>0){
-  for(dat in setdiff(as.character(tail(national_econ %>% arrange(date) %>% distinct(date) %>% pull(date))),as.character(nowcast_total_outlays$pred_df$date[!is.na(nowcast_total_outlays$pred_df$pred)]))){
-    
-    nowcast_total_outlays = nowcast_headline(outlays_fred %>% 
-                                               add_row(data.frame(date=as.Date(dat) %m-% months(1),
-                                                                  series_id=outlays_fred$series_id[1],
-                                                                  value=tail(na.omit(nowcast_total_outlays$pred_df$pred),1),
-                                                                  fiscal_year=ifelse(month(as.Date(dat) %m-% months(1))>=10,year(as.Date(dat) %m-% months(1))+1,year(as.Date(dat) %m-% months(1))))),
-                                             "outlay")
-    
-  }
-}
+#if(length(setdiff(as.character(tail(national_econ %>% arrange(date) %>% distinct(date) %>% pull(date))),as.character(nowcast_total_outlays$pred_df$date[!is.na(nowcast_total_outlays$pred_df$pred)])))>0){
+#   for(dat in setdiff(as.character(tail(national_econ %>% arrange(date) %>% distinct(date) %>% pull(date))),as.character(nowcast_total_outlays$pred_df$date[!is.na(nowcast_total_outlays$pred_df$pred)]))){
+#     
+#     nowcast_total_outlays = nowcast_headline(outlays_fred %>% 
+#                                                add_row(data.frame(date=as.Date(dat) %m-% months(1),
+#                                                                   series_id=outlays_fred$series_id[1],
+#                                                                   value=tail(na.omit(nowcast_total_outlays$pred_df$pred),1),
+#                                                                   fiscal_year=ifelse(month(as.Date(dat) %m-% months(1))>=10,year(as.Date(dat) %m-% months(1))+1,year(as.Date(dat) %m-% months(1))))),
+#                                              "outlay")
+#     
+#   }
+# }
 
 nowcast_total_receipts = nowcast_headline(receipts_fred,"revenue")
 
-if(length(setdiff(as.character(tail(national_econ %>% arrange(date) %>% distinct(date) %>% pull(date))),as.character(nowcast_total_receipts$pred_df$date[!is.na(nowcast_total_receipts$pred_df$pred)])))>0){
-  for(dat in setdiff(as.character(tail(national_econ %>% arrange(date) %>% distinct(date) %>% pull(date))),as.character(nowcast_total_receipts$pred_df$date[!is.na(nowcast_total_receipts$pred_df$pred)]))){
-    
-    nowcast_total_receipts = nowcast_headline(receipts_fred %>% 
-                                               add_row(data.frame(date=as.Date(dat) %m-% months(1),
-                                                                  series_id=receipts_fred$series_id[1],
-                                                                  value=tail(na.omit(nowcast_total_receipts$pred_df$pred),1),
-                                                                  fiscal_year=ifelse(month(as.Date(dat) %m-% months(1))>=10,year(as.Date(dat) %m-% months(1))+1,year(as.Date(dat) %m-% months(1))))),
-                                             "revenue")
-    
-  }
-}
+# if(length(setdiff(as.character(tail(national_econ %>% arrange(date) %>% distinct(date) %>% pull(date))),as.character(nowcast_total_receipts$pred_df$date[!is.na(nowcast_total_receipts$pred_df$pred)])))>0){
+#   for(dat in setdiff(as.character(tail(national_econ %>% arrange(date) %>% distinct(date) %>% pull(date))),as.character(nowcast_total_receipts$pred_df$date[!is.na(nowcast_total_receipts$pred_df$pred)]))){
+#     
+#     nowcast_total_receipts = nowcast_headline(receipts_fred %>% 
+#                                                add_row(data.frame(date=as.Date(dat) %m-% months(1),
+#                                                                   series_id=receipts_fred$series_id[1],
+#                                                                   value=tail(na.omit(nowcast_total_receipts$pred_df$pred),1),
+#                                                                   fiscal_year=ifelse(month(as.Date(dat) %m-% months(1))>=10,year(as.Date(dat) %m-% months(1))+1,year(as.Date(dat) %m-% months(1))))),
+#                                              "revenue")
+#     
+#   }
+# }
 
 nowcast_total_receipts[[3]] %>% drop_na() %>% summarize(my_proj=sqrt(mean(((pred/actual)-1)^2)),cbo_proj=sqrt(mean(((cbo_proj/actual)-1)^2)))
 

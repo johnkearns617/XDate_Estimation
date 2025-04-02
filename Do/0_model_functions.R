@@ -337,6 +337,21 @@ nowcast_headline = function(dataset,cbo_category){
   
   fcast_df1 = get_deficit_imputed_data(Sys.Date(),dataset,cbo_category,monthly_shares_reg)
   
+  for(dat in tail(fcast_df1,10) %>% filter(is.na(value)) %>% pull(date)){
+    
+    fcast_df1$value[fcast_df1$date==dat] = predict(test,fcast_df1 %>% filter(date==dat)) 
+    
+    fcast_df1 = fcast_df1 %>% 
+      mutate(cbo_proj_diff=(value/cbo_proj_month-1)*100) %>% 
+      mutate(lag1_cbo_proj_diff=dplyr::lag(cbo_proj_diff,1),
+             lag2_cbo_proj_diff=dplyr::lag(cbo_proj_diff,2)) %>% 
+      mutate(lag1=dplyr::lag(value,1),
+             lag2=dplyr::lag(value,2),
+             lag3=dplyr::lag(value,3),
+             lag4=dplyr::lag(value,4))
+    
+  }
+  
   pred_df = data.frame(
     date=fcast_df1[['date']],
     var=cbo_category,
