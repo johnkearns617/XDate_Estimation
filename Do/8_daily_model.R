@@ -580,8 +580,19 @@ daily_forecast = bind_rows(
 daily_forecast_upper = bind_rows(
   feb_forecast %>% 
     mutate(daily_deficit=(receipt_day_amt-outlay_day_amt)/1000) %>% 
-    select(record_fiscal_year,record_calendar_month,record_calendar_day,daily_deficit) %>% 
-    fill(record_fiscal_year,record_calendar_month),
+    select(date,record_fiscal_year,record_calendar_month,record_calendar_day,daily_deficit) %>% 
+    fill(record_fiscal_year,record_calendar_month,date) %>% 
+    mutate(year=year(date)) %>% 
+    left_join(nowcast_deficit %>% 
+                select(date,deficit_lower,deficit) %>% 
+                mutate(adj=deficit_lower-deficit,
+                       year=year(date),
+                       month=month(date)) %>% 
+                select(adj,year,month),
+              by=c('year'='year','record_calendar_month'='month')) %>% 
+    group_by(record_calendar_month) %>% 
+    mutate(daily_deficit=daily_deficit+(adj/n())) %>% 
+    select(record_fiscal_year,record_calendar_month,record_calendar_day,daily_deficit),
   daily_outlays_lower %>% 
     group_by(date,record_calendar_day) %>% 
     summarize(outlay_day_amt=sum(outlay_day_amt,na.rm=TRUE)) %>% 
@@ -598,8 +609,19 @@ daily_forecast_upper = bind_rows(
 daily_forecast_lower = bind_rows(
   feb_forecast %>% 
     mutate(daily_deficit=(receipt_day_amt-outlay_day_amt)/1000) %>% 
-    select(record_fiscal_year,record_calendar_month,record_calendar_day,daily_deficit) %>% 
-    fill(record_fiscal_year,record_calendar_month),
+    select(date,record_fiscal_year,record_calendar_month,record_calendar_day,daily_deficit) %>% 
+    fill(record_fiscal_year,record_calendar_month,date) %>% 
+    mutate(year=year(date)) %>% 
+    left_join(nowcast_deficit %>% 
+                select(date,deficit_upper,deficit) %>% 
+                mutate(adj=deficit_upper-deficit,
+                       year=year(date),
+                       month=month(date)) %>% 
+                select(adj,year,month),
+              by=c('year'='year','record_calendar_month'='month')) %>% 
+    group_by(record_calendar_month) %>% 
+    mutate(daily_deficit=daily_deficit+(adj/n())) %>% 
+    select(record_fiscal_year,record_calendar_month,record_calendar_day,daily_deficit),
   daily_outlays_upper %>% 
     group_by(date,record_calendar_day) %>% 
     summarize(outlay_day_amt=sum(outlay_day_amt,na.rm=TRUE)) %>% 

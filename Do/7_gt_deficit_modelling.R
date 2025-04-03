@@ -107,22 +107,22 @@ nowcast_defense_outlay = nowcast_budget_outlay("National Defense")
 nowcast_interest_outlay = nowcast_budget_outlay("Net Interest")
 
 nowcast_outlay = bind_cols(
-  nowcast_medicare_outlay[[3]] %>% select(date,pred) %>% rename(medicare=pred),
-  nowcast_medicaid_outlay[[3]] %>% select(pred) %>% rename(medicaid=pred),
-  nowcast_ss_outlay[[3]] %>% select(pred) %>% rename(ss=pred),
-  nowcast_defense_outlay[[3]] %>% select(pred) %>% rename(defense=pred),
-  nowcast_interest_outlay[[3]] %>% select(pred) %>% rename(interest=pred),
-  nowcast_other_outlay[[3]] %>% select(pred) %>% rename(other=pred)
+  nowcast_medicare_outlay[[3]] %>% select(date,pred:fit.upr) %>% rename(medicare=pred),
+  nowcast_medicaid_outlay[[3]] %>% select(pred:fit.upr) %>% rename(medicaid=pred),
+  nowcast_ss_outlay[[3]] %>% select(pred:fit.upr) %>% rename(ss=pred),
+  nowcast_defense_outlay[[3]] %>% select(pred:fit.upr) %>% rename(defense=pred),
+  nowcast_interest_outlay[[3]] %>% select(pred:fit.upr) %>% rename(interest=pred),
+  nowcast_other_outlay[[3]] %>% select(pred:fit.upr) %>% rename(other=pred)
 )
 
 nowcast_receipt = bind_cols(
-  nowcast_misc_receipts[[3]] %>% select(date,pred) %>% rename(misc=pred),
-  nowcast_corporate_receipts[[3]] %>% select(pred) %>% rename(corp=pred),
-  nowcast_payroll_receipts[[3]] %>% select(pred) %>% rename(payroll=pred),
-  nowcast_individual_receipts[[3]] %>% select(pred) %>% rename(individ=pred),
-  nowcast_excise_receipts[[3]] %>% select(pred) %>% rename(excise=pred),
-  nowcast_estate_receipts[[3]] %>% select(pred) %>% rename(estate=pred),
-  nowcast_customs_receipts[[3]] %>% select(pred) %>% rename(customs=pred),
+  nowcast_misc_receipts[[3]] %>% select(date,pred:fit.upr) %>% rename(misc=pred),
+  nowcast_corporate_receipts[[3]] %>% select(pred:fit.upr) %>% rename(corp=pred),
+  nowcast_payroll_receipts[[3]] %>% select(pred:fit.upr) %>% rename(payroll=pred),
+  nowcast_individual_receipts[[3]] %>% select(pred:fit.upr) %>% rename(individ=pred),
+  nowcast_excise_receipts[[3]] %>% select(pred:fit.upr) %>% rename(excise=pred),
+  nowcast_estate_receipts[[3]] %>% select(pred:fit.upr) %>% rename(estate=pred),
+  nowcast_customs_receipts[[3]] %>% select(pred:fit.upr) %>% rename(customs=pred),
 )
 
 actual_receipt = bind_cols(
@@ -136,10 +136,23 @@ actual_receipt = bind_cols(
 )
 
 nowcast_deficit = bind_cols(
-  nowcast_receipt %>% group_by(date) %>% summarize(receipts=misc+corp+payroll+individ+excise+estate+customs),
-  nowcast_outlay %>% group_by(date) %>% summarize(outlays=medicare+medicaid+ss+defense+interest+other) %>% select(-date)
+  nowcast_receipt %>% 
+    pivot_longer(cols=2:ncol(nowcast_receipt)) %>% 
+    group_by(date) %>% 
+    summarize(receipts=sum(value[name%in%c('misc','corp','payroll','individ','excise','estate','customs')]),
+              upper_receipts=sum(value[grepl("upr",name)]),
+              lower_receipts=sum(value[grepl("lwr",name)])),
+  nowcast_outlay %>% 
+    pivot_longer(cols=2:ncol(nowcast_outlay)) %>% 
+    group_by(date) %>% 
+    summarize(outlays=sum(value[name%in%c('medicare','medicaid','ss','defense','interest','other')]),
+              upper_outlays=sum(value[grepl("upr",name)]),
+              lower_outlays=sum(value[grepl("lwr",name)])) %>% 
+    select(-date)
 ) %>% 
-  mutate(deficit=receipts-outlays) %>% 
+  mutate(deficit=receipts-outlays,
+         deficit_upper=lower_receipts-upper_outlays,
+         deficit_lower=upper_receipts-lower_outlays) %>% 
   left_join(receipts_fred %>% select(date,value) %>% rename(actual_receipts=value)) %>% 
   left_join(outlays_fred %>% select(date,value) %>% rename(actual_outlays=value)) %>% 
   mutate(actual_deficit=actual_receipts-actual_outlays)

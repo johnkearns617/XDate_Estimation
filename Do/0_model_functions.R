@@ -533,10 +533,11 @@ nowcast_budget_receipt = function(mts_dataset,col_mts,cbo_component,cbo_category
   pred_df = data.frame(
     date=fcast_df1[['date']],
     var=cbo_category,
-    pred=predict(test,fcast_df1),
+    predict(test,fcast_df1,se.fit=TRUE, interval="confidence", alpha=0.70),
     actual=fcast_df1[['value']],
     cbo_proj=fcast_df1[['cbo_proj_month']]
-  )
+  ) %>% 
+    rename(pred=fit.fit)
   
   return(list(
     'data'=fcast_df1,
@@ -1376,10 +1377,11 @@ nowcast_budget_outlay = function(cbo_category){
   pred_df = data.frame(
     date=fcast_df2[['date']],
     var=cbo_category,
-    pred=predict(test,fcast_df2),
+    predict(test,fcast_df2,se.fit=TRUE, interval="confidence", alpha=0.70),
     actual=fcast_df2[['value']],
     cbo_proj=fcast_df2[['cbo_proj_month']]
-  )
+  ) %>% 
+    rename(pred=fit.fit)
   
   return(list(
     'data'=fcast_df2,
