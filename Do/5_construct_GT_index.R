@@ -131,8 +131,16 @@ breakdown_df = bind_rows(lapply(gdp_pred_df, `[[`, 'breakdowns')) %>%
   filter(variable!='prediction') %>% 
   rowwise() %>% 
   mutate(diff=fcast_df1[[var]][fcast_df1$date==date],
-         diff=diff-fcast_df[[var]][fcast_df$date==(date %m-% months(3))],
-         gdp=fcast_df[['GDPC1']][fcast_df$date==(date %m-% months(3))],
+         diff=diff-ifelse(
+           !is.na(fcast_df[[var]][fcast_df$date==(date %m-% months(3))]),
+           fcast_df[[var]][fcast_df$date==(date %m-% months(3))],
+           fcast_df1[[var]][fcast_df1$date==(date %m-% months(3))]
+         ),
+         gdp=ifelse(
+           !is.na(fcast_df[['GDPC1']][fcast_df$date==(date %m-% months(3))]),
+           fcast_df[['GDPC1']][fcast_df$date==(date %m-% months(3))],
+           (tail(gdp_data[['gdp']][gdp_data$date=='2025-01-01'],1)/100+1)*fcast_df[['GDPC1']][fcast_df$date==(date %m-% months(6))]
+         ),
          tmp=(contribution/100),
          diff=ifelse(var=="IMPGSC1",-1*diff,diff)) %>% 
   ungroup() %>% 
@@ -140,11 +148,16 @@ breakdown_df = bind_rows(lapply(gdp_pred_df, `[[`, 'breakdowns')) %>%
   mutate(tmp=tmp/sum(tmp)*(diff)/gdp) %>% 
   ungroup() %>% 
   bind_rows(gdp_data %>% 
+              mutate(date=as.Date(date)) %>% 
               filter(!is.na(residual)) %>% 
               select(date,prediction_date,residual) %>% 
               rowwise() %>% 
-              mutate(diff=fcast_df1[['residual']][fcast_df$date==(as.Date(date) %m-% months(3))],
-                     gdp=fcast_df[['GDPC1']][fcast_df$date==(as.Date(date) %m-% months(3))],
+              mutate(diff=fcast_df1[['residual']][fcast_df1$date==(as.Date(date) %m-% months(3))],
+                     gdp=ifelse(
+                       !is.na(fcast_df[['GDPC1']][fcast_df$date==(date %m-% months(3))]),
+                       fcast_df[['GDPC1']][fcast_df$date==(date %m-% months(3))],
+                       (tail(gdp_data[['gdp']][gdp_data$date=='2025-01-01'],1)/100+1)*fcast_df[['GDPC1']][fcast_df$date==(date %m-% months(6))]
+                     ),
                      tmp=(residual-diff)/gdp,
                      date=as.Date(date),
                      var='residual',
