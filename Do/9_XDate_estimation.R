@@ -178,11 +178,11 @@ FISCAL_SPACE$headroom = FISCAL_SPACE$headroom + cash_amt
 # See if Treasury daily statements matches aggregate statistics
 
 test = outlay_daily_df %>% 
-  select(record_fiscal_year,record_calendar_month,record_calendar_day,outlay=total_day) %>% 
+  select(record_fiscal_year,record_calendar_month,record_calendar_day,outlay=scaled_total_day) %>% 
   mutate(record_fiscal_year=ifelse(record_calendar_month%in%c(10:12),record_fiscal_year-1,record_fiscal_year),
          date=as.Date(paste0(record_fiscal_year,"-",record_calendar_month,"-",record_calendar_day))) %>% 
   left_join(receipt_daily_df %>% 
-              select(record_fiscal_year,record_calendar_month,record_calendar_day,receipt=total_day) %>% 
+              select(record_fiscal_year,record_calendar_month,record_calendar_day,receipt=scaled_total_day) %>% 
               mutate(record_fiscal_year=ifelse(record_calendar_month%in%c(10:12),record_fiscal_year-1,record_fiscal_year),
                      date=as.Date(paste0(record_fiscal_year,"-",record_calendar_month,"-",record_calendar_day))),by="date") %>% 
   group_by(date) %>% 
@@ -190,22 +190,9 @@ test = outlay_daily_df %>%
 
 if(any(test$date<as.Date(paste0(daily_forecast[1,1],"-",daily_forecast[1,2],"-01"),format="%Y-%m-%d"))){
   
-  tmp = test %>% 
-    filter(date<as.Date(paste0(daily_forecast[1,1],"-",daily_forecast[1,2],"-01"),format="%Y-%m-%d")) %>% 
-    filter(month(date)==month(date[n()])&year(date)==year(date[n()])) 
-  
-  tmp = (tmp %>% 
-           summarize(deficit=sum(deficit)) %>% 
-           pull())/deficit_fred$value[deficit_fred$date==floor_date(tmp$date[1],"month")]
-  
-  if(length(tmp)==0){
-    tmp = 1
-  }
-  
   tmp = FISCAL_SPACE %>% 
     left_join(test) %>% 
-    mutate(deficit=replace_na(deficit,0),
-           deficit=deficit/tmp/1000) %>% 
+    mutate(deficit=replace_na(deficit,0)) %>% 
     filter(date<as.Date(paste0(daily_forecast[1,1],"-",daily_forecast[1,2],"-01"))) %>% 
     mutate(record_fiscal_year=ifelse(month(date)%in%10:12,year(date)+1,year(date)),
            record_calendar_month=month(date),

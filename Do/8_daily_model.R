@@ -43,19 +43,19 @@ daily_categories = read_csv("Data/Processing/daily_categories1.csv")
 
 
 dts = op_cash_dep_withdraw %>% 
-  left_join(daily_categories) %>% 
-  filter(!is.na(cbo_category)) %>% 
-  mutate(transaction_today_amt=ifelse(transaction_type=="Withdrawals",as.numeric(transaction_today_amt)*-1,as.numeric(transaction_today_amt)),
+  left_join(daily_categories) %>% # we want to keep only the things we are able to map
+  filter(!is.na(cbo_category)) %>% # get rid of the ones we cant map, mostly are internal transfers
+  mutate(transaction_today_amt=ifelse(transaction_type=="Withdrawals",as.numeric(transaction_today_amt)*-1,as.numeric(transaction_today_amt)), # make withdrawawls negative
          transaction_mtd_amt=ifelse(transaction_type=="Withdrawals",as.numeric(transaction_mtd_amt)*-1,as.numeric(transaction_mtd_amt)))
 
 imputed_daily_receipts = dts %>% 
   filter(cbo_category%in%c("Customs Duties","Estate and Gift Taxes","Miscellaneous Receipts",
                                                                                "Individual Income Taxes","Excuse Taxes","Corporate Income Taxes",
-                                                                               "Payroll Taxes")) %>% 
+                                                                               "Payroll Taxes")) %>% # keep only the categories receipt categories
   group_by(record_calendar_year,record_calendar_month,record_calendar_day,cbo_category) %>% 
-  summarize(today_amt=sum(transaction_today_amt)) %>% 
-  group_by(record_calendar_year,record_calendar_month,record_calendar_day) %>% 
-  mutate(today_share=today_amt/sum(today_amt)) %>% 
+  summarize(today_amt=sum(transaction_today_amt)) %>% # get receipts by category
+  group_by(record_calendar_year,record_calendar_month,record_calendar_day) %>% #
+  mutate(today_share=today_amt/sum(today_amt)) %>% # get share of total spending in the month
   ungroup() %>% 
   mutate(record_calendar_day=as.numeric(record_calendar_day)) %>% 
   pivot_wider(id_cols=c(record_calendar_year,record_calendar_month:record_calendar_day),names_from=cbo_category,values_from=today_share) %>% 
@@ -83,35 +83,73 @@ imputed_daily_receipts = dts %>%
 #   ungroup() %>% 
 #   left_join(receipt_daily_df %>% filter(date=="2023-01-01") %>% mutate(record_calendar_day=as.numeric(record_calendar_day)))
 
+tax_days = read_csv("Data/Raw/tax_days_2000_2040.csv") %>% 
+  mutate(`Tax Day`=gsub("\\(COVID-19 extension\\)","",`Tax Day`),
+         date=paste0(`Tax Day`," ",Year),date=as.Date(date,format="%B %d %Y")) %>% 
+  mutate(tax_day=1) %>% 
+  select(date,tax_day)
+
 receipt_daily_df = dts %>% 
-  filter((grepl("Tax|Receipt|Duties",cbo_category))&!grepl("from Depositaries",transaction_catg)) %>% 
+  filter((grepl("Tax|Receipt|Duties",cbo_category))&!grepl("from Depositaries",transaction_catg)) %>% # not able to differentiate when "from depositaries"
   group_by(record_fiscal_year,record_calendar_month,record_calendar_day) %>% 
   summarize(date=record_date[1],
             total_day=sum(transaction_today_amt,na.rm=TRUE)) %>% 
   group_by(record_fiscal_year,record_calendar_month) %>% 
-  mutate(total_mtd=cumsum(total_day)) %>% 
+  mutate(total_mtd=cumsum(total_day)) %>% # cumulative sum of receipts throughout the month
   mutate(total1=total_mtd[n()]/1000,
          share=total_mtd/total1/1000) %>% 
   arrange(date) %>% 
   mutate(record_calendar_day_perc=(as.numeric(record_calendar_day))/as.numeric(days_in_month(date)),
          inv_record_calendar_day=1-record_calendar_day_perc,
-         date=floor_date(date,"month"),
-         record_calendar_month=as.numeric(record_calendar_month),
-         record_calendar_day=as.numeric(record_calendar_day))  %>% 
+         actual_date=date,
+         date=floor_date(date,"month"))  %>% 
   left_join(nowcast_deficit %>% select(date,pred=receipts,actual=actual_receipts)) %>% 
-  group_by(record_calendar_day,record_calendar_month) %>% 
-  mutate(avg_share=median(share,na.rm=TRUE)) %>% 
-  ungroup() %>% 
-  mutate(extrap_total=(total_mtd/avg_share)/1000)
-
-receipt_daily_df = receipt_daily_df %>% 
-  mutate(extrap_total=extrap_total*tidy(lm_robust(actual~total1-1,receipt_daily_df %>% filter(date<max(receipt_daily_df$date))  %>% group_by(date) %>% slice(n())))[1,2])
-
-receipt_daily_df = receipt_daily_df %>% 
-  rowwise() %>% 
-  mutate(extrap_total=mean(c(pred,extrap_total))) %>% 
+  mutate(record_calendar_day=as.numeric(record_calendar_day),
+         record_calendar_month=as.numeric(record_calendar_month)) %>% 
+  left_join(tax_days,by=c("actual_date"="date")) %>% 
+  group_by(date) %>% 
+  fill(tax_day,.direction="down") %>% 
+  mutate(tax_day=ifelse(is.na(tax_day),0,tax_day)) %>% 
   ungroup()
 
+# TODO: see what method does better at estimating the % of money up to given point in month
+# receipt_daily_df = receipt_daily_df %>%
+#   mutate(extrap_total=extrap_total*tidy(lm_robust(actual~total1-1,receipt_daily_df %>%
+#                                                     filter(date<max(receipt_daily_df$date))  %>%
+#                                                     group_by(date) %>%
+#                                                     slice(n())))[1,2]) # this connects the total amount estimated based on only the data in the DTS to the actual amount that we see in FRED at monthly level
+
+
+receipt_daily_df = receipt_daily_df %>%
+  ungroup() %>% 
+  mutate(avg_share=predict(lm(share~record_calendar_day*factor(record_calendar_month)+factor(record_calendar_day):factor(tax_day),
+                              receipt_daily_df %>% filter(date<max(receipt_daily_df$date))),receipt_daily_df)) %>% 
+  ungroup() %>% 
+  mutate(extrap_total=(total_mtd/avg_share)*(1/1000))
+
+receipt_daily_df = receipt_daily_df %>% 
+  left_join(receipt_daily_df %>% 
+              filter(share==1&record_fiscal_year>=2015) %>% 
+              group_by(record_fiscal_year) %>% 
+              summarize(scale_factor_year=mean(actual/extrap_total,na.rm=TRUE))) %>% 
+  left_join(receipt_daily_df %>% 
+              filter(record_fiscal_year>=2015) %>% 
+              group_by(record_fiscal_year,record_calendar_month) %>% 
+              summarize(scale_factor_month=mean(actual[n()]/extrap_total[n()],na.rm=TRUE))) %>% 
+  ungroup() %>% 
+  mutate_at(vars(scale_factor_year,scale_factor_month),~ifelse(is.nan(.),NA,.)) %>% 
+  fill(scale_factor_year,.direction="downup") %>% 
+  group_by(record_fiscal_year,record_calendar_month) %>% 
+  mutate(scaled_total=ifelse(!is.na(actual),extrap_total*scale_factor_month,extrap_total*scale_factor_year),
+         scaled_total_day=ifelse(!is.na(actual),total_day*(actual[n()]/total_mtd[n()]),total_day/1000*scale_factor_year), # TODO: might need to make more exact
+         scaled_total_mtd=ifelse(!is.na(actual),total_mtd*(actual[n()]/total_mtd[n()]),total_mtd/1000*scale_factor_year),
+         extrap_total=ifelse(!is.na(actual),extrap_total*scale_factor_year,extrap_total*scale_factor_year)) %>%  # keep column that is the pure prediction
+  rowwise() %>% 
+  mutate(extrap_total=mean(c(pred,extrap_total)),
+         scaled_total=ifelse(!is.na(actual),scaled_total,extrap_total)) %>% 
+  ungroup()
+
+# repeat for outlays
 outlay_daily_df = dts %>% 
   filter(!(grepl("Tax|Receipt|Duties|TTL Transfer",cbo_category))&!grepl("to Depositaries",transaction_catg)) %>% 
   group_by(record_fiscal_year,record_calendar_month,record_calendar_day) %>% 
@@ -128,29 +166,48 @@ outlay_daily_df = dts %>%
          date=floor_date(date,"month"))  %>% 
   left_join(nowcast_deficit %>% select(date,pred=outlays,actual=actual_outlays)) %>% 
   mutate(record_calendar_day=as.numeric(record_calendar_day),
-         record_calendar_month=as.numeric(record_calendar_month)) 
+         record_calendar_month=as.numeric(record_calendar_month)) %>% 
+  left_join(tax_days,by=c("actual_date"="date")) %>% 
+  group_by(date) %>% 
+  fill(tax_day,.direction="down") %>% 
+  mutate(tax_day=ifelse(is.na(tax_day),0,tax_day)) %>% 
+  ungroup()
 
 outlay_daily_df = outlay_daily_df %>%
-  rowwise() %>% 
-  mutate(avg_share=mean(outlay_daily_df[outlay_daily_df$record_calendar_month==record_calendar_month&outlay_daily_df$record_calendar_day<=record_calendar_day,] %>% group_by(record_fiscal_year) %>% slice(n()) %>% ungroup() %>% select(share) %>% pull())) %>% 
+  ungroup() %>% 
+  mutate(avg_share=predict(lm(share~record_calendar_day*factor(record_calendar_month)+factor(record_calendar_day):factor(tax_day),
+                              outlay_daily_df %>% filter(date<max(outlay_daily_df$date))),outlay_daily_df)) %>% 
   ungroup() %>% 
   mutate(extrap_total=(total_mtd/avg_share)*(-1/1000))
 
 outlay_daily_df = outlay_daily_df %>% 
   left_join(outlay_daily_df %>% 
+              filter(date<max(date)) %>% 
               filter(share==1&record_fiscal_year>=2015) %>% 
               group_by(record_fiscal_year) %>% 
-              summarize(scale_factor=mean(actual/extrap_total,na.rm=TRUE))) %>% 
+              summarize(scale_factor_year=mean(actual/extrap_total,na.rm=TRUE))) %>% 
+  left_join(outlay_daily_df %>% 
+              filter(date<max(date)) %>% 
+              filter(record_fiscal_year>=2015) %>% 
+              group_by(record_fiscal_year,record_calendar_month) %>% 
+              summarize(scale_factor_month=mean(actual[n()]/extrap_total[n()],na.rm=TRUE))) %>% 
   ungroup() %>% 
-  fill(scale_factor,.direction="downup") %>% 
-  mutate(extrap_total=extrap_total*scale_factor) %>% 
+  mutate_at(vars(scale_factor_year,scale_factor_month),~ifelse(is.nan(.),NA,.)) %>% 
+  fill(scale_factor_year,.direction="downup") %>% 
+  group_by(record_fiscal_year,record_calendar_month) %>% 
+  mutate(scaled_total=ifelse(!is.na(actual),extrap_total*scale_factor_month,extrap_total*scale_factor_year),
+         scaled_total_day=ifelse(!is.na(actual),total_day*-1*(actual[n()]/(total_mtd[n()])),total_day/1000*scale_factor_year),
+         scaled_total_mtd=ifelse(!is.na(actual),total_mtd*-1*(actual[n()]/(total_mtd[n()])),total_mtd/1000*scale_factor_year),
+         extrap_total=ifelse(!is.na(actual),extrap_total*scale_factor_year,extrap_total*scale_factor_year)) %>%  # keep column that is the pure prediction
   rowwise() %>% 
-  mutate(extrap_total=mean(c(pred,extrap_total))) %>% 
+  mutate(extrap_total=mean(c(pred,extrap_total)),
+         scaled_total=ifelse(!is.na(actual),scaled_total,extrap_total)) %>% 
   ungroup()
 
 ggplot(outlay_daily_df %>% filter(date=="2025-01-01"),aes(x=actual_date)) +
   geom_line(aes(y=actual,color="Actual")) +
-  geom_line(aes(y=extrap_total,color="Daily estimate")) 
+  geom_line(aes(y=extrap_total,color="Daily estimate"))  +
+  geom_line(aes(y=scaled_total,color="Scaled estimate"))
 
 feb_forecast = data.frame()
 for(dat in as.character(unique(outlay_daily_df$date[is.na(outlay_daily_df$actual)]))){
@@ -159,18 +216,18 @@ for(dat in as.character(unique(outlay_daily_df$date[is.na(outlay_daily_df$actual
   
   tmp_df = bind_cols(
     outlay_daily_df %>% 
-      select(outlay_day_amt=total_day,outlay_mtd_amt=total_mtd,record_fiscal_year:record_calendar_day,pred_outlay=pred,actual_outlay=actual,outlay_extrap_total=extrap_total) %>% 
+      select(outlay_day_amt=scaled_total_day,outlay_mtd_amt=scaled_total_mtd,record_fiscal_year:record_calendar_day,pred_outlay=pred,actual_outlay=actual,outlay_extrap_total=extrap_total) %>% 
       mutate(outlay_day_amt=-1*outlay_day_amt,
              outlay_mtd_amt=-1*outlay_mtd_amt),
     receipt_daily_df %>% 
-      select(receipt_day_amt=total_day,receipt_mtd_amt=total_mtd,pred_receipt=pred,actual_receipt=actual,receipts_extrap_total=extrap_total) %>% 
+      select(receipt_day_amt=scaled_total_day,receipt_mtd_amt=scaled_total_mtd,pred_receipt=pred,actual_receipt=actual,receipts_extrap_total=extrap_total) %>% 
       mutate(receipt_day_amt=receipt_day_amt,
              receipt_mtd_amt=receipt_mtd_amt)
   ) %>% 
     filter(record_fiscal_year==ifelse(month(dat1)>=10,year(dat1)+1,year(dat1))&as.numeric(record_calendar_month)==month(dat1)) %>% 
     mutate(date = as.Date(paste0(year(dat1),"-",record_calendar_month,"-",record_calendar_day))) 
   
-  if((max(tmp_df$date,na.rm=TRUE)+1)<(ceiling_date(tmp_df$date[1],"month")-1)){
+  if((max(tmp_df$date,na.rm=TRUE)+1)<(ceiling_date(tmp_df$date[1],"month")-1)){ # testing if we have the last day of the month. If we have the last day of the month then we dont need to add the missing days
     
     tmp_df = tmp_df %>% 
       bind_rows(data.frame(record_calendar_day=as.numeric(day(seq(max(tmp_df$date,na.rm=TRUE)+1,ceiling_date(tmp_df$date[1],"month")-1,by=1)))))
@@ -178,28 +235,26 @@ for(dat in as.character(unique(outlay_daily_df$date[is.na(outlay_daily_df$actual
   }
   
   tmp_df = tmp_df %>% 
-    left_join(outlay_daily_df %>% 
-                filter(record_calendar_month==month(dat1)) %>% 
-                distinct(record_calendar_day,avg_share) %>% 
-                rename(avg_share_outlay=avg_share) %>% 
-                mutate(record_calendar_day=as.numeric(record_calendar_day))) %>% 
-    left_join(receipt_daily_df %>% 
-                filter(record_calendar_month==month(dat1)) %>% 
-                distinct(record_calendar_day,avg_share) %>% 
-                rename(avg_share_receipt=avg_share)%>% 
-                mutate(record_calendar_day=as.numeric(record_calendar_day))) %>% 
+    fill(record_calendar_month,.direction="down") %>% 
+    mutate(date=as.Date(paste0(year(date[1]),"-",month(date[1]),"-",record_calendar_day))) %>% 
+    left_join(tax_days,by=c("date"="date")) %>% 
+    fill(tax_day,.direction="down") %>% 
+    mutate(tax_day=ifelse(is.na(tax_day),0,tax_day)) %>% 
+    ungroup() 
+  
+  tmp_df = tmp_df %>% 
+    mutate(avg_share_outlay=predict(lm(share~record_calendar_day*factor(record_calendar_month)+factor(record_calendar_day):factor(tax_day),
+                                                 outlay_daily_df %>% filter(date<max(outlay_daily_df$date))),tmp_df),
+           avg_share_receipt=predict(lm(share~record_calendar_day*factor(record_calendar_month)+factor(record_calendar_day):factor(tax_day),
+                                                 receipt_daily_df %>% filter(date<max(receipt_daily_df$date))),tmp_df)) %>% 
     fill(outlay_extrap_total,receipts_extrap_total,.direction="down") %>% 
     ungroup() %>% 
-    mutate(avg_share_outlay=avg_share_outlay/avg_share_outlay[n()],
-           avg_share_receipt=avg_share_receipt/avg_share_receipt[n()],
-           outlay_mtd_amt=outlay_mtd_amt*tail(na.omit(outlay_extrap_total),1)*avg_share_outlay[tail(which(!is.na(record_calendar_month)),1)]/tail(na.omit(outlay_mtd_amt),1)*1000,
-           outlay_day_amt=lead(outlay_mtd_amt,1)-outlay_mtd_amt,
-           outlay_mtd_amt=ifelse(is.na(outlay_mtd_amt),outlay_extrap_total*avg_share_outlay*1000,outlay_mtd_amt),
+    mutate(outlay_mtd_amt=outlay_mtd_amt*tail(na.omit(outlay_extrap_total),1)/(tail(na.omit(outlay_mtd_amt),1)/avg_share_outlay[max(which(!is.na(outlay_mtd_amt)))]),
+           receipt_mtd_amt=receipt_mtd_amt*tail(na.omit(receipts_extrap_total),1)/(tail(na.omit(receipt_mtd_amt),1)/avg_share_receipt[max(which(!is.na(receipt_mtd_amt)))]),
+           outlay_mtd_amt=ifelse(is.na(outlay_mtd_amt),outlay_extrap_total*avg_share_outlay,outlay_mtd_amt),
            outlay_day_amt=outlay_mtd_amt-lag(outlay_mtd_amt,1),
            outlay_day_amt=ifelse(record_calendar_day==min(record_calendar_day),outlay_mtd_amt,outlay_day_amt),
-           receipt_mtd_amt=receipt_mtd_amt*tail(na.omit(receipts_extrap_total),1)*avg_share_receipt[tail(which(!is.na(record_calendar_month)),1)]/tail(na.omit(receipt_mtd_amt),1)*1000,
-           receipt_day_amt=lead(receipt_mtd_amt,1)-receipt_mtd_amt,
-           receipt_mtd_amt=ifelse(is.na(receipt_mtd_amt),receipts_extrap_total*avg_share_receipt*1000,receipt_mtd_amt),
+           receipt_mtd_amt=ifelse(is.na(receipt_mtd_amt),receipts_extrap_total*avg_share_receipt,receipt_mtd_amt),
            receipt_day_amt=receipt_mtd_amt-lag(receipt_mtd_amt,1),
            receipt_day_amt=ifelse(record_calendar_day==min(record_calendar_day),receipt_mtd_amt,receipt_day_amt))
   
@@ -260,7 +315,7 @@ forecast_list[["outlay_Medicare"]] =forecast_component(nowcast_medicare_outlay,n
 forecast_list[["outlay_Net Interest"]]=forecast_component(nowcast_interest_outlay,nowcast_total_outlays,outlay_daily_df,"outlay_Net Interest","interest",c(1,1,1))[[1]]
 forecast_list[["outlay_Social Security"]]=forecast_component(nowcast_ss_outlay,nowcast_total_outlays,outlay_daily_df,"outlay_Social Security","ss",c(1,1,1))[[1]]
 forecast_list[["outlay_Defense Discretionary"]]=forecast_component(nowcast_defense_outlay,nowcast_total_outlays,outlay_daily_df,"outlay_Defense Discretionary","defense",c(1,1,1))[[1]]
-forecast_list[["outlay_Other"]]=forecast_component(nowcast_other_outlay,nowcast_total_outlays,outlay_daily_df,"outlay_Other","other",c(1,1,1))[[1]]
+forecast_list[["outlay_Other"]]=forecast_component(nowcast_other_outlay,nowcast_total_outlays,outlay_daily_df,"outlay_Other","other",c(6,1,0))[[1]]
 
 tst_list = list()
 
@@ -277,7 +332,7 @@ tst_list[["outlay_Medicare"]] =forecast_component(nowcast_medicare_outlay,nowcas
 tst_list[["outlay_Net Interest"]]=forecast_component(nowcast_interest_outlay,nowcast_total_outlays,outlay_daily_df,"outlay_Net Interest","interest",c(1,1,1))[[2]]
 tst_list[["outlay_Social Security"]]=forecast_component(nowcast_ss_outlay,nowcast_total_outlays,outlay_daily_df,"outlay_Social Security","ss",c(1,1,1))[[2]]
 tst_list[["outlay_Defense Discretionary"]]=forecast_component(nowcast_defense_outlay,nowcast_total_outlays,outlay_daily_df,"outlay_Defense Discretionary","defense",c(1,1,1))[[2]]
-tst_list[["outlay_Other"]]=forecast_component(nowcast_other_outlay,nowcast_total_outlays,outlay_daily_df,"outlay_Other","other",c(1,1,1))[[2]]
+tst_list[["outlay_Other"]]=forecast_component(nowcast_other_outlay,nowcast_total_outlays,outlay_daily_df,"outlay_Other","other",c(6,1,0))[[2]]
 
 
 forecast_list1 = bind_rows(forecast_list)
@@ -320,11 +375,18 @@ outlay_daily_df_groups = dts %>%
     nowcast_interest_outlay[[3]] %>% select(date,actual,pred) %>% mutate(group="interest"),
     bind_rows(nowcast_other_outlay[[3]]) %>% group_by(date) %>% summarize(pred=sum(pred),actual=sum(actual),group="other")
   ),by=c("date","group")) %>% 
-  mutate(record_calendar_day=as.numeric(record_calendar_day))
+  mutate(record_calendar_day=as.numeric(record_calendar_day)) %>% 
+  left_join(tax_days,by=c("actual_date"="date")) %>% 
+  group_by(date) %>% 
+  fill(tax_day,.direction="down") %>% 
+  mutate(tax_day=ifelse(is.na(tax_day),0,tax_day)) %>% 
+  ungroup() %>% 
+  mutate(record_calendar_month=as.numeric(record_calendar_month))
 
 outlay_daily_df_groups = outlay_daily_df_groups %>% 
-  rowwise() %>% 
-  mutate(avg_share=weighted.mean(outlay_daily_df_groups[outlay_daily_df_groups$group==group&outlay_daily_df_groups$record_calendar_month==record_calendar_month&outlay_daily_df_groups$record_calendar_day<=record_calendar_day,] %>% group_by(record_fiscal_year) %>% slice(n()) %>% ungroup() %>% select(share) %>% pull(),weights=outlay_daily_df_groups[outlay_daily_df_groups$group==group&outlay_daily_df_groups$record_calendar_month==record_calendar_month&outlay_daily_df_groups$record_calendar_day<=record_calendar_day,] %>% group_by(record_fiscal_year) %>% slice(n()) %>% ungroup() %>% select(share) %>% pull())) %>% 
+  ungroup() %>% 
+  mutate(avg_share=predict(lm(share~record_calendar_day*factor(record_calendar_month)*factor(group)+factor(record_calendar_day):factor(tax_day):factor(group),
+                              outlay_daily_df_groups %>% filter(date<max(outlay_daily_df_groups$date))),outlay_daily_df_groups)) %>% 
   ungroup() %>% 
   mutate(extrap_total=(total_mtd/avg_share)*(-1/1000))
 
@@ -332,12 +394,23 @@ outlay_daily_df_groups = outlay_daily_df_groups %>%
   left_join(outlay_daily_df_groups %>% 
               filter(share==1&record_fiscal_year>=2015) %>% 
               group_by(record_fiscal_year,group) %>% 
-              summarize(scale_factor=mean(actual/extrap_total,na.rm=TRUE))) %>% 
+              summarize(scale_factor_year=mean(actual/extrap_total,na.rm=TRUE))) %>% 
+  left_join(outlay_daily_df_groups %>% 
+              filter(record_fiscal_year>=2015) %>% 
+              group_by(record_fiscal_year,record_calendar_month,group) %>% 
+              summarize(scale_factor_month=mean(actual[n()]/extrap_total[n()],na.rm=TRUE))) %>% 
   ungroup() %>% 
-  fill(scale_factor,.direction="downup") %>% 
-  mutate(extrap_total=extrap_total*scale_factor) %>% 
+  mutate_at(vars(scale_factor_year,scale_factor_month),~ifelse(is.nan(.),NA,.)) %>% 
+  group_by(group) %>% 
+  fill(scale_factor_year,.direction="downup") %>% 
+  group_by(record_fiscal_year,record_calendar_month,group) %>% 
+  mutate(scaled_total=ifelse(!is.na(actual),extrap_total*scale_factor_month,extrap_total*scale_factor_year),
+         scaled_total_day=ifelse(!is.na(actual),total_day*-1*(actual[n()]/total_mtd[n()]),total_day*scale_factor_year),
+         scaled_total_mtd=ifelse(!is.na(actual),total_mtd*-1*(actual[n()]/total_mtd[n()]),total_mtd*scale_factor_year),
+         extrap_total=ifelse(!is.na(actual),extrap_total*scale_factor_year,extrap_total*scale_factor_year)) %>%  # keep column that is the pure prediction
   rowwise() %>% 
-  mutate(extrp_total_avg=mean(c(extrap_total,pred))) %>% 
+  mutate(extrap_total=mean(c(pred,extrap_total)),
+         scaled_total=ifelse(!is.na(actual),scaled_total,extrap_total)) %>% 
   ungroup()
 
 daily_receipts = data.frame()
@@ -561,7 +634,7 @@ for(month in unique(forecast_list1 %>% filter(!is.na(mean)) %>% select(date) %>%
 
 daily_forecast = bind_rows(
   feb_forecast %>% 
-    mutate(daily_deficit=(receipt_day_amt-outlay_day_amt)/1000) %>% 
+    mutate(daily_deficit=(receipt_day_amt-outlay_day_amt)) %>% 
     select(record_fiscal_year,record_calendar_month,record_calendar_day,daily_deficit) %>% 
     fill(record_fiscal_year,record_calendar_month),
   daily_outlays %>% 
@@ -579,7 +652,7 @@ daily_forecast = bind_rows(
 
 daily_forecast_upper = bind_rows(
   feb_forecast %>% 
-    mutate(daily_deficit=(receipt_day_amt-outlay_day_amt)/1000) %>% 
+    mutate(daily_deficit=(receipt_day_amt-outlay_day_amt)) %>% 
     select(date,record_fiscal_year,record_calendar_month,record_calendar_day,daily_deficit) %>% 
     fill(record_fiscal_year,record_calendar_month,date) %>% 
     mutate(year=year(date)) %>% 
@@ -608,7 +681,7 @@ daily_forecast_upper = bind_rows(
 
 daily_forecast_lower = bind_rows(
   feb_forecast %>% 
-    mutate(daily_deficit=(receipt_day_amt-outlay_day_amt)/1000) %>% 
+    mutate(daily_deficit=(receipt_day_amt-outlay_day_amt)) %>% 
     select(date,record_fiscal_year,record_calendar_month,record_calendar_day,daily_deficit) %>% 
     fill(record_fiscal_year,record_calendar_month,date) %>% 
     mutate(year=year(date)) %>% 
