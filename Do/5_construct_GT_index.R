@@ -61,6 +61,7 @@ for(dat in avail_files){
   imputed_df1 = read_csv(paste0("Data/Processing/imputed_data/imputed_data_asof",dat,".csv"))
 
   fcast_df1 = imputed_df1 %>% 
+    select(-any_of(paste0("gt_",bad_vars$category))) %>% 
     arrange(date) %>%
     mutate(year=year(date),
            qtr=quarter(date)) %>%
@@ -180,7 +181,7 @@ plotly::ggplotly(ggplot(breakdown_df %>% mutate(prediction_date=as.Date(predicti
        x = "Observation (Time)", 
        y = "Contribution to Fitted Value") +
   theme_minimal() +
-    facet_wrap(~date,scales="free",ncol=1)
+  facet_wrap(~date,scales="free",ncol=1)
 ) 
 
 

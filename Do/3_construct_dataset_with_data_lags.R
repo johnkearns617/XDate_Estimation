@@ -32,6 +32,27 @@ set.seed(178)
 state_trends = read_csv(paste0("Data/Processing/gt_data/trends_full_sa_",gsub("-","",Sys.Date()),".csv")) %>% 
   mutate(release_date=date+6)
 
+trends_vol = data.frame()
+for(i in list.files("Data/Processing/gt_data")[1:13]){
+  
+  tmp = read_csv(paste0("Data/Processing/gt_data/",i)) %>% 
+    mutate(vintage=gsub("trends_full_sa_|.csv","",i))
+  
+  trends_vol = bind_rows(trends_vol,tmp)
+  
+}
+
+bad_vars = trends_vol %>% 
+  filter(date>="2023-01-01"&date<"2025-01-01") %>% 
+  group_by(date,category) %>% 
+  summarize(std=sd(deviation)) %>% 
+  group_by(category) %>% 
+  summarize(avg_std=median(std)) %>% 
+  filter(avg_std>=.3)
+
+state_trends = state_trends %>% 
+  filter(!(category%in%bad_vars$category))
+
 # start with GDP data
 
 join_df = national_econ %>% 
@@ -53,7 +74,7 @@ join_df = national_econ %>%
   ungroup() %>% 
   mutate(rgdp_qoq_pchange=(GDPC1/dplyr::lag(GDPC1,3)-1)*100)
 
-cor_df = t(cor(join_df$rgdp_qoq_pchange,join_df[,colnames(join_df)[2:303]],use="pairwise.complete.obs"))
+cor_df = t(cor(join_df$rgdp_qoq_pchange,join_df[,colnames(join_df)[2:which(colnames(join_df)=="gt_999")]],use="pairwise.complete.obs"))
 
 #tmp = make_df("2023-01-31")
 
