@@ -7,7 +7,8 @@ feb_adj = outlay_daily_df_groups %>%
   mutate(record_calendar_month=as.numeric(record_calendar_month)) %>% 
   full_join(feb_forecast %>% select(outlay_day_amt,receipt_day_amt,record_calendar_month,record_calendar_day)) %>% 
   group_by(record_calendar_day,record_calendar_month) %>% 
-  select(group,actual_date,scaled_daily=scaled_total_day) %>% 
+  select(group,actual_date,scaled_daily=total_day) %>% 
+  mutate(scaled_daily=scaled_daily/1000) %>% 
   filter(!is.na(group))
 
 test_df = bind_rows(
@@ -142,7 +143,7 @@ plotly::ggplotly(
 )
 
 plotly::ggplotly(
-  ggplot(daily_chart_df %>% filter(as.yearmon(actual_date)==as.yearmon("2025-03")),aes(x=actual_date,y=scaled_daily,fill=group)) +
+  ggplot(daily_chart_df %>% filter(as.yearmon(actual_date)==as.yearmon("2025-04")),aes(x=actual_date,y=scaled_daily,fill=group)) +
     geom_bar(stat="identity") +
     geom_line(inherit.aes = FALSE,aes(x=actual_date,y=daily_deficit)) +
     geom_point(inherit.aes = FALSE,aes(x=actual_date,y=daily_deficit)) +
