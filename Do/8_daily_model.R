@@ -41,6 +41,42 @@ set.seed(178)
 
 daily_categories = read_csv("Data/Processing/daily_categories1.csv")
 
+# get simple CBO forecast by month
+cbo_by_year = cbo_proj %>% 
+  filter(component%in%c("revenue","outlay")) %>% 
+  group_by(projected_fiscal_year,subcategory) %>% 
+  slice(n()) %>% 
+  select(component,subcategory,projected_fiscal_year,value)
+
+cbo_monthly_proj = data.frame(
+  year=rep(c(min(cbo_by_year$projected_fiscal_year):max(cbo_by_year$projected_fiscal_year)),each=12),
+  month=rep(c(1:12),times=length(min(cbo_by_year$projected_fiscal_year):max(cbo_by_year$projected_fiscal_year)))
+) %>% 
+  left_join(cbo_by_year %>% 
+              pivot_wider(names_from=c(component,subcategory),values_from=value) %>% 
+              rowwise() %>% 
+              mutate(`outlay_Other`=sum(c(`outlay_Other Mandatory`,`outlay_Nondefense Discretionary`,`outlay_Fannie Freddie`),na.rm=TRUE),
+                     `outlay_Total`=sum(c(`outlay_Total Mandatory`,`outlay_Total Discretionary`))) %>% 
+              select(-c(`outlay_Other Mandatory`,`outlay_Nondefense Discretionary`,`outlay_Fannie Freddie`,`outlay_Total Mandatory`,`outlay_Total Discretionary`)),
+            c("year"="projected_fiscal_year"))
+
+cbo_monthly_proj$`revenue_Corporate Income Taxes` = predict(nowcast_corporate_receipts[[4]],cbo_monthly_proj %>% select(month))*cbo_monthly_proj$`revenue_Corporate Income Taxes`
+cbo_monthly_proj$`revenue_Customs Duties` = predict(nowcast_customs_receipts[[4]],cbo_monthly_proj %>% select(month))*cbo_monthly_proj$`revenue_Customs Duties`
+cbo_monthly_proj$`revenue_Estate and Gift Taxes` = predict(nowcast_estate_receipts[[4]],cbo_monthly_proj %>% select(month))*cbo_monthly_proj$`revenue_Estate and Gift Taxes`
+cbo_monthly_proj$`revenue_Excise Taxes` = predict(nowcast_excise_receipts[[4]],cbo_monthly_proj %>% select(month))*cbo_monthly_proj$`revenue_Excise Taxes`
+cbo_monthly_proj$`revenue_Individual Income Taxes` = predict(nowcast_individual_receipts[[4]],cbo_monthly_proj %>% select(month))*cbo_monthly_proj$`revenue_Individual Income Taxes`
+cbo_monthly_proj$`revenue_Miscellaneous Receipts` = predict(nowcast_misc_receipts[[4]],cbo_monthly_proj %>% select(month))*cbo_monthly_proj$`revenue_Miscellaneous Receipts`
+cbo_monthly_proj$`revenue_Payroll Taxes` = predict(nowcast_payroll_receipts[[4]],cbo_monthly_proj %>% select(month))*cbo_monthly_proj$`revenue_Payroll Taxes`
+cbo_monthly_proj$revenue_Total = predict(nowcast_total_receipts[[4]],cbo_monthly_proj %>% select(month))*cbo_monthly_proj$revenue_Total
+cbo_monthly_proj$outlay_Medicaid = predict(nowcast_medicaid_outlay[[4]],cbo_monthly_proj %>% select(month))*cbo_monthly_proj$outlay_Medicaid
+cbo_monthly_proj$outlay_Medicare = predict(nowcast_medicare_outlay[[4]],cbo_monthly_proj %>% select(month))*cbo_monthly_proj$outlay_Medicare
+cbo_monthly_proj$`outlay_Net Interest` = predict(nowcast_interest_outlay[[4]],cbo_monthly_proj %>% select(month))*cbo_monthly_proj$`outlay_Net Interest`
+cbo_monthly_proj$`outlay_Social Security` = predict(nowcast_ss_outlay[[4]],cbo_monthly_proj %>% select(month))*cbo_monthly_proj$`outlay_Social Security`
+cbo_monthly_proj$`outlay_Defense Discretionary` = predict(nowcast_defense_outlay[[4]],cbo_monthly_proj %>% select(month))*cbo_monthly_proj$`outlay_Defense Discretionary`
+cbo_monthly_proj$outlay_Other = predict(nowcast_other_outlay[[4]],cbo_monthly_proj %>% select(month))*cbo_monthly_proj$outlay_Other
+cbo_monthly_proj$outlay_Total = predict(nowcast_total_outlays[[4]],cbo_monthly_proj %>% select(month))*cbo_monthly_proj$outlay_Total
+
+
 
 dts = op_cash_dep_withdraw %>% 
   left_join(daily_categories) %>% # we want to keep only the things we are able to map
@@ -281,42 +317,6 @@ for(dat in as.character(unique(outlay_daily_df$date[is.na(outlay_daily_df$actual
 }
 
 #### extend forecast using ARIMA
-
-# get simple CBO forecast by month
-cbo_by_year = cbo_proj %>% 
-  filter(component%in%c("revenue","outlay")) %>% 
-  group_by(projected_fiscal_year,subcategory) %>% 
-  slice(n()) %>% 
-  select(component,subcategory,projected_fiscal_year,value)
-
-cbo_monthly_proj = data.frame(
-  year=rep(c(min(cbo_by_year$projected_fiscal_year):max(cbo_by_year$projected_fiscal_year)),each=12),
-  month=rep(c(1:12),times=length(min(cbo_by_year$projected_fiscal_year):max(cbo_by_year$projected_fiscal_year)))
-) %>% 
-  left_join(cbo_by_year %>% 
-              pivot_wider(names_from=c(component,subcategory),values_from=value) %>% 
-              rowwise() %>% 
-              mutate(`outlay_Other`=sum(c(`outlay_Other Mandatory`,`outlay_Nondefense Discretionary`,`outlay_Fannie Freddie`),na.rm=TRUE),
-                     `outlay_Total`=sum(c(`outlay_Total Mandatory`,`outlay_Total Discretionary`))) %>% 
-              select(-c(`outlay_Other Mandatory`,`outlay_Nondefense Discretionary`,`outlay_Fannie Freddie`,`outlay_Total Mandatory`,`outlay_Total Discretionary`)),
-            c("year"="projected_fiscal_year"))
-
-cbo_monthly_proj$`revenue_Corporate Income Taxes` = predict(nowcast_corporate_receipts[[4]],cbo_monthly_proj %>% select(month))*cbo_monthly_proj$`revenue_Corporate Income Taxes`
-cbo_monthly_proj$`revenue_Customs Duties` = predict(nowcast_customs_receipts[[4]],cbo_monthly_proj %>% select(month))*cbo_monthly_proj$`revenue_Customs Duties`
-cbo_monthly_proj$`revenue_Estate and Gift Taxes` = predict(nowcast_estate_receipts[[4]],cbo_monthly_proj %>% select(month))*cbo_monthly_proj$`revenue_Estate and Gift Taxes`
-cbo_monthly_proj$`revenue_Excise Taxes` = predict(nowcast_excise_receipts[[4]],cbo_monthly_proj %>% select(month))*cbo_monthly_proj$`revenue_Excise Taxes`
-cbo_monthly_proj$`revenue_Individual Income Taxes` = predict(nowcast_individual_receipts[[4]],cbo_monthly_proj %>% select(month))*cbo_monthly_proj$`revenue_Individual Income Taxes`
-cbo_monthly_proj$`revenue_Miscellaneous Receipts` = predict(nowcast_misc_receipts[[4]],cbo_monthly_proj %>% select(month))*cbo_monthly_proj$`revenue_Miscellaneous Receipts`
-cbo_monthly_proj$`revenue_Payroll Taxes` = predict(nowcast_payroll_receipts[[4]],cbo_monthly_proj %>% select(month))*cbo_monthly_proj$`revenue_Payroll Taxes`
-cbo_monthly_proj$revenue_Total = predict(nowcast_total_receipts[[4]],cbo_monthly_proj %>% select(month))*cbo_monthly_proj$revenue_Total
-cbo_monthly_proj$outlay_Medicaid = predict(nowcast_medicaid_outlay[[4]],cbo_monthly_proj %>% select(month))*cbo_monthly_proj$outlay_Medicaid
-cbo_monthly_proj$outlay_Medicare = predict(nowcast_medicare_outlay[[4]],cbo_monthly_proj %>% select(month))*cbo_monthly_proj$outlay_Medicare
-cbo_monthly_proj$`outlay_Net Interest` = predict(nowcast_interest_outlay[[4]],cbo_monthly_proj %>% select(month))*cbo_monthly_proj$`outlay_Net Interest`
-cbo_monthly_proj$`outlay_Social Security` = predict(nowcast_ss_outlay[[4]],cbo_monthly_proj %>% select(month))*cbo_monthly_proj$`outlay_Social Security`
-cbo_monthly_proj$`outlay_Defense Discretionary` = predict(nowcast_defense_outlay[[4]],cbo_monthly_proj %>% select(month))*cbo_monthly_proj$`outlay_Defense Discretionary`
-cbo_monthly_proj$outlay_Other = predict(nowcast_other_outlay[[4]],cbo_monthly_proj %>% select(month))*cbo_monthly_proj$outlay_Other
-cbo_monthly_proj$outlay_Total = predict(nowcast_total_outlays[[4]],cbo_monthly_proj %>% select(month))*cbo_monthly_proj$outlay_Total
-
 
 forecast_list = list()
 
