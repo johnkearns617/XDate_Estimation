@@ -45,10 +45,11 @@ daily_categories = read_csv("Data/Processing/daily_categories1.csv")
 dts = op_cash_dep_withdraw %>% 
   left_join(daily_categories) %>% # we want to keep only the things we are able to map
   filter(!is.na(cbo_category)) %>% # get rid of the ones we cant map, mostly are internal transfers
+  distinct(record_date,account_type,transaction_type,transaction_catg,transaction_today_amt,.keep_all = TRUE) %>% 
   mutate(transaction_today_amt=ifelse(transaction_type=="Withdrawals",as.numeric(transaction_today_amt)*-1,as.numeric(transaction_today_amt)), # make withdrawawls negative
          transaction_mtd_amt=ifelse(transaction_type=="Withdrawals",as.numeric(transaction_mtd_amt)*-1,as.numeric(transaction_mtd_amt)))
 
-imputed_daily_receipts = dts %>% 
+imputed_daily_receipts = dts %>% # TODO: replace with a better way to disaggregate, and disaggregate current month
   filter(cbo_category%in%c("Customs Duties","Estate and Gift Taxes","Miscellaneous Receipts",
                                                                                "Individual Income Taxes","Excuse Taxes","Corporate Income Taxes",
                                                                                "Payroll Taxes")) %>% # keep only the categories receipt categories
@@ -125,7 +126,16 @@ receipt_daily_df = receipt_daily_df %>%
   mutate(avg_share=predict(lm(share~record_calendar_day*factor(record_calendar_month)+factor(record_calendar_day):factor(tax_day),
                               receipt_daily_df %>% filter(date<max(receipt_daily_df$date))),receipt_daily_df)) %>% 
   ungroup() %>% 
-  mutate(extrap_total=(total_mtd/avg_share)*(1/1000))
+  mutate(extrap_total=(total_mtd/avg_share)*(1/1000)) %>% 
+  rowwise() %>% 
+  mutate(extrap_total=mean(c(pred,extrap_total),na.rm=TRUE), # TODO: test if it makes sense to set min at the amount of revenue already seen in the data
+         extrap_total=min(c(extrap_total,
+                            quantile(c(receipts_fred %>% 
+                                         filter(date>="2022-01-01"&date<=(Sys.Date() %m+% years(3))) %>% 
+                                         pull(value),
+                                       cbo_monthly_proj$revenue_Total[cbo_monthly_proj$year<=(year(Sys.Date())+3)&cbo_monthly_proj$year>=2022]),
+                                     1,na.rm=TRUE)))) %>% 
+  ungroup()
 
 receipt_daily_df = receipt_daily_df %>% 
   left_join(receipt_daily_df %>% 
@@ -145,8 +155,7 @@ receipt_daily_df = receipt_daily_df %>%
          scaled_total_mtd=ifelse(!is.na(actual),total_mtd*(actual[n()]/total_mtd[n()]),total_mtd/1000*scale_factor_year),
          extrap_total=ifelse(!is.na(actual),extrap_total*scale_factor_year,extrap_total*scale_factor_year)) %>%  # keep column that is the pure prediction
   rowwise() %>% 
-  mutate(extrap_total=mean(c(pred,extrap_total)),
-         scaled_total=ifelse(!is.na(actual),scaled_total,extrap_total)) %>% 
+  mutate(scaled_total=ifelse(!is.na(actual),scaled_total,extrap_total)) %>% 
   ungroup()
 
 # repeat for outlays
@@ -178,7 +187,17 @@ outlay_daily_df = outlay_daily_df %>%
   mutate(avg_share=predict(lm(share~record_calendar_day*factor(record_calendar_month)+factor(record_calendar_day):factor(tax_day),
                               outlay_daily_df %>% filter(date<max(outlay_daily_df$date))),outlay_daily_df)) %>% 
   ungroup() %>% 
-  mutate(extrap_total=(total_mtd/avg_share)*(-1/1000))
+  mutate(extrap_total=(total_mtd/avg_share)*(-1/1000)) %>% 
+  rowwise() %>% 
+  mutate(extrap_total=mean(c(pred,extrap_total),na.rm=TRUE), # TODO: test if it makes sense to set min at the amount of revenue already seen in the data
+         extrap_total=min(c(extrap_total,
+                            quantile(c(outlays_fred %>% 
+                                         filter(date>="2022-01-01"&date<=(Sys.Date() %m+% years(3))) %>% 
+                                         pull(value),
+                                       cbo_monthly_proj$outlay_Total[cbo_monthly_proj$year<=(year(Sys.Date())+3)&cbo_monthly_proj$year>=2022]),
+                                     1,na.rm=TRUE)))) %>% 
+  ungroup()
+
 
 outlay_daily_df = outlay_daily_df %>% 
   left_join(outlay_daily_df %>% 
@@ -200,8 +219,7 @@ outlay_daily_df = outlay_daily_df %>%
          scaled_total_mtd=ifelse(!is.na(actual),total_mtd*-1*(actual[n()]/(total_mtd[n()])),total_mtd/1000*scale_factor_year),
          extrap_total=ifelse(!is.na(actual),extrap_total*scale_factor_year,extrap_total*scale_factor_year)) %>%  # keep column that is the pure prediction
   rowwise() %>% 
-  mutate(extrap_total=mean(c(pred,extrap_total)),
-         scaled_total=ifelse(!is.na(actual),scaled_total,extrap_total)) %>% 
+  mutate(scaled_total=ifelse(!is.na(actual),scaled_total,extrap_total)) %>% 
   ungroup()
 
 ggplot(outlay_daily_df %>% filter(date=="2025-01-01"),aes(x=actual_date)) +
@@ -388,7 +406,17 @@ outlay_daily_df_groups = outlay_daily_df_groups %>%
   mutate(avg_share=predict(lm(share~record_calendar_day*factor(record_calendar_month)*factor(group)+factor(record_calendar_day):factor(tax_day):factor(group),
                               outlay_daily_df_groups %>% filter(date<max(outlay_daily_df_groups$date))),outlay_daily_df_groups)) %>% 
   ungroup() %>% 
-  mutate(extrap_total=(total_mtd/avg_share)*(-1/1000))
+  mutate(extrap_total=(total_mtd/avg_share)*(-1/1000)) %>% 
+  rowwise() %>% 
+  mutate(extrap_total=mean(c(pred,extrap_total),na.rm=TRUE), # TODO: test if it makes sense to set min at the amount of revenue already seen in the data
+         extrap_total=min(c(extrap_total,
+                            quantile(c(outlays_fred %>% 
+                                         filter(date>="2022-01-01"&date<=(Sys.Date() %m+% years(3))) %>% 
+                                         pull(value),
+                                       cbo_monthly_proj$outlay_Total[cbo_monthly_proj$year<=(year(Sys.Date())+3)&cbo_monthly_proj$year>=2022]),
+                                     1,na.rm=TRUE)))) %>% 
+  ungroup()
+
 
 outlay_daily_df_groups = outlay_daily_df_groups %>% 
   left_join(outlay_daily_df_groups %>% 
