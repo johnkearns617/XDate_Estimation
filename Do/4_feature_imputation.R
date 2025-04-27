@@ -78,7 +78,7 @@ write_csv(imputed_df,paste0("Data/Processing/imputed_data/imputed_data_asof",Sys
 #     select_if(~sd(.,na.rm=TRUE)!=0|is.character(.)|is.Date(.)) %>% 
 #     filter(date>="2004-01-01")
 #   
-#   imputed_df = impute_function(df)
+#   imputed_df = impute_function(df,dat)
 #   
 #   write_csv(imputed_df,paste0("Data/Processing/imputed_data_asof",dat,".csv"))
 #   

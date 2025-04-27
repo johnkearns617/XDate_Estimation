@@ -160,7 +160,7 @@ receipt_daily_df = dts %>%
 receipt_daily_df = receipt_daily_df %>%
   ungroup() %>% 
   mutate(avg_share=predict(lm(share~record_calendar_day*factor(record_calendar_month)+factor(record_calendar_day):factor(tax_day),
-                              receipt_daily_df %>% filter(date<max(receipt_daily_df$date))),receipt_daily_df)) %>% 
+                              receipt_daily_df %>% filter(date<max(receipt_daily_df$date)&!(date%in%c("2020-03-01","2020-06-01","2021-03-01")))),receipt_daily_df)) %>% 
   ungroup() %>% 
   mutate(extrap_total=(total_mtd/avg_share)*(1/1000)) %>% 
   rowwise() %>% 
@@ -221,7 +221,7 @@ outlay_daily_df = dts %>%
 outlay_daily_df = outlay_daily_df %>%
   ungroup() %>% 
   mutate(avg_share=predict(lm(share~record_calendar_day*factor(record_calendar_month)+factor(record_calendar_day):factor(tax_day),
-                              outlay_daily_df %>% filter(date<max(outlay_daily_df$date))),outlay_daily_df)) %>% 
+                              outlay_daily_df %>% filter(date<max(outlay_daily_df$date)&!(date%in%c("2020-03-01","2020-06-01","2021-03-01")))),outlay_daily_df)) %>% 
   ungroup() %>% 
   mutate(extrap_total=(total_mtd/avg_share)*(-1/1000)) %>% 
   rowwise() %>% 

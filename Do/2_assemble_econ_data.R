@@ -40,6 +40,8 @@ states_codes = bls_area_codes %>%
   filter(grepl("-- Statewide",area_title)&grepl(paste(state.name,collapse="|"),area_title)) %>% 
   distinct(area_title,.keep_all = TRUE)
 
+gdpnow_vintages = fredr_series_vintagedates("GDPNOW")
+
 # load old data
 load("Data/Processing/fiscal_service_data_old.RData")
 
@@ -58,7 +60,8 @@ for(metric in c("PAYEMS","CE16OV","JTSJOL","UNRATE","ADPMNUSNERSA","PRS85006112"
                 "W006RC1Q027SBEA","A074RC1Q027SBEA","W007RC1Q027SBEA","B234RC1Q027SBEA","B235RC1Q027SBEA","B075RC1Q027SBEA","W780RC1Q027SBEA","W009RC1Q027SBEA",
                 "B094RC1Q027SBEA","W053RC1Q027SBEA","B1040C1Q027SBEA","W011RC1Q027SBEA","W012RC1Q027SBEA","B233RC1Q027SBEA","B097RC1Q027SBEA","FGEXPND","A957RC1Q027SBEA",
                 "W014RC1Q027SBEA","W015RC1Q027SBEA","B087RC1Q027SBEA","FGSL","W017RC1Q027SBEA","A091RC1Q027SBEA","B096RC1Q027SBEA","B243RC1Q027SBEA","W018RC1Q027SBEA","W019RCQ027SBEA","AD02RC1Q027SBEA",
-                "DGS10","DFF")){
+                "DGS10","DFF",
+                "GDPNOW","PCENOW","GDPINOW","EXPORTSNOW","GOVNOW","IMPORTSNOW")){
   
   if(metric%in%c("DGS10","DFF")){
     df = fredr(paste0(metric),frequency="wef")
@@ -67,7 +70,9 @@ for(metric in c("PAYEMS","CE16OV","JTSJOL","UNRATE","ADPMNUSNERSA","PRS85006112"
       mutate(release_date=date) %>% 
       select(-c(realtime_start,realtime_end))
     
-  } else{
+  } 
+  
+  if(!(metric%in%c("DGS10","DFF"))){
     
     df = fredr(paste0(metric),realtime_start = as.Date("2004-01-01"))
     
@@ -88,7 +93,7 @@ for(metric in c("PAYEMS","CE16OV","JTSJOL","UNRATE","ADPMNUSNERSA","PRS85006112"
 }
 
 titles = data.frame()
-for(comp in unique(national_econ$series_id)){
+for(comp in c(unique(national_econ$series_id),"PCENOW","GPDINOW","GOVNOW","IMPORTSNOW","EXPORTSNOW","GDPNOW")){
   
   titles = bind_rows(
     titles,
@@ -96,6 +101,35 @@ for(comp in unique(national_econ$series_id)){
   )
   
 }
+
+gdpnow_data = openxlsx::read.xlsx("https://www.atlantafed.org/-/media/documents/cqer/researchcq/gdpnow/GDPTrackingModelDataAndForecasts.xlsx",sheet="TrackingArchives",detectDates = TRUE) 
+current_data = openxlsx::read.xlsx("https://www.atlantafed.org/-/media/documents/cqer/researchcq/gdpnow/GDPTrackingModelDataAndForecasts.xlsx",sheet="TrackingHistory",colNames = FALSE)
+gdpnow_dates = openxlsx::read.xlsx("https://www.atlantafed.org/-/media/documents/cqer/researchcq/gdpnow/GDPTrackingModelDataAndForecasts.xlsx",sheet="TrackingHistory",colNames = FALSE,detectDates = TRUE)
+
+gdpnow_data = gdpnow_data %>% 
+  select(release_date=Forecast.Date,date=Quarter.being.forecasted,
+         PCENOW=PCE,
+         GPDINOW=GPDI,
+         GOVNOW=Government,
+         IMPORTSNOW=Imports,
+         EXPORTSNOW=Exports,
+         GDPNOW=GDP.Nowcast) %>% 
+  pivot_longer(cols=PCENOW:GDPNOW,names_to="series_id")
+
+current_data = current_data %>% 
+  filter(X1%in%c("PCE","Govt.","Imports","Exports","GDP")|grepl("Gross Private Domestic Investment",X2))
+current_data$X1 = c("PCENOW","GPDINOW","GOVNOW","IMPORTSNOW","EXPORTSNOW","GDPNOW")
+current_data = current_data[,-c(2)]
+colnames(current_data) = c("series_id",sapply(3:ncol(gdpnow_dates),function(x) as.character(gdpnow_dates[1,x])))
+current_data = current_data %>% 
+  pivot_longer(cols=2:ncol(current_data),names_to = "release_date") %>% 
+  mutate(release_date=as.Date(release_date),
+         date=ceiling_date(release_date[1],"quarter")-1)
+
+gdpnow_data = bind_rows(gdpnow_data,current_data) %>% 
+  mutate(date=floor_date(date,"quarter"))
+
+national_econ = bind_rows(national_econ,gdpnow_data)
 
 national_econ_weekly = national_econ %>% 
   filter(series_id%in%c("ICSA","IHLIDXUS","DGS10","DFF"))
