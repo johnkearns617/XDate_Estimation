@@ -64,10 +64,7 @@ ui <- fluidPage(
              tabPanel("Government Deficits",
                       plotlyOutput('yearly_chart'),
                       plotlyOutput('monthly_chart'),
-                      plotlyOutput('daily_chart')),
-             tabPanel("GDP Nowcast",
-                      plotlyOutput("gdp_nowcast"),
-                      dataTableOutput("released_today"))
+                      plotlyOutput('daily_chart'))
            )
         )
     )
@@ -164,43 +161,7 @@ server <- function(input, output) {
       daily_chart_val()
     })
     
-    output$gdp_nowcast = renderPlotly({
-      plotly::ggplotly(ggplot(breakdown_df %>% filter(date>=(Sys.Date() %m-% years(1))) %>% mutate(prediction_date=as.Date(prediction_date)), aes(x = prediction_date, y = contribution, fill = variable_name)) +
-                         geom_bar(stat = "identity", position = "stack") +
-                         geom_line(data=gdp_data %>% filter(date>=(Sys.Date() %m-% years(1))) %>% ungroup() %>% mutate(prediction_date=as.Date(prediction_date)),
-                                   aes(x=prediction_date,y=(gdp)),inherit.aes = FALSE) +
-                         geom_point(data=gdp_data %>% filter(date>=(Sys.Date() %m-% years(1))) %>% ungroup()  %>% mutate(prediction_date=as.Date(prediction_date)),
-                                    aes(x=prediction_date,y=(gdp)),inherit.aes = FALSE) +
-                         geom_hline(data=gdp_data %>% filter(date>=(Sys.Date() %m-% years(1))) %>% ungroup()  %>% mutate(prediction_date=as.Date(prediction_date)),
-                                    aes(yintercept=(actual)),color="darkblue",inherit.aes = FALSE) +
-                         labs(title = "Variable Contribution Over Time",
-                              x = "Observation (Time)", 
-                              y = "Contribution to Fitted Value") +
-                         theme_minimal() +
-                         facet_wrap(~date,scales="free")
-      ) 
-    })
-    
-    output$released_today = renderDataTable({
-      
-      national_econ %>% 
-        filter(release_date>=(Sys.Date()-7)) %>% 
-        select(title,series_id,release_date) %>% 
-        full_join(breakdown_df %>% 
-                    filter((prediction_date>=(Sys.Date()-8)|length(unique(prediction_date))<7)&
-                             variable_name%in%((national_econ %>% 
-                                                  filter(release_date>=(Sys.Date()-7)) %>% 
-                                                  select(title,series_id,release_date))$series_id)) %>% 
-                    group_by(date,variable_name) %>% 
-                    slice(1,n()) %>% 
-                    group_by(date,variable_name) %>% 
-                    summarize(impact=contribution[2]-contribution[1]) %>% 
-                    rename(projection_quarter=date),
-                  by=c("series_id"="variable_name")) %>% 
-        arrange(impact)
-      
-    })
-    
+
 }
 
 # Run the application 
