@@ -266,19 +266,19 @@ get_deficit_imputed_data = function(dat,dataset,cbo_category,monthly_shares_reg)
     left_join(dataset %>% 
                 select(date,value)) %>% # join the yvariable
     arrange(date) %>%
-    left_join(national_econ %>% 
-                filter(series_id=="GDPC1") %>% 
-                select(date,GDPC1=value)) %>% 
-    group_by(year,quarter(date)) %>% 
-    mutate(GDPC1=GDPC1[1])  %>% 
-    ungroup() %>% 
-    select(-`quarter(date)`) %>% 
-    mutate(GDPC1 = (GDPC1/dplyr::lag(GDPC1,3)-1)*100) %>% 
-    rowwise() %>% 
-    mutate(GDPC1=ifelse(floor_date(date,"quarter")%in%gdp_data$date&is.na(GDPC1),
-                        tail(gdp_data$gdp[gdp_data$date==floor_date(date,"quarter")],1),
-                        GDPC1)) %>% 
-    ungroup() %>% 
+    # left_join(national_econ %>% 
+    #             filter(series_id=="GDPC1") %>% 
+    #             select(date,GDPC1=value)) %>% 
+    # group_by(year,quarter(date)) %>% 
+    # mutate(GDPC1=GDPC1[1])  %>% 
+    # ungroup() %>% 
+    # select(-`quarter(date)`) %>% 
+    # mutate(GDPC1 = (GDPC1/dplyr::lag(GDPC1,3)-1)*100) %>% 
+    # rowwise() %>% 
+    # mutate(GDPC1=ifelse(floor_date(date,"quarter")%in%gdp_data$date&is.na(GDPC1),
+    #                     tail(gdp_data$gdp[gdp_data$date==floor_date(date,"quarter")],1),
+    #                     GDPC1)) %>% 
+    # ungroup() %>% 
     mutate_at(vars(PAYEMS:JTSJOL,INDPRO:DGS10),~((./dplyr::lag(.,1)-1)*100)) %>%
     mutate_at(vars(UNRATE:DTCDFSA066MSFRBPHI,grep("gt_",colnames(.),value=TRUE)),~(.-dplyr::lag(.,1))) %>%
     mutate(lag1=dplyr::lag(value,1),
