@@ -334,7 +334,7 @@ nowcast_headline = function(dataset,cbo_category){
   selected_coefs_state$category = sapply(selected_coefs_state$var,which_category)
   selected_coefs_state = selected_coefs_state %>% arrange(-Overall)
   
-  test = lm_robust(as.formula(paste0("value","~lag1+lag2+lag3+lag4+cbo_proj_month+GDPC1+",paste(c(rownames(selected_coefs_state)),collapse="+"))),
+  test = lm_robust(as.formula(paste0("value","~lag1+lag2+lag3+lag4+cbo_proj_month+",paste(c(rownames(selected_coefs_state)),collapse="+"))),
                    data = fcast_df1 %>% filter(date<='2024-01-01') %>% mutate(weight=(1:n())/n()))
   
   fcast_df1 = get_deficit_imputed_data(Sys.Date(),dataset,cbo_category,monthly_shares_reg)
