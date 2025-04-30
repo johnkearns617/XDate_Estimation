@@ -128,8 +128,6 @@ current_data = current_data %>%
 gdpnow_data = bind_rows(gdpnow_data,current_data) %>% 
   mutate(date=floor_date(date,"quarter"))
 
-national_econ = bind_rows(national_econ,gdpnow_data)
-
 national_econ_weekly = national_econ %>% 
   filter(series_id%in%c("ICSA","IHLIDXUS","DGS10","DFF"))
 
