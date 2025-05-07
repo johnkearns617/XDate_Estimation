@@ -264,7 +264,7 @@ ggplot(outlay_daily_df %>% filter(date=="2025-01-01"),aes(x=actual_date)) +
   geom_line(aes(y=scaled_total,color="Scaled estimate"))
 
 feb_forecast = data.frame()
-for(dat in as.character(unique(outlay_daily_df$date[is.na(outlay_daily_df$actual)]))){
+for(dat in unique(as.character(unique(outlay_daily_df$date[is.na(outlay_daily_df$actual)])),as.character(floor_date(Sys.Date(),"month")))){
   
   dat1 = as.Date(dat)
   
@@ -278,39 +278,92 @@ for(dat in as.character(unique(outlay_daily_df$date[is.na(outlay_daily_df$actual
       mutate(receipt_day_amt=receipt_day_amt,
              receipt_mtd_amt=receipt_mtd_amt)
   ) %>% 
-    filter(record_fiscal_year==ifelse(month(dat1)>=10,year(dat1)+1,year(dat1))&as.numeric(record_calendar_month)==month(dat1)) %>% 
-    mutate(date = as.Date(paste0(year(dat1),"-",record_calendar_month,"-",record_calendar_day))) 
-  
-  if((max(tmp_df$date,na.rm=TRUE)+1)<(ceiling_date(tmp_df$date[1],"month")-1)){ # testing if we have the last day of the month. If we have the last day of the month then we dont need to add the missing days
+    mutate(date = as.Date(paste0(year(dat1),"-",record_calendar_month,"-",record_calendar_day))) %>% 
+    filter(record_fiscal_year==ifelse(month(dat1)>=10,year(dat1)+1,year(dat1))&as.numeric(record_calendar_month)==month(dat1)) 
+    
+  if(nrow(tmp_df)==0){
     
     tmp_df = tmp_df %>% 
-      bind_rows(data.frame(record_calendar_day=as.numeric(day(seq(max(tmp_df$date,na.rm=TRUE)+1,ceiling_date(tmp_df$date[1],"month")-1,by=1)))))
+      select(-c(pred_receipt,pred_outlay)) %>% 
+      full_join(nowcast_deficit %>% filter(date==dat1) %>% select(date,pred_outlay=outlays,pred_receipt=receipts)) %>% 
+      mutate(record_calendar_day=day(date),
+             record_calendar_month=month(date),
+             record_fiscal_year=ifelse(month(dat1)>=10,year(dat1)+1,year(dat1)),
+             outlay_extrap_total=pred_outlay,
+             receipts_extrap_total=pred_receipt)
+    
+    tmp_df = tmp_df %>% 
+      bind_rows(data.frame(record_calendar_day=as.numeric(day(seq(max(tmp_df$date,na.rm=TRUE)+1,ceiling_date(tmp_df$date[1],"month")-1,by=1))))) %>% 
+      fill(record_calendar_month,record_fiscal_year,.direction="down") %>% 
+      mutate(date=as.Date(paste0(year(date[1]),"-",month(date[1]),"-",record_calendar_day))) %>% 
+      left_join(tax_days,by=c("date"="date")) %>% 
+      fill(tax_day,.direction="down") %>% 
+      mutate(tax_day=ifelse(is.na(tax_day),0,tax_day)) %>% 
+      ungroup() 
+    
+    tmp_df = tmp_df %>% 
+      mutate(avg_share_outlay=predict(lm(share~record_calendar_day*factor(record_calendar_month)+factor(record_calendar_day):factor(tax_day),
+                                         outlay_daily_df %>% filter(date<max(outlay_daily_df$date))),tmp_df),
+             avg_share_receipt=predict(lm(share~record_calendar_day*factor(record_calendar_month)+factor(record_calendar_day):factor(tax_day),
+                                          receipt_daily_df %>% filter(date<max(receipt_daily_df$date))),tmp_df),
+             avg_share_outlay=ifelse(date==(ceiling_date(tmp_df$date[1],"month")-1),1,avg_share_outlay),
+             avg_share_receipt=ifelse(date==(ceiling_date(tmp_df$date[1],"month")-1),1,avg_share_receipt)) %>% 
+      fill(outlay_extrap_total,receipts_extrap_total,pred_receipt,pred_outlay,.direction="down") %>% 
+      ungroup() %>% 
+      mutate(outlay_mtd_amt=avg_share_outlay*outlay_extrap_total,
+             receipt_mtd_amt=avg_share_receipt*receipts_extrap_total,
+             outlay_mtd_amt=ifelse(is.na(outlay_mtd_amt),outlay_extrap_total*avg_share_outlay,outlay_mtd_amt),
+             outlay_day_amt=outlay_mtd_amt-lag(outlay_mtd_amt,1),
+             outlay_day_amt=ifelse(record_calendar_day==min(record_calendar_day),outlay_mtd_amt,outlay_day_amt),
+             receipt_mtd_amt=ifelse(is.na(receipt_mtd_amt),receipts_extrap_total*avg_share_receipt,receipt_mtd_amt),
+             receipt_day_amt=receipt_mtd_amt-lag(receipt_mtd_amt,1),
+             receipt_day_amt=ifelse(record_calendar_day==min(record_calendar_day),receipt_mtd_amt,receipt_day_amt))
+    
+    
+
+  } else{
+  if((max(tmp_df$date,na.rm=TRUE))<(ceiling_date(tmp_df$date[1],"month")-1)){ # testing if we have the last day of the month. If we have the last day of the month then we dont need to add the missing days
+    
+    tmp_df = tmp_df %>% 
+      bind_rows(data.frame(record_calendar_day=as.numeric(day(seq(min(tmp_df$date,na.rm=TRUE),max(tmp_df$date)-1,by=1)))) %>% filter(!(record_calendar_day%in%tmp_df$record_calendar_day))) %>% 
+      arrange(record_calendar_day) %>% 
+      fill(outlay_mtd_amt,receipt_mtd_amt,record_fiscal_year,record_calendar_month,pred_outlay,outlay_extrap_total,pred_receipt,receipts_extrap_total,.direction="downup") %>% 
+      mutate(outlay_day_amt=ifelse(is.na(outlay_day_amt)&!is.na(outlay_mtd_amt),outlay_mtd_amt-dplyr::lag(outlay_mtd_amt,1),outlay_day_amt),
+             receipt_day_amt=ifelse(is.na(receipt_day_amt)&!is.na(receipt_mtd_amt),receipt_mtd_amt-dplyr::lag(receipt_mtd_amt,1),receipt_day_amt)) %>% 
+      bind_rows(data.frame(record_calendar_day=as.numeric(day(seq(max(tmp_df$date,na.rm=TRUE)+1,ceiling_date(tmp_df$date[1],"month")-1,by=1)))) %>% filter(!(record_calendar_day%in%tmp_df$record_calendar_day))) %>% 
+      arrange(record_calendar_day) 
   
+    
+  }
+    
+    tmp_df = tmp_df %>% 
+      fill(record_calendar_month,.direction="down") %>% 
+      mutate(date=as.Date(paste0(year(date[1]),"-",month(date[1]),"-",record_calendar_day))) %>% 
+      left_join(tax_days,by=c("date"="date")) %>% 
+      fill(tax_day,.direction="down") %>% 
+      mutate(tax_day=ifelse(is.na(tax_day),0,tax_day)) %>% 
+      ungroup() 
+    
+    tmp_df = tmp_df %>% 
+      mutate(avg_share_outlay=predict(lm(share~record_calendar_day*factor(record_calendar_month)+factor(record_calendar_day):factor(tax_day),
+                                         outlay_daily_df %>% filter(date<max(outlay_daily_df$date))),tmp_df),
+             avg_share_receipt=predict(lm(share~record_calendar_day*factor(record_calendar_month)+factor(record_calendar_day):factor(tax_day),
+                                          receipt_daily_df %>% filter(date<max(receipt_daily_df$date))),tmp_df),
+             avg_share_outlay=ifelse(date==(ceiling_date(tmp_df$date[1],"month")-1),1,avg_share_outlay),
+             avg_share_receipt=ifelse(date==(ceiling_date(tmp_df$date[1],"month")-1),1,avg_share_receipt)) %>% 
+      fill(outlay_extrap_total,receipts_extrap_total,record_fiscal_year,pred_receipt,pred_outlay,.direction="down") %>% 
+      ungroup() %>% 
+      mutate(outlay_mtd_amt=outlay_mtd_amt*tail(na.omit(outlay_extrap_total),1)/(tail(na.omit(outlay_mtd_amt),1)/avg_share_outlay[max(which(!is.na(outlay_mtd_amt)))]),
+             receipt_mtd_amt=receipt_mtd_amt*tail(na.omit(receipts_extrap_total),1)/(tail(na.omit(receipt_mtd_amt),1)/avg_share_receipt[max(which(!is.na(receipt_mtd_amt)))]),
+             outlay_mtd_amt=ifelse(is.na(outlay_mtd_amt),outlay_extrap_total*avg_share_outlay,outlay_mtd_amt),
+             outlay_day_amt=outlay_mtd_amt-lag(outlay_mtd_amt,1),
+             outlay_day_amt=ifelse(record_calendar_day==min(record_calendar_day),outlay_mtd_amt,outlay_day_amt),
+             receipt_mtd_amt=ifelse(is.na(receipt_mtd_amt),receipts_extrap_total*avg_share_receipt,receipt_mtd_amt),
+             receipt_day_amt=receipt_mtd_amt-lag(receipt_mtd_amt,1),
+             receipt_day_amt=ifelse(record_calendar_day==min(record_calendar_day),receipt_mtd_amt,receipt_day_amt))
+    
   }
   
-  tmp_df = tmp_df %>% 
-    fill(record_calendar_month,.direction="down") %>% 
-    mutate(date=as.Date(paste0(year(date[1]),"-",month(date[1]),"-",record_calendar_day))) %>% 
-    left_join(tax_days,by=c("date"="date")) %>% 
-    fill(tax_day,.direction="down") %>% 
-    mutate(tax_day=ifelse(is.na(tax_day),0,tax_day)) %>% 
-    ungroup() 
-  
-  tmp_df = tmp_df %>% 
-    mutate(avg_share_outlay=predict(lm(share~record_calendar_day*factor(record_calendar_month)+factor(record_calendar_day):factor(tax_day),
-                                                 outlay_daily_df %>% filter(date<max(outlay_daily_df$date))),tmp_df),
-           avg_share_receipt=predict(lm(share~record_calendar_day*factor(record_calendar_month)+factor(record_calendar_day):factor(tax_day),
-                                                 receipt_daily_df %>% filter(date<max(receipt_daily_df$date))),tmp_df)) %>% 
-    fill(outlay_extrap_total,receipts_extrap_total,.direction="down") %>% 
-    ungroup() %>% 
-    mutate(outlay_mtd_amt=outlay_mtd_amt*tail(na.omit(outlay_extrap_total),1)/(tail(na.omit(outlay_mtd_amt),1)/avg_share_outlay[max(which(!is.na(outlay_mtd_amt)))]),
-           receipt_mtd_amt=receipt_mtd_amt*tail(na.omit(receipts_extrap_total),1)/(tail(na.omit(receipt_mtd_amt),1)/avg_share_receipt[max(which(!is.na(receipt_mtd_amt)))]),
-           outlay_mtd_amt=ifelse(is.na(outlay_mtd_amt),outlay_extrap_total*avg_share_outlay,outlay_mtd_amt),
-           outlay_day_amt=outlay_mtd_amt-lag(outlay_mtd_amt,1),
-           outlay_day_amt=ifelse(record_calendar_day==min(record_calendar_day),outlay_mtd_amt,outlay_day_amt),
-           receipt_mtd_amt=ifelse(is.na(receipt_mtd_amt),receipts_extrap_total*avg_share_receipt,receipt_mtd_amt),
-           receipt_day_amt=receipt_mtd_amt-lag(receipt_mtd_amt,1),
-           receipt_day_amt=ifelse(record_calendar_day==min(record_calendar_day),receipt_mtd_amt,receipt_day_amt))
   
   feb_forecast = bind_rows(feb_forecast,tmp_df)
    
