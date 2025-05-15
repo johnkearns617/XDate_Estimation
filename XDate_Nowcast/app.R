@@ -50,7 +50,7 @@ ui <- fluidPage(
     # Sidebar with a slider input for number of bins 
     sidebarLayout(
         sidebarPanel(
-            h5(paste0("Data as of ",max(breakdown_df$prediction_date))),
+            h5(paste0("Data as of ",dat_value)),
             h5("This is where model explanation and links would go")
         ),
 
