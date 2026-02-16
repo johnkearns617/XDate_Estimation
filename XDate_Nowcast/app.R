@@ -16,6 +16,7 @@ library(tidyverse)
 library(funspotr)
 library(data.table)
 
+conflicted::conflicts_prefer(dplyr::filter)
 conflicted::conflicts_prefer(lubridate::year)
 conflicted::conflicts_prefer(lubridate::month)
 
@@ -104,7 +105,7 @@ server <- function(input, output) {
     output$historical_chart = renderPlotly({
       
       ggplotly(
-        ggplot(charts,aes(x=record_date,color=as.Date(date_run),group=date_run)) + 
+        ggplot(charts %>% filter(record_date<=(record_date[1] %m+% years(5))),aes(x=record_date,color=as.Date(date_run),group=date_run)) + 
         #geom_ribbon(aes(ymin=running_bal_lower,ymax=running_bal_upper),alpha=.3) +
         geom_line(aes(y=running_bal,alpha=as.Date(date_run))) +
         geom_line(data=charts %>% mutate(date_run=as.Date(date_run)) %>% filter(date_run==max(date_run)),aes(x=record_date,y=running_bal),color="black") +

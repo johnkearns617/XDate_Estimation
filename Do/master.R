@@ -3,6 +3,7 @@
 # Goal: Write script to run all scripts needed to run google trends and debt models
 
 library(fredr)
+library(lubridate)
 
 fred_key = Sys.getenv('FRED_KEY')
 gt_key = Sys.getenv("GT_KEY")
