@@ -13,11 +13,11 @@ Sys.setenv(TZ='America/New_York')
 
 fredr_set_key(fred_key)
 
-reticulate::py_discover_config()
-
-reticulate::py_require(c('google-api-python-client',
-                         'pandas',
-                         'dill'))
+reticulate::install_miniconda()
+reticulate::virtualenv_create('r-reticulate', python = Sys.which('python'))
+reticulate::virtualenv_install('r-reticulate', packages = c('google-api-python-client', 'pandas','dill'))
+reticulate::use_virtualenv("r-reticulate", required = TRUE) 
+reticulate::py_config()
 
 end_date = Sys.Date()
 headroom_date = max(c("2026-01-01",end_date %m-% years(1)))
