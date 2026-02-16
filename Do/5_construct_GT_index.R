@@ -27,6 +27,7 @@ library(missMDA)
 library(FactoMineR)
 library(mice)
 library(DALEX)
+library(tis)
 
 conflicted::conflict_prefer("filter","dplyr")
 conflicted::conflicts_prefer(DALEX::explain)
