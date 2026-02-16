@@ -18,6 +18,10 @@ reticulate::py_require(c('google-api-python-client',
                          'pandas',
                          'dill'))
 
+end_date = Sys.Date()
+headroom_date = "2026-01-01"
+announcement_date = NA
+
 reticulate::py_run_file("Do/1a_pull_trends_data.py")
 
 source('Do/0_model_functions.R')
@@ -33,8 +37,6 @@ source('Do/4_feature_imputation.R')
 source('Do/5_construct_GT_index.R')
 
 source('Do/7_gt_deficit_modelling.R')
-
-source('Do/8_daily_model.R')
 
 source('Do/9_XDate_estimation.R')
 

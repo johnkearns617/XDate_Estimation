@@ -33,53 +33,25 @@ conflicted::conflict_prefer("filter","dplyr")
 set.seed(178)
 
 # get data
-# code currently written to get data as of end of November 2024. Function can take any date
-df = make_df(Sys.Date()) %>% 
+# Function can take any date
+df = make_df(end_date,bad_vars,most_recent = FALSE) %>% 
   group_by(year,qtr) %>%
-  fill(PRS85006112,.direction="down") %>% 
+  fill(PRS85006112,CIS1020000000000I,.direction="down") %>% 
   ungroup() %>% 
-  select(-c(MTSR133FMS:W017RC1Q027SBEA,A261RX1Q020SBEA:SLCEC1,B096RC1Q027SBEA:A091RC1Q027SBEA,B243RC1Q027SBEA:AD02RC1Q027SBEA,year,qtr)) %>%  # remove indeed and retail variables to speed up code, even though they do improve the model fit
+  select(-c(MTSR133FMS:W017RC1Q027SBEA,A261RX1Q020SBEA:SLCEC1,B096RC1Q027SBEA:A091RC1Q027SBEA,B243RC1Q027SBEA:AD02RC1Q027SBEA,year,qtr)) %>%  # remove retail, gdp variables to speed up code, even though they do improve the model fit
   mutate_at(vars(-c(date)),~ifelse(is.infinite(.)|is.nan(.),NA,.)) %>% 
   select_if(~sum(!is.na(.))>0|is.character(.)|is.Date(.)) %>% 
   select_if(~sd(.,na.rm=TRUE)!=0|is.character(.)|is.Date(.)) %>% 
   filter(date>="2004-01-01")
 
-write_csv(df,paste0("Data/Processing/raw_data/data_asof",Sys.Date(),".csv"))
+write_csv(df,paste0("Data/Processing/raw_data/data_asof",end_date,".csv"))
 
 set.seed(178)
 
-imputed_df = impute_function(df,Sys.Date())
-# 
-# left_join(imputed_df %>% 
-#             pivot_longer(PAYEMS:gt_999) %>% 
-#             filter(date>="2024-10-01"),
-#           df %>% 
-#             pivot_longer(PAYEMS:gt_999) %>% 
-#             filter(date>="2024-10-01"),by=c('date','name')) %>% 
-#   left_join(national_econ,by=c('date'='date','name'='series_id')) %>% 
-#   filter(is.na(value.y)) %>% 
-#   mutate(diff=(value.x-value)/value*100) %>% 
-#   summarize(sqrt(mean((diff^2),na.rm=TRUE)))
-# RMSE of 2.5%
+imputed_df = impute_function(df,end_date,repeats=1)
 
-write_csv(imputed_df,paste0("Data/Processing/imputed_data/imputed_data_asof",Sys.Date(),".csv"))
+write_csv(imputed_df,paste0("Data/Processing/imputed_data/imputed_data_asof",end_date,".csv"))
 
-# for(dat in c(as.character(ceiling_date((national_econ %>% filter(series_id=="GDPC1"&date>="2007-01-01"))$date,"quarter")-1))){
-#   
-#   print(paste0(dat))
-#   
-#   df = make_df(ceiling_date(as.Date(dat), "quarter")-1) %>% 
-#     group_by(year,qtr) %>%
-#     fill(PRS85006112,.direction="down") %>% 
-#     ungroup() %>% 
-#     select(-c(MTSR133FMS:W017RC1Q027SBEA,A261RX1Q020SBEA:SLCEC1,B096RC1Q027SBEA:A091RC1Q027SBEA,B243RC1Q027SBEA:AD02RC1Q027SBEA,year,qtr)) %>%  # remove indeed and retail variables to speed up code, even though they do improve the model fit
-#     mutate_at(vars(-c(date)),~ifelse(is.infinite(.)|is.nan(.),NA,.)) %>% 
-#     select_if(~sum(!is.na(.))>0|is.character(.)|is.Date(.)) %>% 
-#     select_if(~sd(.,na.rm=TRUE)!=0|is.character(.)|is.Date(.)) %>% 
-#     filter(date>="2004-01-01")
-#   
-#   imputed_df = impute_function(df,dat)
-#   
-#   write_csv(imputed_df,paste0("Data/Processing/imputed_data_asof",dat,".csv"))
-#   
-# }
+pca = prcomp(imputed_df[2:ncol(imputed_df)])
+
+

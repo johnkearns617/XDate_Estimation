@@ -51,6 +51,18 @@ trends_data = read_csv(paste0("Data/Raw/full_trends_df_weekly.csv")) %>%
     flag==1&date<'2025-01-01'~6
   ))
 
+if(!("pull_date"%in%colnames(trends_data))){
+  
+  pull_date = as.Date(file.info("Data/Raw/full_trends_df_weekly.csv")$ctime)
+  
+}else{
+  
+  pull_date = trends_data$pull_date[1]
+  
+  trends_data = trends_data %>% select(-pull_date)
+  
+}
+
 trends_data$pull_grp[1] = 1
 
 trends_data = trends_data %>% 
@@ -80,11 +92,12 @@ trends_data = trends_data %>%
 trends_data = trends_data %>% 
   group_by(cat) %>% 
   mutate(weight=case_when(
-    year(date)==2008&pull_grp==1~mean(tail(value[year(date)==2008&pull_grp==1],40)-tail(value[year(date)==2008&pull_grp==2],40),na.rm=TRUE),
-    year(date)==2012&pull_grp==2~mean(tail(value[year(date)==2012&pull_grp==2],40)-tail(value[year(date)==2012&pull_grp==3],40),na.rm=TRUE),
-    year(date)==2016&pull_grp==3~mean(tail(value[year(date)==2016&pull_grp==3],40)-tail(value[year(date)==2016&pull_grp==4],40),na.rm=TRUE),
-    year(date)==2020&pull_grp==4~mean(tail(value[year(date)==2020&pull_grp==4],40)-tail(value[year(date)==2020&pull_grp==5],40),na.rm=TRUE),
-    year(date)==2024&pull_grp==5~mean(tail(value[year(date)==2024&pull_grp==5],40)-tail(value[year(date)==2024&pull_grp==6],40),na.rm=TRUE)
+    # get median difference from 50 middle weeks of the overlapping year 
+    year(date)==2008&pull_grp==1~median(head(value[year(date)==2008&pull_grp==1][-c(1)],-1)-head(value[year(date)==2008&pull_grp==2][-c(1)],-1),na.rm=TRUE),
+    year(date)==2012&pull_grp==2~median(head(value[year(date)==2012&pull_grp==2][-c(1)],-1)-head(value[year(date)==2012&pull_grp==3][-c(1)],-1),na.rm=TRUE),
+    year(date)==2016&pull_grp==3~median(head(value[year(date)==2016&pull_grp==3][-c(1)],-1)-head(value[year(date)==2016&pull_grp==4][-c(1)],-1),na.rm=TRUE),
+    year(date)==2020&pull_grp==4~median(head(value[year(date)==2020&pull_grp==4][-c(1)],-1)-head(value[year(date)==2020&pull_grp==5][-c(1)],-1),na.rm=TRUE),
+    year(date)==2024&pull_grp==5~median(head(value[year(date)==2024&pull_grp==5][-c(1)],-1)-head(value[year(date)==2024&pull_grp==6][-c(1)],-1),na.rm=TRUE)
     )) %>% 
   mutate(value_adj=value,
          value_adj=ifelse(pull_grp<=1,value_adj-tail(weight[pull_grp==1],1),value_adj),
@@ -98,8 +111,8 @@ trends_data = trends_data %>%
 lazy_trends_data = dtplyr::lazy_dt(trends_data)
 trends_data1 = lazy_trends_data %>%
   group_by(cat) %>% 
-  mutate(value_adj2=ifelse(date<"2011-01-01",value_adj+(mean(tail(value_adj[year(date)==2011],15))-mean(tail(value_adj[year(date)==2010],15))),value_adj), # level adjustment for all data before 2011
-         value_adj2=ifelse(date<"2016-01-01",value_adj2+(mean(tail(value_adj2[year(date)==2016],15))-mean(tail(value_adj2[year(date)==2015],15))),value_adj2)) %>% 
+  mutate(value_adj2=ifelse(date<"2011-01-01",value_adj+(mean(head(value_adj[year(date)==2011],4))-mean(tail(value_adj[year(date)==2010],4))),value_adj), # level adjustment for all data before 2011
+         value_adj2=ifelse(date<"2016-01-01",value_adj2+(mean(head(value_adj2[year(date)==2016],4))-mean(tail(value_adj2[year(date)==2015],4))),value_adj2)) %>% 
   ungroup() %>% 
   as.data.frame()
 
@@ -120,7 +133,7 @@ tmp = broom::tidy(lm1) %>%
          estimate=estimate+estimate[1]) %>% 
   select(cat=term,coef=estimate) %>% 
   mutate(cat=as.numeric(cat))
-tmp$cat[1] = 77
+tmp$cat[1] = setdiff(reg_df$cat,tmp$cat)
   
 coef_df = bind_rows(coef_df,tmp)
 
@@ -159,7 +172,8 @@ trends_sa2 = trends_sa2 %>%
   group_by(category) %>% 
   mutate(deviation=(value_sa/value_loess-1)*100,
          deviation_sd=sd(deviation[year(date)%in%c(2010:2019)],na.rm=TRUE),
-         deviation=deviation/deviation_sd)
+         deviation=deviation/deviation_sd,
+         deviation_perc=(value_sa/value_loess-1)*100)
 
-write_csv(trends_sa2,paste0("Data/Processing/gt_data/trends_full_sa_",gsub("-","",Sys.Date()),".csv"))
+write_csv(trends_sa2,paste0("Data/Processing/gt_data/trends_full_sa_",gsub("-","",pull_date),".csv"))
 #trends_sa2 = read_csv(paste0("Data/Processing/trends_full_sa_20250128.csv"))

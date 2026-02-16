@@ -29,11 +29,8 @@ conflicted::conflict_prefer("filter","dplyr")
 set.seed(178)
 
 # trends data
-state_trends = read_csv(paste0("Data/Processing/gt_data/trends_full_sa_",gsub("-","",Sys.Date()),".csv")) %>% 
-  mutate(release_date=date+6)
-
 trends_vol = data.frame()
-for(i in list.files("Data/Processing/gt_data")[1:13]){
+for(i in grep("202503",list.files("Data/Processing/gt_data"),value=TRUE)){ # use only the data from March 2025
   
   tmp = read_csv(paste0("Data/Processing/gt_data/",i)) %>% 
     mutate(vintage=gsub("trends_full_sa_|.csv","",i))
@@ -43,15 +40,16 @@ for(i in list.files("Data/Processing/gt_data")[1:13]){
 }
 
 bad_vars = trends_vol %>% 
-  filter(date>="2023-01-01"&date<"2025-01-01") %>% 
+  filter(date>=floor_date((trends_vol %>% filter(vintage==min(vintage)) %>% filter(date==max(date)) %>% distinct(date) %>% pull(date)),"year") %m-% years(2)&
+           date<floor_date((trends_vol %>% filter(vintage==min(vintage)) %>% filter(date==max(date)) %>% distinct(date) %>% pull(date)),"year")) %>% 
   group_by(date,category) %>% 
   summarize(std=sd(deviation)) %>% 
   group_by(category) %>% 
   summarize(avg_std=median(std)) %>% 
   filter(avg_std>=.3)
 
-state_trends = state_trends %>% 
-  filter(!(category%in%bad_vars$category))
+state_trends = make_state_trends(end_date,bad_vars = bad_vars,most_recent = FALSE) %>% 
+  mutate(release_date=date+6)
 
 # start with GDP data
 

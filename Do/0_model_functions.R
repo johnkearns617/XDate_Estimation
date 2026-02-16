@@ -1,3 +1,10 @@
+is_bad = function(x){
+  
+  return(is.na(x)|is.nan(x)|is.infinite(x))
+  
+}
+
+
 #' which_category
 #' 
 #' \code{which_category} tells you what category a given Google Trends category id refers to
@@ -136,34 +143,31 @@ new_bind <- function(a, b) {
 #' 
 #' @param 
 
-make_df = function(end_date){
-  
-  
-  df = national_econ %>% 
-    filter(date<=end_date) %>% 
-    mutate(value=ifelse(release_date>end_date,NA,value)) %>% 
-    pivot_wider(id_cols=c('date'),names_from='series_id',values_from='value') %>% 
+make_df = function(end_date,bad_vars,most_recent=TRUE){
+  df = get_national_econ_data(end_date) %>%
+    filter(date<=end_date) %>%
+    mutate(value=ifelse(release_date>end_date,NA,value)) %>%
+    pivot_wider(id_cols=c('date'),names_from='series_id',values_from='value') %>%
     mutate(year=year(date),
-           qtr=quarter(date)) %>% 
-    relocate(date,.before=1) %>% 
+           qtr=quarter(date)) %>%
+    relocate(date,.before=1) %>%
     # other state variables
-    left_join(state_trends %>% 
-                filter(!(category%in%bad_vars$category)) %>% 
+    left_join(make_state_trends(end_date,bad_vars,most_recent) %>%
+                filter(!(category%in%bad_vars$category)) %>%
+                group_by(category) %>%
+                complete(date = full_seq(c(date,as.Date(end_date)), 1)) %>%
+                fill(value:release_date,.direction="down") %>%
                 mutate(date=date+6,
                        series_id=paste0("gt_",category),
                        month=month(date),
                        year=year(date)) %>%
                 group_by(year,month,series_id) %>%
-                summarize(deviation=mean(deviation,na.rm=TRUE)) %>% 
-                mutate(date=as.Date(paste0(year,"-",month,"-","01"),format="%Y-%m-%d")) %>% 
+                summarize(deviation=mean(deviation,na.rm=TRUE)) %>%
+                mutate(date=as.Date(paste0(year,"-",month,"-","01"),format="%Y-%m-%d")) %>%
                 pivot_wider(id_cols=c('date'),names_from='series_id',values_from=c('deviation')),
               by=c('date'))
-  
-  
   return(df)
-  
 }
-
 
 #'
 #' impute_function
@@ -171,54 +175,224 @@ make_df = function(end_date){
 #' 
 #'  @param df data.frame with monthly economic data
 #'  @param dat is the date that is the 'end date' of the data
+#'  @param repeats number of times the prediction is iterated. > 1 and predicted values will be used a second time to inform imputation.
+#'  @param exclude_google_var drop specific variables from imputation method
 #'  
 #'  @return imputed data frame
 
 
-impute_function = function(df,dat){
+impute_function_old = function(df,dat){
   
   set.seed(178)
   
   test_dineof=df
   
+  while(!is.infinite(min(tail(test_dineof,10) %>% filter(if_any(everything(), is.na)) %>% pull(date)))){
+    predict_date = min(tail(test_dineof,10) %>% filter(if_any(everything(), is.na)) %>% pull(date))
+    flag = 0
+    while(flag<3){
+    
+      for(col1 in colnames(test_dineof)[c(2:ncol(test_dineof))]){
+        
+        if(col1==tail(colnames(test_dineof),1)){
+          flag = flag+1
+        }
+        if(!is.na(df[df$date==predict_date,col1])){next} # if already have value, dont need to project
+        
+        system(sprintf('echo "\n%s\n"', paste0(as.character(predict_date)," ",col1, collapse="")))
+        
+        if(!(col1%in%colnames(test_dineof))){next}
+        if(col1%in%c("ADPMNUSNERSA")&as.Date(dat)<"2010-01-01"){next}
+        if(col1=="IHLIDXUS"&as.Date(dat)<"2021-01-01"){next}
+        
+        value = data.frame(date=test_dineof$date)
+        for(i in 1:30){
+          if("IHLIDXUS"%in%colnames(test_dineof)&"ADPMNUSNERSA"%in%colnames(test_dineof)){
+            if(col1=="IHLIDXUS"){potential_cols = colnames(test_dineof %>% filter(date==predict_date) %>% select(-c(col1,IHLIDXUS,ADPMNUSNERSA,grep("gt_",colnames(test_dineof),value=TRUE))) %>% filter(date==max(date)) %>% select(-date) %>% select_if(!is.na(.)))}else{
+              potential_cols = colnames(test_dineof %>% filter(date==predict_date) %>% select(-c(col1,IHLIDXUS,ADPMNUSNERSA,grep("gt_",colnames(test_dineof),value=TRUE))) %>% select(-date) %>% select_if(!is.na(.)))
+            }
+          } else{
+            potential_cols = colnames(test_dineof %>% filter(date==predict_date) %>% select(-c(col1,grep("gt_",colnames(test_dineof),value=TRUE))) %>% select(-one_of("ADPMNUSNERSA","IHLIDXUS")) %>% select(-date) %>% select_if(!is.na(.)))
+          }
+          cols = c(sample(potential_cols,min(c(15,floor(length(potential_cols)/2)))),sample(colnames(test_dineof %>% select(grep("gt_",colnames(test_dineof),value=TRUE))),15))
+          test = lm_robust(as.formula(paste0(paste0(col1,"~lag+lag2+"),paste(cols,collapse="+"))),
+                           data=test_dineof %>% filter(date<predict_date) %>% select(col1,cols) %>% 
+                             mutate(lag=dplyr::lag(!!sym(col1),1),
+                                    lag2=dplyr::lag(!!sym(col1),2),
+                                    lag3=dplyr::lag(!!sym(col1),3),
+                                    lag4=dplyr::lag(!!sym(col1),4),
+                                    lag5=dplyr::lag(!!sym(col1),5),
+                                    lag6=dplyr::lag(!!sym(col1),6)))
+          imp <- predict(test,test_dineof %>% select(col1,cols) %>% mutate(lag=dplyr::lag(!!sym(col1),1),
+                                                                           lag2=dplyr::lag(!!sym(col1),2),
+                                                                           lag3=dplyr::lag(!!sym(col1),3),
+                                                                           lag4=dplyr::lag(!!sym(col1),4),
+                                                                           lag5=dplyr::lag(!!sym(col1),5),
+                                                                           lag6=dplyr::lag(!!sym(col1),6)) %>% 
+                           fill(lag:lag6,.direction="up"))
+          
+          value=suppressMessages(bind_cols(value,imp))
+        }
+        
+        value1 = data.frame(
+          date=value$date,
+          replacement=rowMeans(value[,2:ncol(value)],na.rm=TRUE)
+        ) %>% 
+          filter(date<=predict_date)
+        
+        for(i in 1:nrow(value1)){
+          
+          if(!is.na(value1$replacement[i]&is.na(df[i,col1]))){
+            test_dineof[i,col1]  = value1$replacement[i]
+          }
+        }
+        
+      }
+    }
+  }
+  
+  return(test_dineof)
+  
+}
+
+impute_function_new = function(df,dat,repeats,sample_vars=FALSE,exclude_google_var="deviation_perc"){
+  
+  set.seed(178)
+  
+  test_dineof=df
+  
+  gt_cor_df = df
+  
   flag = 0
-  while(flag<3){
-    for(col1 in colnames(test_dineof)[c(2:ncol(test_dineof))]){
+  while(flag<repeats){ # iterate over three times
+    for(col1 in colnames(df)[c(2:ncol(df))]){
       
-      print(paste0(col1))
+      # system(sprintf('echo "\n%s\n"', paste0(as.character(dat)," ",col1, collapse="")))
       
-      if(length(which(is.na(test_dineof[c((nrow(test_dineof)-10):nrow(test_dineof)),col1])))==0&col1!="IHLIDXUS"){ next }
-      if(!(col1%in%colnames(test_dineof))){next}
-      if(col1%in%c("ADPMNUSNERSA")&as.Date(dat)<"2010-01-01"){next}
-      if(col1=="IHLIDXUS"&as.Date(dat)<"2021-01-01"){next}
+      test_dineof[[col1]] = df[[col1]]
+      
+      gt_vars = cor(gt_cor_df[[col1]],gt_cor_df %>% select(starts_with("gt_")),use="complete.obs")
+      xvars = grep(paste(c("date",exclude_google_var,paste(setdiff(colnames(gt_cor_df %>% select(starts_with("gt_"))),colnames(gt_cor_df %>% select(starts_with("gt")))[order(abs(gt_vars))[1:10]]),collapse="|")),collapse="|"),colnames(gt_cor_df),value=TRUE,invert = TRUE)
+      
+      # TODO: figure out way to incoporate ADP and Indeed into regression framework
+      gt_cor_df1 = gt_cor_df
+      if(dat<"2011-01-01"){
+        xvars = grep("ADPMNUSNERSA",xvars,value=TRUE,invert = TRUE)
+        if(col1!="ADPMNUSNERSA"){
+          gt_cor_df1 = gt_cor_df1 %>% 
+            select(-any_of("ADPMNUSNERSA"))
+        }
+      }else{
+        
+        adp_reg = lm_robust(ADPMNUSNERSA~PAYEMS,test_dineof)
+        test_dineof$ADPMNUSNERSA[test_dineof$date<"2011-01-01"] = bind_cols(test_dineof %>% select(date,ADPMNUSNERSA),
+                                                                            pred=predict(adp_reg,test_dineof)) %>% 
+          mutate(ADPMNUSNERSA=coalesce(ADPMNUSNERSA,pred)) %>% 
+          filter(date<"2011-01-01") %>% 
+          pull(ADPMNUSNERSA)
+        
+      }
+      
+      if(dat<"2021-01-01"){
+        xvars = grep("IHLIDXUS",xvars,value=TRUE,invert = TRUE)
+        if(col1!="IHLIDXUS"){
+          gt_cor_df1 = gt_cor_df1 %>% 
+            select(-any_of("IHLIDXUS"))
+        }
+      }else{
+        
+        indeed_reg = lm_robust(IHLIDXUS~JTSJOL,test_dineof)
+        test_dineof$IHLIDXUS[test_dineof$date<"2021-01-01"] = bind_cols(test_dineof %>% select(date,IHLIDXUS),
+                                                                        pred=predict(indeed_reg,test_dineof)) %>% 
+          mutate(IHLIDXUS=coalesce(IHLIDXUS,pred)) %>% 
+          filter(date<"2021-01-01") %>% 
+          pull(IHLIDXUS)
+        
+      }
+      xvars = sample(xvars,floor(min(length(xvars),max(15,nrow(gt_cor_df1 %>% select(col1,xvars) %>% drop_na())/2))))
+      
+      if(length(which(is.na(df[c((nrow(df)-10):nrow(df)),col1])))==0){ next }
+      if(!(col1%in%colnames(df))){next}
       
       value = data.frame(date=test_dineof$date)
-      for(i in 1:30){
-        if("IHLIDXUS"%in%colnames(test_dineof)&"ADPMNUSNERSA"%in%colnames(test_dineof)){
-          if(col1=="IHLIDXUS"){potential_cols = colnames(test_dineof %>% select(-c(col1,IHLIDXUS,ADPMNUSNERSA,grep("gt_",colnames(test_dineof),value=TRUE))) %>% filter(date==max(date)) %>% select(-date) %>% select_if(!is.na(.)))}else{
-            potential_cols = colnames(test_dineof %>% select(-c(col1,IHLIDXUS,ADPMNUSNERSA,grep("gt_",colnames(test_dineof),value=TRUE))) %>% filter(date==test_dineof$date[(nrow(test_dineof)-3):nrow(test_dineof)][head(which(is.na(test_dineof[[col1]][(nrow(test_dineof)-3):nrow(test_dineof)])),1)]) %>% select(-date) %>% select_if(!is.na(.)))
-          }
-        } else{
-          potential_cols = colnames(test_dineof %>% select(-c(col1,grep("gt_",colnames(test_dineof),value=TRUE))) %>% select(-one_of("ADPMNUSNERSA","IHLIDXUS")) %>% filter(date==test_dineof$date[(nrow(test_dineof)-3):nrow(test_dineof)][max(head(which(is.na(test_dineof[[col1]][(nrow(test_dineof)-3):nrow(test_dineof)])),1),1)]) %>% select(-date) %>% select_if(!is.na(.)))
-        }
-        cols = c(sample(potential_cols,min(c(15,floor(length(potential_cols)/2)))),sample(colnames(test_dineof %>% select(grep("gt_",colnames(test_dineof),value=TRUE))),15))
-        test = lm_robust(as.formula(paste0(paste0(col1,"~lag+lag2+"),paste(cols,collapse="+"))),
-                         data=test_dineof %>% select(col1,cols) %>% 
-                           mutate(lag=dplyr::lag(!!sym(col1),1),
-                                  lag2=dplyr::lag(!!sym(col1),2),
-                                  lag3=dplyr::lag(!!sym(col1),3),
-                                  lag4=dplyr::lag(!!sym(col1),4),
-                                  lag5=dplyr::lag(!!sym(col1),5),
-                                  lag6=dplyr::lag(!!sym(col1),6)))
-        imp <- predict(test,test_dineof %>% select(col1,cols) %>% mutate(lag=dplyr::lag(!!sym(col1),1),
-                                                                         lag2=dplyr::lag(!!sym(col1),2),
-                                                                         lag3=dplyr::lag(!!sym(col1),3),
-                                                                         lag4=dplyr::lag(!!sym(col1),4),
-                                                                         lag5=dplyr::lag(!!sym(col1),5),
-                                                                         lag6=dplyr::lag(!!sym(col1),6)) %>% 
-                         fill(lag:lag6,.direction="up"))
+      
+      if(col1%in%c("ADPMNUSNERSA")&as.Date(dat)<"2011-01-01"){
         
-        value=bind_cols(value,imp)
+        value1 = data.frame(
+          date=value$date,
+          replacement=mean(tail(test_dineof$ADPMNUSNERSA[!is.na(test_dineof$ADPMNUSNERSA)],3))
+        )
+        
+        for(i in tail(1:nrow(value),12)){
+          
+          if(is.na(tmp[i,col1])&tmp$date[i]>="2020-01-01"){
+            test_dineof[i,col1] = value1[i,"replacement"]
+          }
+        }
+        
+        next
+        
+      }
+      if(col1=="IHLIDXUS"&as.Date(dat)<"2021-01-01"){
+        
+        value1 = data.frame(
+          date=value$date,
+          replacement=mean(tail(test_dineof$IHLIDXUS[!is.na(test_dineof$IHLIDXUS)],3))
+        )
+        
+        for(i in tail(1:nrow(value),12)){
+          
+          if(is.na(tmp[i,col1])&tmp$date[i]>="2020-01-01"){
+            test_dineof[i,col1] = value1[i,"replacement"]
+          }
+        }
+        
+        next
+        
+      }
+      
+      test_dineof = test_dineof %>% 
+        mutate_at(vars(!!col1),list(lag1=~dplyr::lag(.,1),
+                                    lag12=~dplyr::lag(.,12)))
+      
+      for(i in 1:30){
+        
+        tmp = test_dineof
+        
+        pred_df = data.frame()
+        for(j in which(is.na(tail(tmp[[col1]],12)))){
+          
+          xvars1 = colnames(tmp %>% filter(date==tail(tmp$date,12)[j]) %>% select(xvars) %>% select_if(!is.na(.)))
+          if(sample_vars){
+            xvars1 = sample(xvars1,min(c(length(xvars1),10)))
+          }
+          
+          reg1 = lm_robust(as.formula(paste0(col1,"~",paste(c("lag1","lag12",xvars1),collapse="+"))),
+                           tmp)
+          
+          tmp1 = tmp %>% 
+            filter(date==tail(tmp$date,12)[j]) %>% 
+            mutate(var=predict(reg1,.)) %>% 
+            select(date,var) %>% 
+            mutate(test_date=dat,
+                   name=col1)
+          
+          if(i<12) tmp$lag1[tmp$date==tail(tmp$date,12)[j+1]] = tmp1$var
+          
+          pred_df = bind_rows(pred_df,
+                              tmp1
+          )
+          
+        }
+        
+        imp <- tmp %>% 
+          select(date,!!col1) %>% 
+          left_join(pred_df %>% 
+                      select(date,var),by="date") %>% 
+          mutate("{col1}":=coalesce(!!sym(col1),var)) %>% 
+          pull(!!col1)
+        
+        value=suppressMessages(bind_cols(value,imp))
       }
       
       value1 = data.frame(
@@ -226,14 +400,14 @@ impute_function = function(df,dat){
         replacement=rowMeans(value[,2:ncol(value)],na.rm=TRUE)
       )
       
-      for(i in 1:nrow(value)){
+      for(i in tail(1:nrow(value),12)){
         
-        if(is.na(test_dineof[i,col1])){
+        if(is.na(tmp[i,col1])){
           test_dineof[i,col1] = value1[i,"replacement"]
         }
       }
     }
-    if(col1==tail(colnames(test_dineof),1)){
+    if(col1==tail(colnames(df),1)){
       flag = flag+1
     }
   }
@@ -242,6 +416,22 @@ impute_function = function(df,dat){
   
 }
 
+impute_function = function(df,dat,repeats,sample_vars=TRUE,exclude_google_var="deviation_perc"){
+  
+  
+  old = impute_function_old(df,dat)
+  
+  new = impute_function_new(df,dat,repeats,sample_vars,exclude_google_var)
+  
+  final_df = bind_cols(
+    old %>% select(-any_of(c("CPILFESL","TOTBUSIMNSA","UNRATE","WHLSLRIMSA","ADPMNUSNERSA","IHLIDXUS"))),
+    new %>% select(any_of(c("CPILFESL","TOTBUSIMNSA","UNRATE","WHLSLRIMSA","ADPMNUSNERSA","IHLIDXUS")))
+  ) %>% 
+    relocate(colnames(df))
+  
+  return(final_df)
+  
+}
 
 #' 
 #' nowcast_headline
@@ -303,50 +493,44 @@ get_deficit_imputed_data = function(dat,dataset,cbo_category,monthly_shares_reg)
   return(fcast_df1)
 }
 
-nowcast_headline = function(dataset,cbo_category){
+nowcast_headline = function(dataset,end_date,cbo_category){
   
-  monthly_shares = dataset %>% 
-    filter(fiscal_year>=2002&fiscal_year<=2023) %>% 
-    group_by(fiscal_year) %>% 
-    mutate(total=sum(value,na.rm=TRUE)) %>% 
-    ungroup() %>%  
-    mutate(share=value/total,
-           month=month(date))
+  model_headline = readRDS(paste0("Data/Processing/Models/nowcast_headline_",cbo_category,".RDS"))
   
-  monthly_shares_reg = lm_robust(share~factor(month),monthly_shares %>% group_by(fiscal_year) %>% filter(n()==12))
+  x_data = read_csv(paste0("Data/Processing/imputed_data/imputed_data_asof",end_date,".csv"))  %>% 
+    select(-any_of(paste0("gt_",bad_vars$category))) %>% 
+    arrange(date) %>%
+    ungroup() %>% 
+    mutate_at(vars(PAYEMS:JTSJOL,INDPRO:DGS10),.funs=list(ch12m=~((./dplyr::lag(.,12)-1)*100),ch1m=~((./dplyr::lag(.,1)-1)*100))) %>%
+    mutate_at(vars(UNRATE:DTCDFSA066MSFRBPHI,grep("gt_",colnames(.),value=TRUE)),.funs=list(ch12m=~.-dplyr::lag(.,12),ch1m=~.-dplyr::lag(.,1))) %>%
+    mutate_at(vars(PAYEMS:gt_999_ch1m),.funs=list(lag1=~dplyr::lag(.,1),lag2=~dplyr::lag(.,2),lag3=~dplyr::lag(.,3),lag4=~dplyr::lag(.,4))) %>% 
+    mutate(fiscal_year=as.integer(quarter(date, with_year = TRUE, fiscal_start = 10)))  %>% 
+    left_join(cbo_proj %>% 
+                filter(component==cbo_category&category=="Total") %>% 
+                group_by(projected_fiscal_year) %>% 
+                slice(n()) %>% 
+                select(projected_fiscal_year,value) %>% 
+                rename(cbo_proj=value,
+                       fiscal_year=projected_fiscal_year)) %>% 
+    mutate(month=month(date)) %>% 
+    left_join(dataset %>% 
+                select(date,value)) # join the yvariable
+  x_data$cbo_proj_month = as.numeric(predict(model_headline$monthly_shares_reg,x_data))*x_data$cbo_proj
+  x_data = x_data %>% 
+    mutate(cbo_proj_diff=(value/cbo_proj_month-1)*100) %>% 
+    mutate(lag1_cbo_proj_diff=dplyr::lag(cbo_proj_diff,1),
+           lag2_cbo_proj_diff=dplyr::lag(cbo_proj_diff,2)) %>% 
+    mutate(lag1=dplyr::lag(value,1),
+           lag2=dplyr::lag(value,2),
+           lag3=dplyr::lag(value,3),
+           lag4=dplyr::lag(value,4),
+           actual=value)
   
-  fcast_df1 = get_deficit_imputed_data(floor_date(Sys.Date(),"year")-1,dataset,cbo_category,monthly_shares_reg)
-  
-  X = model.matrix(as.formula(paste0("value","~",paste(colnames(fcast_df1)[c(2:which(colnames(fcast_df1)=="gt_999"))],collapse="+"))),
-                   fcast_df1 %>% filter(date<"2024-01-01"&year(date)>=2006&!is.na(value)))[, -1]
-  y = (fcast_df1 %>% filter(date<"2024-01-01"&year(date)>=2006&!is.na(value)))[["value"]]
-  
-  weight = (1:nrow(X))/nrow(X)
-  weight = ifelse(weight<.5,.5,weight)
-  fit_lasso_state = glmnet(X, y, alpha = 1,pmax=20,weights = weight)
-  # weight by how recent the data is
-  
-  selected_coefs_state = data.frame(varImp(fit_lasso_state,lambda=min(fit_lasso_state$lambda), scale = FALSE)) %>% filter(Overall!=0)
-  selected_coefs_state$var = as.numeric(gsub("gt_","",rownames(selected_coefs_state)))
-  coef_value_state = coef(fit_lasso_state,s=min(fit_lasso_state$lambda))[,1][-1]
-  coef_value_state = coef_value_state[coef_value_state!=0]
-  selected_coefs_state = cbind(selected_coefs_state,coef_value_state)
-  selected_coefs_state$category = sapply(selected_coefs_state$var,which_category)
-  selected_coefs_state = selected_coefs_state %>% arrange(-Overall)
-  
-  test = lm_robust(as.formula(paste0("value","~lag1+lag2+lag3+lag4+cbo_proj_month+",paste(c(rownames(selected_coefs_state)),collapse="+"))),
-                   data = fcast_df1 %>% filter(date<='2024-01-01') %>% mutate(weight=(1:n())/n()))
-  
-  fcast_df1 = get_deficit_imputed_data(Sys.Date(),dataset,cbo_category,monthly_shares_reg)
-  
-  for(dat in tail(fcast_df1,10) %>% filter(is.na(value)) %>% pull(date)){
+  for(dat in tail(x_data,10) %>% filter(is.na(value)) %>% pull(date)){
     
-    fcast_df1$value[fcast_df1$date==dat] = predict(test,fcast_df1 %>% filter(date==dat)) 
+    x_data$value[x_data$date==dat] = predict(test,x_data %>% filter(date==dat)) 
     
-    fcast_df1 = fcast_df1 %>% 
-      mutate(cbo_proj_diff=(value/cbo_proj_month-1)*100) %>% 
-      mutate(lag1_cbo_proj_diff=dplyr::lag(cbo_proj_diff,1),
-             lag2_cbo_proj_diff=dplyr::lag(cbo_proj_diff,2)) %>% 
+    x_data = x_data %>% 
       mutate(lag1=dplyr::lag(value,1),
              lag2=dplyr::lag(value,2),
              lag3=dplyr::lag(value,3),
@@ -355,191 +539,1841 @@ nowcast_headline = function(dataset,cbo_category){
   }
   
   pred_df = data.frame(
-    date=fcast_df1[['date']],
+    date=x_data[['date']],
     var=cbo_category,
-    pred=predict(test,fcast_df1),
-    actual=fcast_df1[['value']],
-    cbo_proj=fcast_df1[['cbo_proj_month']]
+    pred=predict(model_headline$model,x_data),
+    actual=x_data[['actual']],
+    cbo_proj=x_data[['cbo_proj_month']]
   )
   
   return(list(
-    'data'=fcast_df1,
-    'reg'=test,
+    'data'=x_data,
+    'reg'=model_headline$model,
     'pred_df'=pred_df,
-    'monthly_shares_reg'=monthly_shares_reg
+    'monthly_shares_reg'=model_headline$monthly_shares_reg
   ))
   
 }
 
-#' 
-#' nowcast_budget_receipt
-#' 
-#' \code{nowcast_budget_receipt}
-#' 
-#' @param mts_dataset data fram from BFS for receipts
-#' @param col_mts name in BFS dataset for specific receipt category
-#' @param cbo_component
-#' @param cbo_category
-#' 
-#' @return list with input data, regression, predictions, and the monthly shares regression
-#' 
 
-nowcast_budget_receipt = function(mts_dataset,col_mts,cbo_component,cbo_category){
+nowcast_daily_budget_receipt = function(dts,mts_dataset,end_date,col,col_mts,testing=NA){
   
-  monthly_shares = mts_dataset %>% 
-    filter(classification_desc==col_mts) %>% 
-    mutate(record_date=floor_date(record_date,"month"),
-           current_month_net_rcpt_amt=as.numeric(current_month_net_rcpt_amt)/1000000000) %>% 
-    select(record_date,current_month_net_rcpt_amt) %>% 
-    rename(date=record_date,
-           value=current_month_net_rcpt_amt) %>% 
-    mutate(fiscal_year=as.integer(quarter(date, with_year = TRUE, fiscal_start = 10))) %>% 
+  models_daily = readRDS(paste0("Data/Processing/Models/nowcast_daily_",col,".RDS"))
+  models_monthly = readRDS(paste0("Data/Processing/Models/nowcast_",col,".RDS"))
+  
+  # get monthly predicted share at outset to avoid copying code over and over
+  monthly_share_pred = data.frame(date=seq.Date(floor_date(min(dts$record_date),"month"),
+                                                as.Date(paste0(max(cbo_proj$projected_fiscal_year[cbo_proj$baseline_date<=end_date]),"-09-01")),
+                                                by="month")) %>% 
+    mutate(month=month(date),
+           fy_month=case_when(
+             month%in%c(10:12)~month-9,
+             month%in%c(1:9)~month+3
+           ),
+           fed_remittances_suspended=ifelse(date>="2022-09-01",1,0)) %>%  # keep this activated unless they go back to a low interest environment, but given the path of interest payments, unlikely to ever happen
+    mutate(fiscal_year=as.integer(quarter(date, with_year = TRUE, fiscal_start = 10)),
+           tax_due=case_when(
+             !(fiscal_year%in%c(2020,2021))&month==4&col=="Individual Income Taxes"~1,
+             fiscal_year==2020&month==7&col=="Individual Income Taxes"~1,
+             fiscal_year==2021&month==5&col=="Individual Income Taxes"~1,
+             !(fiscal_year%in%c(2020))&month==4&col=="Corporate Income Taxes"~1,
+             fiscal_year==2020&month==7&col=="Corporate Income Taxes"~1,
+             fiscal_year==2020&month==9&col=="Excise Taxes"~1,
+             TRUE~0
+           ),
+           quarter_end=case_when(col=="Corporate Income Taxes"&month%in%c(12,4,6,9)~1,
+                                 col=="Individual Income Taxes"&month%in%c(1,4,6,9)~1,
+                                 !grepl("Income",col)&month%in%c(1,4,6,9)~1,
+                                 TRUE~0)) %>% 
+    rowwise() %>% 
+    mutate(first_day_thismonth_weekend=(weekdays(date,abbreviate=TRUE)%in%c("Sat","Sun")|date%in%as.Date(as.character(tis::holidays(year(date))),format="%Y%m%d"))&month!=1,
+           first_day_nextmonth_weekend=(weekdays(date %m+% months(1),abbreviate=TRUE)%in%c("Sat","Sun")|(date %m+% months(1))%in%as.Date(as.character(tis::holidays(year(date))),format="%Y%m%d"))&month!=12,
+           last_day_thismonth_weekend=(weekdays((date %m+% months(1) )- 1,abbreviate=TRUE)%in%c("Sat","Sun")|((date %m+% months(1) )- 1)%in%as.Date(as.character(tis::holidays(year(date))),format="%Y%m%d"))&month!=12) %>% 
+    ungroup() %>% 
+    {if(col%in%c("Individual Income Taxes","Corporate Income Taxes")) bind_cols(.,data.frame(predict(models_monthly$share,data=.,type="quantiles",quantiles=c(0.5,.1,.9))) %>% 
+                                                                                  rename(pred_cumshare=1,pred_cumshare_lwr=2,pred_cumshare_upper=3)) %>%  
+        group_by(fiscal_year) %>% mutate_at(vars(pred_cumshare_lwr:pred_cumshare_upper),~(.-pred_cumshare)) %>% 
+        arrange(date) %>% mutate_at(vars(pred_cumshare),~cumsum(.)) else bind_cols(.,predict(models_monthly$share,.,interval="confidence",alpha=0.1) %>% 
+                                                                                     as.data.frame() %>% 
+                                                                                     mutate_all(~ifelse(is.nan(.),1,.)) %>% 
+                                                                                     rename(pred_cumshare=1,pred_cumshare_lwr=2,pred_cumshare_upper=3)) %>% 
+        group_by(fiscal_year) %>% 
+        arrange(date) %>% 
+        mutate_at(vars(pred_cumshare:pred_cumshare_upper),list(diff=~ifelse(fy_month==1,.,.-dplyr::lag(.,1)))) %>%
+        rowwise() %>% 
+        mutate(pred_cumshare_lwr=min(c(pred_cumshare_lwr_diff-pred_cumshare_diff,pred_cumshare_upper_diff-pred_cumshare_diff)),
+               pred_cumshare_upper=max(c(pred_cumshare_lwr_diff-pred_cumshare_diff,pred_cumshare_upper_diff-pred_cumshare_diff))) %>% 
+        ungroup() %>% 
+        select(-c(pred_cumshare_diff:pred_cumshare_upper_diff))} %>% 
     group_by(fiscal_year) %>% 
-    mutate(total=sum(value,na.rm=TRUE)) %>% 
-    ungroup() %>%  
-    mutate(share=value/total,
-           month=month(date))
+    mutate(pred_cumshare=pred_cumshare/pred_cumshare[n()]) %>% 
+    ungroup()
   
-  monthly_shares_reg = lm_robust(share~factor(month),monthly_shares %>% group_by(fiscal_year) %>% filter(n()==12))
+  monthly_df = get_monthly_shares_df_revenue(receipts,col_mts,"revenue",col) %>% 
+    arrange(date) %>% 
+    mutate(actual=value)
   
-  fcast_df1 = read_csv(paste0("Data/Processing/imputed_data/imputed_data_asof",floor_date(Sys.Date(),"year")-1,".csv"))  %>% 
-    select(-any_of(paste0("gt_",bad_vars$category))) %>% 
-    arrange(date) %>%
-    mutate(year=year(date),
-           month=month(date)) %>%
-    select(-c(PCE,PRS85006112)) %>%
-    select(-one_of("ADPMNUSNERSA")) %>% 
-    left_join(mts_dataset %>% filter(classification_desc==col_mts) %>% 
-                mutate(record_date=floor_date(record_date,"month"),
-                       current_month_net_rcpt_amt=as.numeric(current_month_net_rcpt_amt)/1000000000) %>% 
-                select(record_date,current_month_net_rcpt_amt) %>% 
-                rename(date=record_date,
-                       value=current_month_net_rcpt_amt)) %>% # join the yvariable
-    ungroup() %>% 
-    mutate_at(vars(PAYEMS:JTSJOL,INDPRO:DGS10),~((./dplyr::lag(.,1)-1)*100)) %>%
-    mutate_at(vars(UNRATE:DTCDFSA066MSFRBPHI,grep("gt_",colnames(.),value=TRUE)),~(.-dplyr::lag(.,1))) %>%
-    mutate(lag1=dplyr::lag(value,1),
-           lag2=dplyr::lag(value,2),
-           lag3=dplyr::lag(value,3),
-           lag4=dplyr::lag(value,4)) %>%
-    ungroup() %>% 
-    mutate(fiscal_year=as.integer(quarter(date, with_year = TRUE, fiscal_start = 10)))  %>% 
+  MAX_DATE = ifelse(!is.na(testing),testing,max(dts$record_date))
+  
+  monthly_df = monthly_df %>% 
+    mutate_at(vars(value,total,share,cum_total,cum_share),~ifelse(date>=floor_date(as.Date(MAX_DATE),"month"),NA,.)) %>% 
+    mutate(actual=value) 
+  
+  tmp = data.frame(date=seq.Date(min(monthly_share_pred$date),min(monthly_df$date)-1,by="1 month")) %>% 
+    mutate(month=month(date),
+           fiscal_year=as.integer(quarter(date, with_year = TRUE, fiscal_start = 10)),
+           fy_month=case_when(
+             month%in%c(10:12)~month-9,
+             month%in%c(1:9)~month+3
+           ),
+           quarter_end=case_when(col=="Corporate Income Taxes"&month%in%c(12,4,6,9)~1,
+                                 col=="Individual Income Taxes"&month%in%c(1,4,6,9)~1,
+                                 !grepl("Income",col)&month%in%c(1,4,6,9)~1,
+                                 TRUE~0),
+           tax_due=case_when(
+             !(fiscal_year%in%c(2020,2021))&month==4&col=="Individual Income Taxes"~1,
+             fiscal_year==2020&month==7&col=="Individual Income Taxes"~1,
+             fiscal_year==2021&month==5&col=="Individual Income Taxes"~1,
+             !(fiscal_year%in%c(2020))&month==4&col=="Corporate Income Taxes"~1,
+             fiscal_year==2020&month==7&col=="Corporate Income Taxes"~1,
+             fiscal_year==2020&month==9&col=="Excise Taxes"~1,
+             TRUE~0
+           ),
+           fed_remittances_suspended=ifelse(date>="2022-09-01",1,0)) %>% 
+    left_join(cbo_actual %>% 
+                filter(category==col) %>% 
+                ungroup() %>% 
+                select(fiscal_year,value=actual_value)) %>% 
+    group_by(fiscal_year) %>% 
+    {if(col%in%c("Individual Income Taxes","Corporate Income Taxes")) bind_cols(.,data.frame(predict(models_monthly$share,data=.,type="quantiles",quantiles=c(0.5))) %>% 
+                                                                                  rename(cbo_proj=1)) %>%  
+        arrange(date) %>% mutate_at(vars(cbo_proj),~cumsum(.)) else bind_cols(.,predict(models_monthly$share,.) %>% 
+                                                                                as.data.frame() %>% 
+                                                                                mutate_all(~ifelse(is.nan(.),1,.)) %>% 
+                                                                                rename(cbo_proj=1))} %>% 
+    group_by(fiscal_year) %>% 
+    mutate(cbo_proj=ifelse(fy_month==1,cbo_proj,cbo_proj-dplyr::lag(cbo_proj,1)),
+           tmp=cbo_proj/sum(cbo_proj),
+           num=n(),
+           cbo_proj=ifelse(num==12,tmp,cbo_proj)) %>% 
+    select(-c(tmp,num)) %>% 
+    mutate(total=value,
+           value=cbo_proj*total,
+           share=cbo_proj,
+           actual=value,
+           error=1,
+           error_ly=1,
+           cum_total=cumsum(value),
+           cum_share=cumsum(share)) %>% 
+    select(-cbo_proj) %>% 
     left_join(cbo_proj %>% 
-                filter(component==cbo_component&category==cbo_category) %>% 
-                group_by(projected_fiscal_year) %>% 
+                {if(col=="Other Spending") filter(.,subcategory %in% c("Nondefense Discretionary","Other Mandatory")) else if(col=="National Defense") filter(.,subcategory=="Defense Discretionary") else filter(.,subcategory%in%col)} %>% 
+                group_by(projected_fiscal_year,subcategory) %>% 
+                filter(baseline_date<=MAX_DATE) %>% 
                 slice(n()) %>% 
+                group_by(projected_fiscal_year) %>% 
+                summarize(value=sum(value,na.rm=TRUE)) %>% 
                 select(projected_fiscal_year,value) %>% 
                 rename(cbo_proj=value,
-                       fiscal_year=projected_fiscal_year))
-  fcast_df1$cbo_proj_month = as.numeric(predict(monthly_shares_reg,data.frame(month=fcast_df1$month)))*fcast_df1$cbo_proj
-  fcast_df1 = fcast_df1 %>% 
-    mutate(cbo_proj_diff=(value/cbo_proj_month-1)*100) %>% 
-    mutate(lag1_cbo_proj_diff=dplyr::lag(cbo_proj_diff,1),
-           lag2_cbo_proj_diff=dplyr::lag(cbo_proj_diff,2))
+                       fiscal_year=projected_fiscal_year)) 
   
-  X = model.matrix(as.formula(paste0("value","~",paste(colnames(fcast_df1)[c(2:which(colnames(fcast_df1)=="gt_999"))],collapse="+"))),
-                   fcast_df1 %>% filter(date<"2024-01-01"&year(date)>=2006&!is.na(value)))[, -1]
-  y = (fcast_df1 %>% filter(date<"2024-01-01"&year(date)>=2006&!is.na(value)))[['value']]
+  monthly_df = bind_rows(monthly_df,tmp) %>% 
+    arrange(date) %>% 
+    fill(error,error_ly,.direction="down")
   
-  weight = (1:nrow(X))/nrow(X)
-  weight = ifelse(weight<.5,.5,weight)
-  fit_lasso_state = glmnet(X, y, alpha = 1,pmax=20,weights = weight)
-  # weight by how recent the data is
+  daily_df = dts %>% 
+    filter(record_date<=MAX_DATE) %>% #TODO: REMOVE WHEN DONE TESTING 
+    filter(cbo_category%in%case_when(col%in%c("Individual Income Taxes","Payroll Taxes")~c("Individual Income Taxes","Payroll Taxes"),
+                                     TRUE~col)&!grepl("from Depositaries",transaction_catg)&record_date<=end_date) %>% 
+    mutate(cbo_category=col) %>% 
+    group_by(record_fiscal_year,record_calendar_month,record_calendar_day) %>% 
+    summarize(record_date=record_date[1],
+              cbo_category=cbo_category[1],
+              total_day=sum(transaction_today_amt/1000,na.rm=TRUE)) %>% 
+    mutate(total_day_lwr=total_day,
+           total_day_upper=total_day) %>% 
+    ungroup() %>% 
+    arrange(record_date) %>% 
+    complete(record_date = seq.Date(floor_date(min(dts$record_date),"month"), as.Date(MAX_DATE), by = "day")) %>% 
+    mutate(record_fiscal_year=as.integer(quarter(record_date, with_year = TRUE, fiscal_start = 10)),
+           record_calendar_month=month(record_date),
+           record_calendar_year=year(record_date),
+           record_calendar_day=sprintf("%02d", day(record_date))) %>% 
+    mutate_at(vars(total_day,total_day_lwr,total_day_upper),~case_when(!is.na(.)~.,
+                                                                       record_date<=as.Date(MAX_DATE)&is.na(.)~0,
+                                                                       record_date>as.Date(MAX_DATE)~NA)) %>% 
+    fill(cbo_category,.direction="downup") %>% 
+    mutate(date=floor_date(record_date,"month"))
   
-  selected_coefs_state = data.frame(varImp(fit_lasso_state,lambda=min(fit_lasso_state$lambda), scale = FALSE)) %>% filter(Overall!=0)
-  selected_coefs_state$var = as.numeric(gsub("gt_","",rownames(selected_coefs_state)))
-  coef_value_state = coef(fit_lasso_state,s=min(fit_lasso_state$lambda))[,1][-1]
-  coef_value_state = coef_value_state[coef_value_state!=0]
-  selected_coefs_state = cbind(selected_coefs_state,coef_value_state)
-  selected_coefs_state$category = sapply(selected_coefs_state$var,which_category)
-  selected_coefs_state = selected_coefs_state %>% arrange(-Overall)
   
-  test = lm_robust(as.formula(paste0("value","~lag1+lag2+lag3+lag4+cbo_proj_month+",paste(c(rownames(selected_coefs_state)),collapse="+"))),
-                   data = fcast_df1 %>% filter(date<='2024-01-01') %>% mutate(weight=(1:n())/n()))
-  
-  fcast_df1 = read_csv(paste0("Data/Processing/imputed_data/imputed_data_asof",Sys.Date(),".csv"))  %>% 
+  x_data = read_csv(paste0("Data/Processing/imputed_data/imputed_data_asof",end_date,".csv"))  %>% 
     select(-any_of(paste0("gt_",bad_vars$category))) %>% 
     arrange(date) %>%
-    mutate(year=year(date),
-           month=month(date)) %>%
-    select(-c(PCE,PRS85006112)) %>%
-    select(-one_of("ADPMNUSNERSA")) %>% 
-    left_join(mts_dataset %>% filter(classification_desc==col_mts) %>% 
-                mutate(record_date=floor_date(record_date,"month"),
-                       current_month_net_rcpt_amt=as.numeric(current_month_net_rcpt_amt)/1000000000) %>% 
-                select(record_date,current_month_net_rcpt_amt) %>% 
-                rename(date=record_date,
-                       value=current_month_net_rcpt_amt)) %>% # join the yvariable
     ungroup() %>% 
-    mutate_at(vars(PAYEMS:JTSJOL,INDPRO:DGS10),~((./dplyr::lag(.,1)-1)*100)) %>%
-    mutate_at(vars(UNRATE:DTCDFSA066MSFRBPHI,grep("gt_",colnames(.),value=TRUE)),~(.-dplyr::lag(.,1))) %>%
-    mutate(lag1=dplyr::lag(value,1),
-           lag2=dplyr::lag(value,2),
-           lag3=dplyr::lag(value,3),
-           lag4=dplyr::lag(value,4)) %>%
-    ungroup() %>% 
-    mutate(fiscal_year=as.integer(quarter(date, with_year = TRUE, fiscal_start = 10)))  %>% 
+    mutate_at(vars(PAYEMS:JTSJOL,INDPRO:DGS10),.funs=list(ch12m=~((./dplyr::lag(.,12)-1)*100),ch1m=~((./dplyr::lag(.,1)-1)*100))) %>%
+    mutate_at(vars(UNRATE:DTCDFSA066MSFRBPHI,grep("gt_",colnames(.),value=TRUE)),.funs=list(ch12m=~.-dplyr::lag(.,12),ch1m=~.-dplyr::lag(.,1))) %>%
+    mutate_at(vars(PAYEMS:gt_999_ch1m),.funs=list(lag1=~dplyr::lag(.,1),lag2=~dplyr::lag(.,2),lag3=~dplyr::lag(.,3),lag4=~dplyr::lag(.,4))) %>% 
+    left_join(monthly_df,by="date") %>% 
+    mutate(fiscal_year=as.integer(quarter(date, with_year = TRUE, fiscal_start = 10))) %>% 
+    mutate(month=month(date),
+           fy_month=case_when(
+             month%in%c(10:12)~month-9,
+             month%in%c(1:9)~month+3
+           )) %>% 
+    select(-cbo_proj) %>% 
     left_join(cbo_proj %>% 
-                filter(component==cbo_component&category==cbo_category) %>% 
-                group_by(projected_fiscal_year) %>% 
+                {if(col=="Other Spending") filter(.,subcategory %in% c("Nondefense Discretionary","Other Mandatory")) else if(col=="National Defense") filter(.,subcategory=="Defense Discretionary") else filter(.,subcategory%in%col)} %>% 
+                group_by(projected_fiscal_year,subcategory) %>% 
+                filter(baseline_date<=MAX_DATE) %>% 
                 slice(n()) %>% 
+                group_by(projected_fiscal_year) %>% 
+                summarize(value=sum(value,na.rm=TRUE)) %>% 
                 select(projected_fiscal_year,value) %>% 
                 rename(cbo_proj=value,
-                       fiscal_year=projected_fiscal_year))
-  fcast_df1$cbo_proj_month = as.numeric(predict(monthly_shares_reg,data.frame(month=fcast_df1$month)))*fcast_df1$cbo_proj
-  fcast_df1 = fcast_df1 %>% 
-    mutate(cbo_proj_diff=(value/cbo_proj_month-1)*100) %>% 
-    mutate(lag1_cbo_proj_diff=dplyr::lag(cbo_proj_diff,1),
-           lag2_cbo_proj_diff=dplyr::lag(cbo_proj_diff,2))
+                       fiscal_year=projected_fiscal_year)) %>% 
+    ungroup() %>% 
+    mutate(value_lwr=value,
+           value_upper=value)
   
-  if(is.infinite(max(abs(which(is.na(tail(fcast_df1$value,5)))-6)))){
-    next
-  }else{
-    for(dat in tail(fcast_df1$date,max(abs(which(is.na(tail(fcast_df1$value,5)))-6)))){
+  dates = dts %>% distinct(date=floor_date(record_date,"month")) %>% filter(date<=MAX_DATE&date>max(monthly_df$date[!is.na(monthly_df$value)])) %>% arrange(date) %>% pull(date)
+  fys = unique(as.integer(quarter(dates, with_year = TRUE, fiscal_start = 10)))
+  
+  for(dat in as.character(dates)){
+    
+    x_data1 = x_data %>% 
+      filter(date<=dat) %>% 
+      left_join(monthly_share_pred %>% select(date,pred_cumshare:pred_cumshare_upper),by="date")
+    
+    x_data1 = x_data1 %>% 
+      group_by(fiscal_year) %>% 
+      mutate(cum_total=cumsum(value),
+             cum_total_lwr=cumsum(value_lwr),
+             cum_total_upper=cumsum(value_upper)) %>% 
+      ungroup()
+    
+    x_data1$pred_total = x_data1$cum_total/x_data1$pred_cumshare
+    # x_data1$pred_total_lwr = x_data1$cum_total_lwr/x_data1$pred_cumshare_upper
+    # x_data1$pred_total_upper = x_data1$cum_total_upper/x_data1$pred_cumshare_lwr
+    x_data1  = x_data1 %>% 
+      group_by(fiscal_year) %>% 
+      fill(pred_total,.direction="down")
+    
+    if(tail(x_data1$fiscal_year,1)!=fys[1]){
       
-      fcast_df1$value[fcast_df1$date==dat] = predict(test,fcast_df1 %>% filter(date==dat))
+      scalar = x_data1 %>% 
+        ungroup() %>% 
+        filter(fiscal_year==fys[1]) %>% 
+        mutate(cbo_pred_month=cbo_proj*pred_cumshare,
+               cbo_pred_month=case_when(fy_month==1~cbo_pred_month,
+                                        TRUE~cbo_pred_month-dplyr::lag(cbo_pred_month,1))) %>% 
+        select(date,actual,cbo_pred_month) %>% 
+        summarize(num=mean(actual/cbo_pred_month,na.rm=TRUE)) %>% 
+        pull(num)
       
-      fcast_df1 = fcast_df1 %>% 
-        mutate(lag1=dplyr::lag(value,1),
-               lag2=dplyr::lag(value,2),
-               lag3=dplyr::lag(value,3),
-               lag4=dplyr::lag(value,4))
+      x_data1 = x_data1 %>% 
+        mutate(cbo_proj=case_when(fiscal_year==tail(x_data1$fiscal_year,1)~cbo_proj*scalar,
+                                  TRUE~cbo_proj))
+      
+    }else{
+      scalar=1
+    }
+    
+    x_data1 = x_data1 %>% 
+      group_by(fiscal_year) %>% 
+      mutate_at(vars(pred_total),~.*(max(c(tail(fy_month[!is.na(value)&fiscal_year>=fys[1]],1),0),na.rm=TRUE)/12)) %>% 
+      mutate(cbo_proj_month=cbo_proj*(1-max(c(tail(fy_month[!is.na(value)&fiscal_year>=fys[1]],1),0),na.rm=TRUE)/12)) %>% 
+      rowwise() %>% 
+      mutate_at(vars(pred_total),~sum(c(.,cbo_proj_month),na.rm=TRUE)) %>% 
+      ungroup() %>% 
+      mutate(final_pred_month=pred_total*pred_cumshare)
+    
+    x_data1 = x_data1 %>% 
+      mutate(cbo_proj_month=cbo_proj*pred_cumshare) %>% 
+      group_by(fiscal_year) %>% 
+      mutate_at(vars(final_pred_month,cbo_proj_month),~case_when(fy_month==1~.,TRUE~.-dplyr::lag(.,1))) %>% 
+      ungroup() %>% 
+      mutate(final_pred_month_lwr=final_pred_month+pred_cumshare_lwr*pred_total,
+             final_pred_month_upper=final_pred_month+pred_cumshare_upper*pred_total)
+    
+    tmp = predict(models_monthly$res_shrunk,x_data1 %>% filter(date==dat) %>% mutate(cbo_proj_month=final_pred_month),se.fit=TRUE)
+    x_data$value[x_data$date==dat] = tmp$fit
+    tmp = predict(models_monthly$res_shrunk,x_data1 %>% filter(date==dat) %>% mutate(cbo_proj_month=final_pred_month_lwr),se.fit=TRUE)
+    x_data$value_lwr[x_data$date==dat] = tmp$fit - 1.64*tmp$se.fit
+    tmp = predict(models_monthly$res_shrunk,x_data1 %>% filter(date==dat) %>% mutate(cbo_proj_month=final_pred_month_upper),se.fit=TRUE)
+    x_data$value_upper[x_data$date==dat] = tmp$fit + 1.64*tmp$se.fit
+    x_data$cbo_proj_month=NA
+    x_data$cbo_proj_month[x_data$date<=dat] = x_data1$cbo_proj_month
+    
+    monthly_nowcast = x_data %>% filter(date<=dat) %>% select(date,actual,pred=value,fit.lwr=value_lwr,fit.upr=value_upper,cbo_proj=cbo_proj_month)
+    
+    if((max(daily_df$record_date[!is.na(daily_df$total_day)],na.rm=TRUE))<(ceiling_date(as.Date(dat),"month")-1)){ # testing if we have the last day of the month. If we have the last day of the month then we dont need to add the missing days
+      
+      daily_df = daily_df %>% 
+        ungroup() %>% 
+        complete(record_date = seq.Date(min(record_date), (ceiling_date(as.Date(dat),"month")-1), by = "day")) %>% 
+        mutate(record_fiscal_year=as.integer(quarter(record_date, with_year = TRUE, fiscal_start = 10)),
+               record_calendar_month=month(record_date),
+               record_calendar_year=year(record_date),
+               record_calendar_day=sprintf("%02d", day(record_date)),
+               date=floor_date(record_date,"month")) %>% 
+        mutate_at(vars(total_day,total_day_lwr,total_day_upper),~case_when(!is.na(.)~.,
+                                                                           record_date<=MAX_DATE&is.na(.)~0,
+                                                                           record_date>MAX_DATE~NA)) %>% 
+        fill(cbo_category,.direction="down")
       
     }
+    
+    daily_df1 = daily_df %>% 
+      filter(record_date<=(ceiling_date(as.Date(dat),"month")-1)) %>% 
+      mutate(imputed=ifelse(record_date<=MAX_DATE&record_date>=head(record_date[total_day!=0],1),0,1)) %>% 
+      group_by(record_fiscal_year,record_calendar_month) %>% 
+      arrange(record_calendar_day) %>% 
+      mutate(cum_total_day=cumsum(total_day),
+             cum_total_day_lwr=cumsum(total_day_lwr),
+             cum_total_day_upper=cumsum(total_day_upper),
+             total_month=sum(total_day,na.rm=TRUE),
+             total_month_lwr=sum(total_day_lwr,na.rm=TRUE),
+             total_month_upper=sum(total_day_upper,na.rm=TRUE),
+             record_calendar_day_perc=(as.numeric(record_calendar_day))/as.numeric(days_in_month(record_date)),
+             inv_record_calendar_day=1-record_calendar_day_perc) %>% 
+      mutate(fy_month=case_when(
+        record_calendar_month%in%c(10:12)~record_calendar_month-9,
+        record_calendar_month%in%c(1:9)~record_calendar_month+3
+      )) %>% 
+      group_by(record_fiscal_year) %>% 
+      arrange(fy_month) %>% 
+      mutate(cum_total_month=cumsum(total_day),
+             cum_total_month_lwr=cumsum(total_day_lwr),
+             cum_total_month_upper=cumsum(total_day_upper),
+             total_year=sum(total_month),
+             total_year_lwr=sum(total_month_lwr),
+             total_year_upper=sum(total_month_upper)) %>% 
+      ungroup() %>% 
+      mutate(date=floor_date(record_date,"month")) %>% 
+      left_join(monthly_nowcast,by="date") %>% 
+      arrange(record_date) %>% 
+      left_join(tax_days,by=c("record_date"="date")) %>% 
+      mutate(cum_share=cum_total_day/total_month,
+             cum_share_lwr=cum_total_day_lwr/total_month_lwr,
+             cum_share_upper=cum_total_day_upper/total_month_upper,
+             quarter_end=case_when(
+               record_calendar_month==4&tax_day==1~1,
+               col=="Corporate Income Taxes"&record_calendar_month%in%c(12,6,9)&record_calendar_day==15&!(weekdays(record_date,abbreviate = TRUE)%in%c("Sat","Sun"))~1,
+               col=="Corporate Income Taxes"&record_calendar_month%in%c(12,6,9)&record_calendar_day%in%c(16,17)&(weekdays(record_date,abbreviate = TRUE)%in%c("Mon"))~1, # only use 16 or 17 IF the 15th had fallen on a weekend
+               col=="Individual Income Taxes"&record_calendar_month%in%c(1,6,9)&record_calendar_day==15&!(weekdays(record_date,abbreviate = TRUE)%in%c("Sat","Sun"))~1,
+               col=="Individual Income Taxes"&record_calendar_month%in%c(1,6,9)&record_calendar_day%in%c(16,17)&(weekdays(record_date,abbreviate = TRUE)%in%c("Mon"))~1)
+      ) %>% 
+      group_by(date) %>% 
+      fill(tax_day,quarter_end,.direction="down") %>% 
+      mutate(tax_day=ifelse(is.na(tax_day),0,tax_day),
+             quarter_end=ifelse(is.na(quarter_end),0,quarter_end),
+             settlement_period=case_when(
+               record_date>=max(record_date[!(weekdays(record_date,abbreviate = TRUE)%in%c("Sat","Sun"))])~"EOM",
+               record_date>=min(record_date[day(record_date)>=15&!(weekdays(record_date,abbreviate = TRUE)%in%c("Sat","Sun"))])~"Second Settlement",
+               TRUE~"First Settlement"
+             )) %>% 
+      group_by(date) %>% 
+      mutate(weekend=weekdays(record_date,abbreviate = TRUE)%in%c("Sat","Sun")) %>% 
+      ungroup()
+    
+    daily_df1 = daily_df1 %>% 
+      left_join(daily_df1 %>% 
+                  distinct(date) %>% 
+                  mutate(dat=1:n(),
+                         month=month(date)) %>% 
+                  rowwise() %>% 
+                  mutate(first_day_thismonth_weekend=(weekdays(date,abbreviate=TRUE)%in%c("Sat","Sun")|date%in%as.Date(as.character(tis::holidays(year(date))),format="%Y%m%d"))&month!=1,
+                         first_day_nextmonth_weekend=(weekdays(date %m+% months(1),abbreviate=TRUE)%in%c("Sat","Sun")|(date %m+% months(1))%in%as.Date(as.character(tis::holidays(year(date))),format="%Y%m%d"))&month!=12,
+                         last_day_thismonth_weekend=(weekdays((date %m+% months(1) )- 1,abbreviate=TRUE)%in%c("Sat","Sun")|((date %m+% months(1) )- 1)%in%as.Date(as.character(tis::holidays(year(date))),format="%Y%m%d"))&month!=12) %>% 
+                  ungroup() %>% 
+                  mutate(date_group=case_when(
+                    date<="2020-03-01"~"Before 2020-4",
+                    date<="2023-11-01"~"Before 2023-12",
+                    date>"2023-11-01"~"After 2023-12"
+                  ))) # for the scalar reg
+    
+    daily_df1 = daily_df1 %>% 
+      bind_cols(data.frame(predict(models_daily$share,
+                                   data=.,type="quantiles",
+                                   quantiles=c(0.5,.1,.9))) %>% 
+                  rename("pred_share"=1,"pred_share_lwr"=2,"pred_share_upper"=3)) %>% 
+      group_by(date) %>% 
+      mutate(pred_cumshare=cumsum(pred_share),
+             pred_cumshare_lwr=cumsum(pred_share_lwr),
+             pred_cumshare_upper=cumsum(pred_share_upper),
+             row=1:n()) %>% 
+      mutate_at(vars(pred_cumshare:pred_cumshare_upper),~case_when(row>=max(row[weekend==FALSE])&.<=0~1,
+                                                                   TRUE~.)) %>% 
+      mutate_at(vars(pred_cumshare:pred_cumshare_upper),~./.[n()]) %>% 
+      mutate(month=month(record_date)) %>% 
+      bind_cols(data.frame(predict(models_daily$scalar,
+                                   newdata = .,
+                                   se.fit=TRUE, 
+                                   interval="confidence", 
+                                   alpha=0.10)) %>% 
+                  rename("scalar"=1,"scalar_lwr"=2,"scalar_upper"=3,"scalar_se_fit"=4)) %>% 
+      select(-dat)
+    
+    daily_df1 = daily_df1 %>%
+      group_by(date) %>%
+      mutate(pred_month_total=cum_total_day/pred_cumshare*scalar,
+             pred_month_total=ifelse(is.nan(pred_month_total)|is.infinite(pred_month_total)|pred_month_total==0,pred,pred_month_total),
+             pred_month_total_lwr=cum_total_day_lwr/pred_cumshare_upper*scalar_lwr,
+             pred_month_total_lwr=ifelse(is.nan(pred_month_total_lwr)|is.infinite(pred_month_total_lwr)|pred_month_total_lwr==0,fit.lwr,pred_month_total_lwr),
+             pred_month_total_upper=cum_total_day_upper/pred_cumshare_lwr*scalar_upper,
+             pred_month_total_upper=ifelse(is.nan(pred_month_total_upper)|is.infinite(pred_month_total_upper)|pred_month_total_upper==0,fit.upr,pred_month_total_upper)) %>% 
+      fill(pred_month_total,pred_month_total_lwr,pred_month_total_upper,.direction = "updown")
+    
+    if(col%in%c("Individual Income Taxes","Payroll Taxes")){
+      
+      preds = data.frame(predict(models_daily$disagg_reg,daily_df1 %>% 
+                                   mutate(month=month(record_date),
+                                          fiscal_year=year(record_date),
+                                          quarter_end=case_when(col=="Corporate Income Taxes"&month%in%c(12,4,6,9)~1,
+                                                                col=="Individual Income Taxes"&month%in%c(1,4,6,9)~1,
+                                                                !grepl("Income",col)&month%in%c(1,4,6,9)~1,
+                                                                TRUE~0),
+                                          tax_due=case_when(
+                                            !(fiscal_year%in%c(2020,2021))&month==4&col=="Individual Income Taxes"~1,
+                                            fiscal_year==2020&month==7&col=="Individual Income Taxes"~1,
+                                            fiscal_year==2021&month==5&col=="Individual Income Taxes"~1,
+                                            !(fiscal_year%in%c(2020))&month==4&col=="Corporate Income Taxes"~1,
+                                            fiscal_year==2020&month==7&col=="Corporate Income Taxes"~1,
+                                            fiscal_year==2020&month==9&col=="Excise Taxes"~1,
+                                            TRUE~0
+                                          )),
+                                 se.fit=TRUE, interval="confidence", alpha=0.10))
+      colnames(preds)=c("scalar_adj","scalar_lwr_adj","scalar_upper_adj","scalar_adj_se_fit")
+      daily_df1 = bind_cols(daily_df1,preds) %>% 
+        rowwise() %>% 
+        mutate(scalar_lwr=ifelse(col=="Individual Income Taxes",scalar_lwr*scalar_lwr_adj,scalar_lwr*(1-scalar_lwr_adj)),
+               scalar_upper=ifelse(col=="Individual Income Taxes",scalar_upper*scalar_upper_adj,scalar_upper*(1-scalar_upper_adj)),
+               scalar=ifelse(col=="Individual Income Taxes",scalar*scalar_adj,scalar*(1-scalar_adj)))
+      
+    }
+    
+    if(col%in%c("Miscellaneous Receipts")){
+      
+      daily_df1 = daily_df1 %>% 
+        group_by(date) %>% 
+        mutate(pred_month_total=cum_total_day/pred_cumshare*scalar,
+               pred_month_total_lwr=cum_total_day/pred_cumshare_upper*scalar_lwr,
+               pred_month_total_upper=cum_total_day/pred_cumshare_lwr*scalar_upper) %>% 
+        group_by(date) %>% 
+        fill(pred_month_total,pred_month_total_lwr,pred_month_total_upper,.direction="down") %>% 
+        mutate(pred_total1=pred,
+               pred_total1_lwr=fit.lwr,
+               pred_total1_upper=fit.upr)
+      
+    } else{
+      
+      daily_df1 = daily_df1 %>% 
+        rowwise() %>% 
+        mutate(pred_month_total=cum_total_day/pred_cumshare*scalar,
+               pred_month_total_lwr=cum_total_day/pred_cumshare_upper*scalar_lwr,
+               pred_month_total_upper=cum_total_day/pred_cumshare_lwr*scalar_upper) %>% 
+        group_by(date) %>% 
+        mutate(pred_total1=pred_month_total*record_calendar_day_perc+pred*(1-record_calendar_day_perc),
+               pred_total1_lwr=pred_month_total_lwr*record_calendar_day_perc+fit.lwr*(1-record_calendar_day_perc),
+               pred_total1_upper=pred_month_total_upper*record_calendar_day_perc+fit.upr*(1-record_calendar_day_perc),
+               pred_total1=case_when((col=="Corporate Income Taxes"&MAX_DATE<"2023-10-01")~pred,
+                                     is_bad(pred_total1)&is_bad(pred_month_total)&!is_bad(pred)~pred,
+                                     is_bad(pred_total1)&!is_bad(pred_month_total)&is_bad(pred)~pred_month_total,
+                                     TRUE~pred_total1),
+               pred_total1_lwr=case_when((col=="Corporate Income Taxes"&MAX_DATE<"2023-10-01")~fit.lwr,
+                                         is_bad(pred_total1_lwr)&is_bad(pred_month_total_lwr)&!is_bad(fit.lwr)~fit.lwr,
+                                         is_bad(pred_total1_lwr)&!is_bad(pred_month_total_lwr)&is_bad(fit.lwr)~pred_month_total_lwr,
+                                         TRUE~pred_total1_lwr),
+               pred_total1_upper=case_when((col=="Corporate Income Taxes"&MAX_DATE<"2023-10-01")~fit.upr,
+                                           is_bad(pred_total1_upper)&is_bad(pred_month_total_upper)&!is_bad(fit.upr)~fit.upr,
+                                           is_bad(pred_total1_upper)&!is_bad(pred_month_total_upper)&is_bad(fit.upr)~pred_month_total_upper,
+                                           TRUE~pred_total1_upper)) %>% 
+        fill(pred_month_total,pred_month_total_lwr,pred_month_total_upper,pred_total1,pred_total1_lwr,pred_total1_upper,.direction="down")
+      
+    }
+    
+    daily_df1 = daily_df1 %>% 
+      rowwise() %>% 
+      mutate(min=min(c(pred_total1_lwr,pred_total1_upper)),
+             max=max(c(pred_total1_lwr,pred_total1_upper)),
+             pred_total1_lwr=min,
+             pred_total1_upper=max) %>% 
+      select(-c(min,max))
+    
+    # TODO: THINK ABOUT HOW TO GET CLOSER WHEN DISAGGREGATING
+    # see if it improves things for any category at one date and with proper backtesting
+    # if doesnt improve, just keep as a separate data series
+    
+    daily_df1 = daily_df1 %>% 
+      group_by(date) %>% 
+      mutate(final_pred_day_cum=case_when(
+        all(!is.na(actual))&all(!is_bad(cum_share))&!(col%in%c("Payroll Taxes"))~actual*cum_share, # distribute by observed pattern
+        (all(!is.na(actual))&!all(!is_bad(cum_share)))|(all(!is.na(actual))&all(!is_bad(cum_share))&(col%in%c("Payroll Taxes")))~actual*pred_cumshare,
+        date<dat&!((col=="Corporate Income Taxes"&MAX_DATE<"2023-10-01"))~cum_total_day,
+        (date<dat|imputed==0)&((col=="Corporate Income Taxes"&MAX_DATE<"2023-10-01"))~pred_total1[n()]*pred_cumshare,
+        date>=dat&(col%in%c("Individual Income Taxes","Payroll Taxes","Miscellaneous Receipts"))~pred_total1[n()]*pred_cumshare,
+        imputed==0&!((col=="Corporate Income Taxes"&MAX_DATE<"2023-10-01"))~cum_total_day*scalar,
+        imputed==1~pred_total1[n()]*pred_cumshare
+      ),
+      final_pred_day_cum_lwr=case_when(
+        all(!is.na(actual))&all(!is_bad(cum_share))&!(col%in%c("Payroll Taxes"))~actual*cum_share, # distribute by observed pattern
+        (all(!is.na(actual))&!all(!is_bad(cum_share)))|(all(!is.na(actual))&all(!is_bad(cum_share))&(col%in%c("Payroll Taxes")))~actual*pred_cumshare,
+        date<dat&!((col=="Corporate Income Taxes"&MAX_DATE<"2023-10-01"))~cum_total_day_lwr,
+        (date<dat|imputed==0)&((col=="Corporate Income Taxes"&MAX_DATE<"2023-10-01"))~pred_total1_lwr[n()]*pred_cumshare_lwr,
+        date>=dat&(col%in%c("Individual Income Taxes","Payroll Taxes","Miscellaneous Receipts"))~pred_total1_lwr[n()]*pred_cumshare_lwr,
+        imputed==0&!((col=="Corporate Income Taxes"&MAX_DATE<"2023-10-01"))~cum_total_day*scalar_lwr,
+        imputed==1~pred_total1_lwr[n()]*pred_cumshare_lwr
+      ),
+      final_pred_day_cum_upper=case_when(
+        all(!is.na(actual))&all(!is_bad(cum_share))&!(col%in%c("Payroll Taxes"))~actual*cum_share, # distribute by observed pattern
+        (all(!is.na(actual))&!all(!is_bad(cum_share)))|(all(!is.na(actual))&all(!is_bad(cum_share))&(col%in%c("Payroll Taxes")))~actual*pred_cumshare,
+        date<dat&!((col=="Corporate Income Taxes"&MAX_DATE<"2023-10-01"))~cum_total_day_upper,
+        (date<dat|imputed==0)&((col=="Corporate Income Taxes"&MAX_DATE<"2023-10-01"))~pred_total1_upper[n()]*pred_cumshare_upper,
+        date>=dat&(col%in%c("Individual Income Taxes","Payroll Taxes","Miscellaneous Receipts"))~pred_total1_upper[n()]*pred_cumshare_upper,
+        imputed==0&!((col=="Corporate Income Taxes"&MAX_DATE<"2023-10-01"))~cum_total_day*scalar_upper,
+        imputed==1~pred_total1_upper[n()]*pred_cumshare_upper
+      )) %>% 
+      select(record_date,record_fiscal_year,fy_month,imputed,total_day,scalar,total_month,
+             date,pred,fit.lwr,fit.upr,actual,cbo_proj,scalar,
+             intermediate_pred=pred_total1,intermediate_pred_lwr=pred_total1_lwr,intermediate_pred_upper=pred_total1_upper,
+             final_pred_day_cum,final_pred_day_cum_lwr,final_pred_day_cum_upper) %>% 
+      mutate(cbo_category=col,
+             final_pred_day=case_when(
+               record_date==record_date[1]~final_pred_day_cum,
+               TRUE~final_pred_day_cum-dplyr::lag(final_pred_day_cum,1)
+             ),
+             final_pred_day_lwr=case_when(
+               record_date==record_date[1]~final_pred_day_cum_lwr,
+               TRUE~final_pred_day_cum_lwr-dplyr::lag(final_pred_day_cum_lwr,1)
+             ),
+             final_pred_day_upper=case_when(
+               record_date==record_date[1]~final_pred_day_cum_upper,
+               TRUE~final_pred_day_cum_upper-dplyr::lag(final_pred_day_cum_upper,1)
+             ),
+             total_day_imp=case_when(
+               imputed==0~total_day*scalar,
+               imputed==1~((final_pred_day_cum[n()]-(total_month[n()]*scalar[n()]))/sum(final_pred_day[imputed==1]))*final_pred_day
+             )) %>% 
+      ungroup() %>% 
+      relocate(total_day_imp,.after=total_day) %>% 
+      select(-scalar)
+    
+    daily_df[daily_df$date<=dat,c("total_day","total_day_lwr","total_day_upper")] = daily_df1 %>% filter(date<=dat) %>% select(final_pred_day:final_pred_day_upper)
+    x_data[x_data$date==dat,c("value","value_lwr","value_upper")] = daily_df1 %>% filter(date==dat) %>% slice(n()) %>% select(final_pred_day_cum:final_pred_day_cum_upper)
+    
   }
   
-  pred_df = data.frame(
-    date=fcast_df1[['date']],
-    var=cbo_category,
-    predict(test,fcast_df1,se.fit=TRUE, interval="confidence", alpha=0.70),
-    actual=fcast_df1[['value']],
-    cbo_proj=fcast_df1[['cbo_proj_month']]
-  ) %>% 
-    rename(pred=fit.fit)
+  daily_df = daily_df %>% 
+    mutate(final_pred_day=total_day,
+           final_pred_day_lwr=total_day_lwr,
+           final_pred_day_upper=total_day_upper,
+           cbo_proj=daily_df1$cbo_proj) %>% 
+    group_by(date) %>% 
+    mutate(final_pred_day_cum=cumsum(final_pred_day),
+           final_pred_day_cum_lwr=cumsum(final_pred_day_lwr),
+           final_pred_day_cum_upper=cumsum(final_pred_day_upper)) %>% 
+    ungroup()
   
-  return(list(
-    'data'=fcast_df1,
-    'reg'=test,
-    'pred_df'=pred_df,
-    'monthly_shares_reg'=monthly_shares_reg
-  ))
+  x_data = x_data  %>% 
+    select(-c(value:cbo_proj))
+  
+  if(!(max(daily_df$record_date)==paste0(max(daily_df$record_fiscal_year),"-09-30"))){
+    
+    dates = seq(max(daily_df$record_date,na.rm=TRUE)+1,as.Date(paste0(max(daily_df$record_fiscal_year),"-09-30")),by=1)
+    months = unique(month(dates))
+    
+    daily_df1 = daily_df %>% 
+      bind_rows(data.frame(record_date=seq(max(daily_df$record_date,na.rm=TRUE)+1,max(dates),by=1))) %>% 
+      group_by(record_fiscal_year) %>% 
+      arrange(record_date) %>% 
+      mutate(cum_total_fy=cumsum(final_pred_day),
+             cum_total_fy_lwr=cumsum(final_pred_day_lwr),
+             cum_total_fy_upper=cumsum(final_pred_day_upper),
+             record_fiscal_year=as.integer(quarter(record_date, with_year = TRUE, fiscal_start = 10)),
+             date=floor_date(record_date,"month"),
+             month=month(record_date),
+             fy_month=case_when(
+               month%in%c(10:12)~month-9,
+               month%in%c(1:9)~month+3
+             ),
+             imputed=ifelse(record_date>MAX_DATE,1,0)) %>% 
+      left_join(tax_days,by=c("record_date"="date")) %>% 
+      group_by(date) %>% 
+      mutate(day=day(record_date),
+             quarter_end=case_when(
+               record_calendar_month==4&tax_day==1~1,
+               col=="Corporate Income Taxes"&record_calendar_month%in%c(12,6,9)&record_calendar_day==15&!(weekdays(record_date,abbreviate = TRUE)%in%c("Sat","Sun"))~1,
+               col=="Corporate Income Taxes"&record_calendar_month%in%c(12,6,9)&record_calendar_day%in%c(16,17)&(weekdays(record_date,abbreviate = TRUE)%in%c("Mon"))~1, # only use 16 or 17 IF the 15th had fallen on a weekend
+               col=="Individual Income Taxes"&record_calendar_month%in%c(1,6,9)&record_calendar_day==15&!(weekdays(record_date,abbreviate = TRUE)%in%c("Sat","Sun"))~1,
+               col=="Individual Income Taxes"&record_calendar_month%in%c(1,6,9)&record_calendar_day%in%c(16,17)&(weekdays(record_date,abbreviate = TRUE)%in%c("Mon"))~1)
+      ) %>% 
+      fill(tax_day,quarter_end,.direction="down") %>% 
+      group_by(date) %>% 
+      mutate(tax_day=ifelse(is.na(tax_day),0,tax_day),
+             quarter_end=ifelse(is.na(quarter_end),0,quarter_end),
+             settlement_period=case_when(
+               record_date>=max(record_date[!(weekdays(record_date,abbreviate = TRUE)%in%c("Sat","Sun"))])~"EOM",
+               record_date>=min(record_date[day(record_date)>=15&!(weekdays(record_date,abbreviate = TRUE)%in%c("Sat","Sun"))])~"Second Settlement",
+               TRUE~"First Settlement"
+             )) %>% 
+      ungroup() %>% 
+      mutate(fiscal_year=as.integer(quarter(record_date, with_year = TRUE, fiscal_start = 10)),
+             tax_due=case_when(
+               !(fiscal_year%in%c(2020,2021))&month==4&col=="Individual Income Taxes"~1,
+               fiscal_year==2020&month==7&col=="Individual Income Taxes"~1,
+               fiscal_year==2021&month==5&col=="Individual Income Taxes"~1,
+               !(fiscal_year%in%c(2020))&month==4&col=="Corporate Income Taxes"~1,
+               fiscal_year==2020&month==7&col=="Corporate Income Taxes"~1,
+               fiscal_year==2020&month==9&col=="Excise Taxes"~1,
+               TRUE~0
+             )) %>% 
+      group_by(date) %>% 
+      mutate(weekend=weekdays(record_date,abbreviate = TRUE)%in%c("Sat","Sun"),
+             record_calendar_month=month(record_date),
+             record_calendar_day=sprintf("%02d", day(record_date)),
+             fed_remittances_suspended=ifelse(date>="2022-09-01",1,0)) %>% 
+      ungroup() %>% 
+      fill(cbo_category,.direction = "down")
+    
+    daily_df1 = daily_df1 %>% 
+      left_join(daily_df1 %>% 
+                  distinct(date) %>% 
+                  mutate(dat=1:n(),
+                         month=month(date)) %>% 
+                  rowwise() %>% 
+                  mutate(first_day_thismonth_weekend=(weekdays(date,abbreviate=TRUE)%in%c("Sat","Sun")|date%in%as.Date(as.character(tis::holidays(year(date))),format="%Y%m%d"))&month!=1,
+                         first_day_nextmonth_weekend=(weekdays(date %m+% months(1),abbreviate=TRUE)%in%c("Sat","Sun")|(date %m+% months(1))%in%as.Date(as.character(tis::holidays(year(date))),format="%Y%m%d"))&month!=12,
+                         last_day_thismonth_weekend=(weekdays((date %m+% months(1) )- 1,abbreviate=TRUE)%in%c("Sat","Sun")|((date %m+% months(1) )- 1)%in%as.Date(as.character(tis::holidays(year(date))),format="%Y%m%d"))&month!=12) %>% 
+                  ungroup() %>% 
+                  mutate(date_group=case_when(
+                    date<="2020-03-01"~"Before 2020-4",
+                    date<="2023-11-01"~"Before 2023-12",
+                    date>"2023-11-01"~"After 2023-12"
+                  ))) # for the scalar reg
+    
+    daily_df1 = daily_df1 %>% 
+      left_join(monthly_share_pred %>% select(date,
+                                              pred_cumshare_fy=pred_cumshare,
+                                              pred_cumshare_fy_lwr=pred_cumshare_lwr,
+                                              pred_cumshare_fy_upper=pred_cumshare_upper))
+    
+    daily_df1 = daily_df1 %>% 
+      left_join(cbo_proj %>% 
+                  {if(col=="Other Spending") filter(.,subcategory %in% c("Nondefense Discretionary","Other Mandatory")) else if(col=="National Defense") filter(.,subcategory=="Defense Discretionary") else filter(.,subcategory%in%col)} %>% 
+                  group_by(projected_fiscal_year,subcategory) %>% 
+                  filter(baseline_date<=MAX_DATE) %>% 
+                  slice(n()) %>% 
+                  group_by(projected_fiscal_year) %>% 
+                  summarize(value=sum(value,na.rm=TRUE)) %>% 
+                  select(projected_fiscal_year,value) %>% 
+                  rename(cbo_proj_fy=value,
+                         fiscal_year=projected_fiscal_year),
+                by=c("record_fiscal_year"="fiscal_year")) %>% 
+      mutate(cbo_proj_fmonth = cbo_proj_fy*pred_cumshare_fy,
+             proj_fy = cum_total_fy/pred_cumshare_fy) %>% 
+      fill(proj_fy,.direction="down") %>% 
+      group_by(date) %>% 
+      mutate(record_calendar_day_perc=(day(record_date))/as.numeric(days_in_month(record_date)),
+             total_pred=proj_fy) %>% 
+      group_by(record_fiscal_year) %>% 
+      fill(total_pred,.direction="down") %>% 
+      mutate(pred_month=total_pred*pred_cumshare_fy)
+    
+    daily_df1 = daily_df1 %>% 
+      select(-c(pred_month)) %>% 
+      left_join(daily_df1 %>% 
+                  group_by(date) %>% 
+                  slice(n()) %>% 
+                  ungroup() %>% 
+                  mutate(pred_month=case_when(fy_month==1~pred_month,
+                                              TRUE~pred_month-dplyr::lag(pred_month,1)),
+                         pred_month_lwr=pred_month+pred_cumshare_fy_lwr*total_pred,
+                         pred_month_upper=pred_month+pred_cumshare_fy_upper*total_pred,
+                         cbo_pred_month=case_when(fy_month==1~cbo_proj_fmonth,
+                                                  TRUE~cbo_proj_fmonth-dplyr::lag(cbo_proj_fmonth,1)),
+                         cbo_pred_month_lwr=cbo_pred_month+pred_cumshare_fy_lwr*cbo_proj_fy,
+                         cbo_pred_month_upper=cbo_pred_month+pred_cumshare_fy_upper*cbo_proj_fy) %>% 
+                  select(date,pred_month,pred_month_lwr,pred_month_upper,cbo_pred_month,cbo_pred_month_lwr,cbo_pred_month_upper),by="date") %>% 
+      mutate(record_calendar_day=sprintf("%02d", day(record_date)),
+             record_calendar_month=month(record_date),
+             record_calendar_year=year(record_date),
+             record_fiscal_year=as.integer(quarter(record_date, with_year = TRUE, fiscal_start = 10))) %>% 
+      ungroup() %>% 
+      mutate(pred_month1=pred_month*(tail(daily_df1$fy_month[!is.na(daily_df1$total_day)],1)/12)+cbo_pred_month*(1-tail(daily_df1$fy_month[!is.na(daily_df1$total_day)],1)/12),
+             pred_month1_lwr=pred_month_lwr*(tail(daily_df1$fy_month[!is.na(daily_df1$total_day)],1)/12)+cbo_pred_month_lwr*(1-tail(daily_df1$fy_month[!is.na(daily_df1$total_day)],1)/12),
+             pred_month1_upper=pred_month_upper*(tail(daily_df1$fy_month[!is.na(daily_df1$total_day)],1)/12)+cbo_pred_month_upper*(1-tail(daily_df1$fy_month[!is.na(daily_df1$total_day)],1)/12))
+    
+    preds = data.frame(predict(models_daily$share,data=daily_df1,type="quantiles",quantiles=c(0.5,.1,.9)))
+    colnames(preds)=c("pred_share","pred_share_lwr","pred_share_upper")
+    daily_df1 = bind_cols(daily_df1,preds) %>% 
+      group_by(date) %>% 
+      mutate(pred_cumshare_daily=cumsum(pred_share),
+             pred_cumshare_daily_lwr=cumsum(pred_share_lwr),
+             pred_cumshare_daily_upper=cumsum(pred_share_upper),
+             row=1:n()) %>% 
+      mutate_at(vars(pred_cumshare_daily:pred_cumshare_daily_upper),~case_when(row>=max(row[weekend==FALSE])&.<=0~1,
+                                                                   TRUE~.)) %>% 
+      mutate_at(vars(pred_cumshare_daily:pred_cumshare_daily_upper),~./.[n()])
+    
+    preds = data.frame(predict(models_daily$scalar,daily_df1,se.fit=TRUE, interval="confidence", alpha=0.10))
+    colnames(preds)=c("scalar","scalar_lwr","scalar_upper","scalar_se_fit")
+    daily_df1 = bind_cols(daily_df1,preds)
+    
+    daily_df1 = daily_df1 %>% 
+      mutate(pred_day=pred_cumshare_daily*pred_month1,
+             pred_day_lwr=pred_cumshare_daily_lwr*pred_month1_lwr,
+             pred_day_upper=pred_cumshare_daily_upper*pred_month1_upper) %>% 
+      group_by(date) %>% 
+      mutate(pred_day_cum=pred_day,
+             pred_day_cum_lwr=pred_day_lwr,
+             pred_day_cum_upper=pred_day_upper,
+             pred_day=case_when(
+               record_date==min(record_date)~pred_day,
+               TRUE~pred_day-dplyr::lag(pred_day,1)
+             ),
+             pred_day_lwr=case_when(
+               record_date==min(record_date)~pred_day_lwr,
+               TRUE~pred_day_lwr-dplyr::lag(pred_day_lwr,1)
+             ),
+             pred_day_upper=case_when(
+               record_date==min(record_date)~pred_day_upper,
+               TRUE~pred_day_upper-dplyr::lag(pred_day_upper,1)
+             ),
+             final_pred_day=ifelse(is.na(final_pred_day),pred_day,final_pred_day),
+             final_pred_day_lwr=ifelse(is.na(final_pred_day_lwr),pred_day_lwr,final_pred_day_lwr),
+             final_pred_day_upper=ifelse(is.na(final_pred_day_upper),pred_day_upper,final_pred_day_upper),
+             final_pred_day_cum=ifelse(is.na(final_pred_day_cum),pred_day_cum,final_pred_day_cum),
+             final_pred_day_cum_lwr=ifelse(is.na(final_pred_day_cum_lwr),pred_day_cum_lwr,final_pred_day_cum_lwr),
+             final_pred_day_cum_upper=ifelse(is.na(final_pred_day_cum_upper),pred_day_cum_upper,final_pred_day_cum_upper),
+             cbo_proj=ifelse(imputed==1&is.na(cbo_proj),cbo_pred_month,cbo_proj)) %>% 
+      select(any_of(c(colnames(daily_df),"pred_month1","pred_month1_lwr","pred_month1_upper"))) %>% 
+      ungroup() %>% 
+      fill(cbo_category,.direction="down")
+    
+    daily_df = daily_df1
+    
+  }
+  
+  dates = seq(max(daily_df$record_date,na.rm=TRUE)+1,as.Date(paste0(max(cbo_proj$projected_fiscal_year[cbo_proj$baseline_date<=end_date]),"-09-30")),by=1)
+  
+  daily_df2 = bind_rows(data.frame(record_date=dates)) %>% 
+    mutate(record_fiscal_year=as.integer(quarter(record_date, with_year = TRUE, fiscal_start = 10)),
+           month=month(record_date),
+           fy_month=case_when(
+             month%in%c(10:12)~month-9,
+             month%in%c(1:9)~month+3
+           ),
+           imputed=1,
+           total_day=NA,
+           total_day_imp=NA,
+           total_month=NA,
+           date=floor_date(record_date,"month")) %>% 
+    group_by(record_fiscal_year) %>% 
+    arrange(record_date) %>% 
+    left_join(tax_days,by=c("record_date"="date")) %>% 
+    group_by(date) %>% 
+    mutate(day=day(record_date),
+           month=month(record_date),
+           record_calendar_day=sprintf("%02d", day(record_date)),
+           record_calendar_month=month(record_date),
+           quarter_end=case_when(
+             record_calendar_month==4&tax_day==1~1,
+             col=="Corporate Income Taxes"&month%in%c(12,6,9)&record_calendar_day==15&!(weekdays(record_date,abbreviate = TRUE)%in%c("Sat","Sun"))~1,
+             col=="Corporate Income Taxes"&record_calendar_month%in%c(12,6,9)&record_calendar_day%in%c(16,17)&(weekdays(record_date,abbreviate = TRUE)%in%c("Mon"))~1, # only use 16 or 17 IF the 15th had fallen on a weekend
+             col=="Individual Income Taxes"&record_calendar_month%in%c(1,6,9)&record_calendar_day==15&!(weekdays(record_date,abbreviate = TRUE)%in%c("Sat","Sun"))~1,
+             col=="Individual Income Taxes"&record_calendar_month%in%c(1,6,9)&record_calendar_day%in%c(16,17)&(weekdays(record_date,abbreviate = TRUE)%in%c("Mon"))~1),
+           settlement_period=case_when(
+             record_date>=max(record_date[!(weekdays(record_date,abbreviate = TRUE)%in%c("Sat","Sun"))])~"EOM",
+             record_date>=min(record_date[day(record_date)>=15&!(weekdays(record_date,abbreviate = TRUE)%in%c("Sat","Sun"))])~"Second Settlement",
+             TRUE~"First Settlement"
+           )) %>% 
+    group_by(date) %>% 
+    fill(tax_day,quarter_end,.direction="down") %>% 
+    mutate(tax_day=ifelse(is.na(tax_day),0,tax_day),
+           quarter_end=ifelse(is.na(quarter_end),0,quarter_end),
+           fy_month=case_when(
+             month%in%c(10:12)~month-9,
+             month%in%c(1:9)~month+3
+           )) %>% 
+    ungroup() %>% 
+    mutate(fiscal_year=as.integer(quarter(record_date, with_year = TRUE, fiscal_start = 10)),
+           tax_due=case_when(
+             !(fiscal_year%in%c(2020,2021))&month==4&col=="Individual Income Taxes"~1,
+             fiscal_year==2020&month==7&col=="Individual Income Taxes"~1,
+             fiscal_year==2021&month==5&col=="Individual Income Taxes"~1,
+             !(fiscal_year%in%c(2020))&month==4&col=="Corporate Income Taxes"~1,
+             fiscal_year==2020&month==7&col=="Corporate Income Taxes"~1,
+             fiscal_year==2020&month==9&col=="Excise Taxes"~1,
+             TRUE~0
+           )) %>% 
+    left_join(cbo_proj %>% 
+                {if(col=="Other Spending") filter(.,subcategory %in% c("Nondefense Discretionary","Other Mandatory")) else if(col=="National Defense") filter(.,subcategory=="Defense Discretionary") else filter(.,subcategory%in%col)} %>% 
+                group_by(projected_fiscal_year,subcategory) %>% 
+                filter(baseline_date<=MAX_DATE) %>% 
+                slice(n()) %>% 
+                group_by(projected_fiscal_year) %>% 
+                summarize(value=sum(value,na.rm=TRUE)) %>% 
+                select(projected_fiscal_year,value) %>% 
+                rename(cbo_proj_fy=value,
+                       fiscal_year=projected_fiscal_year) %>% 
+                mutate(change_cbo_proj_fy=cbo_proj_fy/cbo_proj_fy[fiscal_year==max(daily_df$record_fiscal_year)]),
+              by=c("record_fiscal_year"="fiscal_year")) %>% 
+    bind_cols(daily_df %>% 
+                filter(record_fiscal_year==max(record_fiscal_year)) %>% 
+                mutate(month=month(record_date)) %>% 
+                group_by(month) %>% 
+                slice(n()) %>% 
+                ungroup() %>% 
+                summarize(pred_total=sum(final_pred_day_cum),
+                          pred_total_lwr=sum(final_pred_day_cum_lwr),
+                          pred_total_upper=sum(final_pred_day_cum_upper)) %>% 
+                select(pred_total:pred_total_upper)) %>% 
+    mutate_at(vars(pred_total:pred_total_upper),~.*change_cbo_proj_fy) %>% 
+    mutate(weekend=weekdays(record_date,abbreviate = TRUE)%in%c("Sat","Sun"),
+           record_calendar_month=month(record_date),
+           record_calendar_day=sprintf("%02d", day(record_date)),
+           fed_remittances_suspended=ifelse(date>="2022-09-01",1,0)) %>% 
+    ungroup()
+  
+  daily_df2 = daily_df2 %>% 
+    left_join(daily_df2 %>% 
+                distinct(date) %>% 
+                mutate(month=month(date)) %>% 
+                rowwise() %>% 
+                mutate(first_day_thismonth_weekend=(weekdays(date,abbreviate=TRUE)%in%c("Sat","Sun")|date%in%as.Date(as.character(tis::holidays(year(date))),format="%Y%m%d"))&month!=1,
+                       first_day_nextmonth_weekend=(weekdays(date %m+% months(1),abbreviate=TRUE)%in%c("Sat","Sun")|(date %m+% months(1))%in%as.Date(as.character(tis::holidays(year(date))),format="%Y%m%d"))&month!=12,
+                       last_day_thismonth_weekend=(weekdays((date %m+% months(1) )- 1,abbreviate=TRUE)%in%c("Sat","Sun")|((date %m+% months(1) )- 1)%in%as.Date(as.character(tis::holidays(year(date))),format="%Y%m%d"))&month!=12) %>% 
+                ungroup())
+  
+  daily_df2 = daily_df2 %>% 
+    left_join(monthly_share_pred %>% select(date,
+                                            pred_cumshare_fy=pred_cumshare,
+                                            pred_cumshare_fy_lwr=pred_cumshare_lwr,
+                                            pred_cumshare_fy_upper=pred_cumshare_upper))
+  
+  daily_df2 = daily_df2 %>% 
+    mutate(cbo_proj_fmonth = cbo_proj_fy*pred_cumshare_fy,
+           pred_month=pred_total*pred_cumshare_fy)
+  
+  daily_df2 = daily_df2 %>% 
+    select(-c(pred_month)) %>% 
+    left_join(daily_df2 %>% 
+                group_by(date) %>% 
+                slice(n()) %>% 
+                ungroup() %>% 
+                mutate(pred_month=case_when(fy_month==1~pred_month,
+                                            TRUE~pred_month-dplyr::lag(pred_month,1)),
+                       pred_month_lwr=pred_month+pred_cumshare_fy_lwr*pred_total,
+                       pred_month_upper=pred_month+pred_cumshare_fy_upper*pred_total,
+                       cbo_pred_month=case_when(fy_month==1~cbo_proj_fmonth,
+                                                TRUE~cbo_proj_fmonth-dplyr::lag(cbo_proj_fmonth,1)),
+                       cbo_pred_month_lwr=cbo_pred_month+pred_cumshare_fy_lwr*cbo_proj_fy,
+                       cbo_pred_month_upper=cbo_pred_month+pred_cumshare_fy_upper*cbo_proj_fy) %>% 
+                select(date,pred_month,pred_month_lwr,pred_month_upper,cbo_pred_month,cbo_pred_month_lwr,cbo_pred_month_upper),by="date") %>% 
+    mutate(record_calendar_year=year(record_date)) %>% 
+    ungroup() %>% 
+    mutate(pred_month1=pred_month*(.5)+cbo_pred_month*(.5),
+           pred_month1_lwr=pred_month_lwr*(.5)+cbo_pred_month_lwr*(.5),
+           pred_month1_upper=pred_month_upper*(.5)+cbo_pred_month_upper*(.5))
+  
+  preds = data.frame(predict(models_daily$share,data=daily_df2,type="quantiles",quantiles=c(0.5,.1,.9)))
+  colnames(preds)=c("pred_share","pred_share_lwr","pred_share_upper")
+  daily_df2 = bind_cols(daily_df2,preds) %>% 
+    group_by(date) %>% 
+    mutate(pred_cumshare_daily=cumsum(pred_share),
+           pred_cumshare_daily_lwr=cumsum(pred_share_lwr),
+           pred_cumshare_daily_upper=cumsum(pred_share_upper),
+           row=1:n()) %>% 
+    mutate_at(vars(pred_cumshare_daily:pred_cumshare_daily_upper),~case_when(row>=max(row[weekend==FALSE])&.<=0~1,
+                                                                 TRUE~.)) %>% 
+    mutate_at(vars(pred_cumshare_daily:pred_cumshare_daily_upper),~./.[n()]) %>% 
+    mutate(pred_month2=pred_month1,
+           pred_month2_lwr=pred_month1_lwr,
+           pred_month2_upper=pred_month1_upper)
+  
+  daily_df2= daily_df2 %>% 
+    mutate(pred_day=pred_cumshare_daily*pred_month2,
+           pred_day_lwr=pred_cumshare_daily_lwr*pred_month2_lwr,
+           pred_day_upper=pred_cumshare_daily_upper*pred_month2_upper,
+           final_pred_day=NA,
+           final_pred_day_lwr=NA,
+           final_pred_day_upper=NA,
+           final_pred_day_cum=NA,
+           final_pred_day_cum_lwr=NA,
+           final_pred_day_cum_upper=NA) %>% 
+    group_by(date) %>% 
+    mutate(pred_day_cum=pred_day,
+           pred_day_cum_lwr=pred_day_lwr,
+           pred_day_cum_upper=pred_day_upper,
+           pred_day=case_when(
+             record_date==min(record_date)~pred_day,
+             TRUE~pred_day-dplyr::lag(pred_day,1)
+           ),
+           pred_day_lwr=case_when(
+             record_date==min(record_date)~pred_day_lwr,
+             TRUE~pred_day_lwr-dplyr::lag(pred_day_lwr,1)
+           ),
+           pred_day_upper=case_when(
+             record_date==min(record_date)~pred_day_upper,
+             TRUE~pred_day_upper-dplyr::lag(pred_day_upper,1)
+           ),
+           final_pred_day=ifelse(is.na(final_pred_day),pred_day,final_pred_day),
+           final_pred_day_lwr=ifelse(is.na(final_pred_day_lwr),pred_day_lwr,final_pred_day_lwr),
+           final_pred_day_upper=ifelse(is.na(final_pred_day_upper),pred_day_upper,final_pred_day_upper),
+           final_pred_day_cum=ifelse(is.na(final_pred_day_cum),pred_day_cum,final_pred_day_cum),
+           final_pred_day_cum_lwr=ifelse(is.na(final_pred_day_cum_lwr),pred_day_cum_lwr,final_pred_day_cum_lwr),
+           final_pred_day_cum_upper=ifelse(is.na(final_pred_day_cum_upper),pred_day_cum_upper,final_pred_day_cum_upper)) %>% 
+    mutate(pred_month1=pred_month2,
+           pred_month1_lwr=pred_month2_lwr,
+           pred_month1_upper=pred_month2_upper,
+           cbo_category=col,
+           cbo_proj=cbo_pred_month) %>% 
+    select(any_of(c(colnames(daily_df)))) %>% 
+    ungroup()
+  
+  daily_df = bind_rows(daily_df,daily_df2)
+  
+  return(list(daily_df=daily_df,nowcast=monthly_nowcast))
   
 }
 
-#' 
-#' nowcast_budget_outlay
-#' 
-#' \code{nowcast_budget_outlay}
-#' 
-#' @param mts_dataset data fram from BFS for receipts
-#' @param col_mts name in BFS dataset for specific receipt category
-#' @param cbo_component
-#' @param cbo_category
-#' 
-#' @return list with input data, regression, predictions, and the monthly shares regression
-#' 
+nowcast_daily_budget_outlay = function(dts,mts_dataset,end_date,col,col_mts,testing=NA){
+  
+  models_daily = readRDS(paste0("Data/Processing/Models/nowcast_daily_",col,".RDS"))
+  models_monthly = readRDS(paste0("Data/Processing/Models/nowcast_",col,".RDS"))
+  
+  # get monthly predicted share at outset to avoid copying code over and over
+  monthly_share_pred = data.frame(date=seq.Date(floor_date(min(dts$record_date),"month"),
+                                                as.Date(paste0(max(cbo_proj$projected_fiscal_year[cbo_proj$baseline_date<=end_date]),"-09-01")),
+                                                by="month")) %>% 
+    mutate(month=month(date),
+           fy_month=case_when(
+             month%in%c(10:12)~month-9,
+             month%in%c(1:9)~month+3
+           ),
+           fed_remittances_suspended=ifelse(date>="2022-09-01",1,0)) %>%  # keep this activated unless they go back to a low interest environment, but given the path of interest payments, unlikely to ever happen
+    mutate(fiscal_year=as.integer(quarter(date, with_year = TRUE, fiscal_start = 10))) %>% 
+    rowwise() %>% 
+    mutate(first_day_thismonth_weekend=(weekdays(date,abbreviate=TRUE)%in%c("Sat","Sun")|date%in%as.Date(as.character(tis::holidays(year(date))),format="%Y%m%d"))&month!=1,
+           first_day_nextmonth_weekend=(weekdays(date %m+% months(1),abbreviate=TRUE)%in%c("Sat","Sun")|(date %m+% months(1))%in%as.Date(as.character(tis::holidays(year(date))),format="%Y%m%d"))&month!=12,
+           last_day_thismonth_weekend=(weekdays((date %m+% months(1) )- 1,abbreviate=TRUE)%in%c("Sat","Sun")|((date %m+% months(1) )- 1)%in%as.Date(as.character(tis::holidays(year(date))),format="%Y%m%d"))&month!=12) %>% 
+    ungroup() %>% 
+    bind_cols(predict(models_monthly$share,.,interval="confidence",alpha=0.1) %>% 
+                as.data.frame() %>% 
+                mutate_all(~ifelse(is.nan(.),1,.)) %>% 
+                rename(pred_cumshare=1,pred_cumshare_lwr=2,pred_cumshare_upper=3)) %>% 
+    {if(col=="Medicare")  mutate(.,pred_cumshare=ifelse(fy_month==1,pred_cumshare,pred_cumshare-dplyr::lag(pred_cumshare,1)),
+                                    pred_cumshare_lwr=ifelse(fy_month==1,pred_cumshare_lwr,pred_cumshare_lwr-dplyr::lag(pred_cumshare_lwr,1)),
+                                    pred_cumshare_upper=ifelse(fy_month==1,pred_cumshare_upper,pred_cumshare_upper-dplyr::lag(pred_cumshare_upper,1))) %>%
+        bind_cols(.,predict(models_monthly$scalar,.,interval="confidence",alpha=0.1) %>% 
+                                     as.data.frame() %>% 
+                                     rename(scalar=1,scalar_lwr=2,scalar_upper=3)) %>% 
+        
+        group_by(fiscal_year) %>% 
+        mutate(pred_cumshare2=pred_cumshare*scalar,
+               pred_cumshare2_lwr=pred_cumshare_lwr*scalar_lwr,
+               pred_cumshare2_upper=pred_cumshare_upper*scalar_upper,
+               pred_cumshare=cumsum(pred_cumshare2),
+               pred_cumshare_lwr=cumsum(pred_cumshare2_lwr),
+               pred_cumshare_upper=cumsum(pred_cumshare2_upper)) %>% 
+        select(-c(pred_cumshare2:pred_cumshare2_upper)) else . } %>% 
+    mutate_at(vars(pred_cumshare:pred_cumshare_upper),list(diff=~ifelse(fy_month==1,.,.-dplyr::lag(.,1)))) %>%
+    rowwise() %>% 
+    mutate(pred_cumshare_lwr=min(c(pred_cumshare_lwr_diff-pred_cumshare_diff,pred_cumshare_upper_diff-pred_cumshare_diff)),
+           pred_cumshare_upper=max(c(pred_cumshare_lwr_diff-pred_cumshare_diff,pred_cumshare_upper_diff-pred_cumshare_diff))) %>% 
+    ungroup() %>% 
+    select(-c(pred_cumshare_diff:pred_cumshare_upper_diff)) %>% 
+    group_by(fiscal_year) %>% 
+    mutate(pred_cumshare=pred_cumshare/pred_cumshare[n()]) %>% 
+    ungroup()
+  
+  monthly_df = get_monthly_shares_df_spending(col_mts,col) %>% 
+    arrange(date) %>% 
+    mutate(actual=value)
+  
+  MAX_DATE = ifelse(!is.na(testing),testing,as.character(end_date))
+  
+  monthly_df = monthly_df %>% 
+    mutate_at(vars(value,total,share,cum_total,cum_share),~ifelse(date>=floor_date(as.Date(MAX_DATE),"month"),NA,.)) %>% 
+    mutate(actual=value) 
+  
+  tmp = data.frame(date=seq.Date(min(monthly_share_pred$date),min(monthly_df$date)-1,by="1 month")) %>% 
+    mutate(month=month(date),
+           fy_month=case_when(
+             month%in%c(10:12)~month-9,
+             month%in%c(1:9)~month+3
+           ),
+           fed_remittances_suspended=ifelse(date>="2022-09-01",1,0)) %>%  # keep this activated unless they go back to a low interest environment, but given the path of interest payments, unlikely to ever happen
+    mutate(fiscal_year=as.integer(quarter(date, with_year = TRUE, fiscal_start = 10))) %>% 
+    rowwise() %>% 
+    mutate(first_day_thismonth_weekend=(weekdays(date,abbreviate=TRUE)%in%c("Sat","Sun")|date%in%as.Date(as.character(tis::holidays(year(date))),format="%Y%m%d"))&month!=1,
+           first_day_nextmonth_weekend=(weekdays(date %m+% months(1),abbreviate=TRUE)%in%c("Sat","Sun")|(date %m+% months(1))%in%as.Date(as.character(tis::holidays(year(date))),format="%Y%m%d"))&month!=12,
+           last_day_thismonth_weekend=(weekdays((date %m+% months(1) )- 1,abbreviate=TRUE)%in%c("Sat","Sun")|((date %m+% months(1) )- 1)%in%as.Date(as.character(tis::holidays(year(date))),format="%Y%m%d"))&month!=12) %>% 
+    ungroup() %>% 
+    left_join(cbo_actual %>% 
+                {if(col=="Other Spending") filter(.,subcategory %in% c("Nondefense Discretionary","Other Mandatory")) else if(col=="National Defense") filter(.,subcategory=="Defense Discretionary") else filter(.,subcategory%in%col)} %>% 
+                group_by(fiscal_year) %>% 
+                summarize(value=sum(actual_value,na.rm=TRUE)) %>% 
+                select(fiscal_year,value)) %>% 
+    mutate(cbo_proj=predict(models_monthly$share,.)) %>% 
+    {if(col=="Medicare")  mutate(.,cbo_proj=ifelse(fy_month==1,cbo_proj,cbo_proj-dplyr::lag(cbo_proj,1))) %>%
+        bind_cols(.,predict(models_monthly$scalar,.) %>% 
+                    as.data.frame() %>% 
+                    rename(scalar=1)) %>% 
+        group_by(fiscal_year) %>% 
+        mutate(cbo_proj2=cbo_proj*scalar,
+               cbo_proj=cumsum(cbo_proj)) %>% 
+        select(-c(cbo_proj2)) else . } %>% 
+    group_by(fiscal_year) %>% 
+    mutate(cbo_proj=ifelse(fy_month==1,cbo_proj,cbo_proj-dplyr::lag(cbo_proj,1)),
+           tmp=cbo_proj/sum(cbo_proj),
+           num=n(),
+           cbo_proj=ifelse(num==12,tmp,cbo_proj)) %>% 
+    select(-c(tmp,num)) %>% 
+    mutate(total=value,
+           value=cbo_proj*total,
+           share=cbo_proj,
+           actual=value,
+           error=1,
+           error_ly=1,
+           cum_total=cumsum(value),
+           cum_share=cumsum(share)) %>% 
+    left_join(cbo_proj %>% 
+                {if(col=="Other Spending") filter(.,subcategory %in% c("Nondefense Discretionary","Other Mandatory")) else if(col=="National Defense") filter(.,subcategory=="Defense Discretionary") else filter(.,subcategory%in%col)} %>% 
+                group_by(projected_fiscal_year,subcategory) %>% 
+                filter(baseline_date<=MAX_DATE) %>% 
+                slice(n()) %>% 
+                group_by(projected_fiscal_year) %>% 
+                summarize(value=sum(value,na.rm=TRUE)) %>% 
+                select(projected_fiscal_year,value) %>% 
+                rename(cbo_proj=value,
+                       fiscal_year=projected_fiscal_year)) 
+  
+  monthly_df = bind_rows(monthly_df,tmp) %>% 
+    arrange(date) %>% 
+    fill(error,error_ly,.direction="down")
+  
+  daily_df = dts %>% 
+    filter(record_date<=MAX_DATE) %>% #TODO: REMOVE WHEN DONE TESTING 
+    filter(cbo_category%in%col&!grepl("from Depositaries",transaction_catg)&record_date<=end_date) %>% 
+    mutate(cbo_category=col) %>% 
+    group_by(record_fiscal_year,record_calendar_month,record_calendar_day) %>% 
+    summarize(record_date=record_date[1],
+              cbo_category=cbo_category[1],
+              total_day=sum(transaction_today_amt/1000,na.rm=TRUE)) %>% 
+    mutate(total_day_lwr=total_day,
+           total_day_upper=total_day) %>% 
+    ungroup() %>% 
+    arrange(record_date) %>% 
+    complete(record_date = seq.Date(floor_date(record_date[1],"month"), as.Date(MAX_DATE), by = "day")) %>% 
+    mutate(record_fiscal_year=as.integer(quarter(record_date, with_year = TRUE, fiscal_start = 10)),
+           record_calendar_month=month(record_date),
+           record_calendar_year=year(record_date),
+           record_calendar_day=sprintf("%02d", day(record_date))) %>% 
+    mutate_at(vars(total_day,total_day_lwr,total_day_upper),~case_when(!is.na(.)~.,
+                                                                 record_date<=as.Date(MAX_DATE)&is.na(.)~0,
+                                                                 record_date>as.Date(MAX_DATE)~NA)) %>% 
+    fill(cbo_category,.direction="downup") %>% 
+    mutate(date=floor_date(record_date,"month")) %>% 
+    mutate_at(vars(total_day:total_day_upper),~.*-1)  # put it in positive terms
+  
+  x_data = read_csv(paste0("Data/Processing/imputed_data/imputed_data_asof",end_date,".csv"))  %>% 
+    select(-any_of(paste0("gt_",bad_vars$category))) %>% 
+    arrange(date) %>%
+    ungroup() %>% 
+    mutate_at(vars(PAYEMS:JTSJOL,INDPRO:DGS10),.funs=list(ch12m=~((./dplyr::lag(.,12)-1)*100),ch1m=~((./dplyr::lag(.,1)-1)*100))) %>%
+    mutate_at(vars(UNRATE:DTCDFSA066MSFRBPHI,grep("gt_",colnames(.),value=TRUE)),.funs=list(ch12m=~.-dplyr::lag(.,12),ch1m=~.-dplyr::lag(.,1))) %>%
+    mutate_at(vars(PAYEMS:gt_999_ch1m),.funs=list(lag1=~dplyr::lag(.,1),lag2=~dplyr::lag(.,2),lag3=~dplyr::lag(.,3),lag4=~dplyr::lag(.,4))) %>% 
+    left_join(monthly_df,by="date") %>% 
+    mutate(fiscal_year=as.integer(quarter(date, with_year = TRUE, fiscal_start = 10))) %>% 
+    mutate(month=month(date),
+           fy_month=case_when(
+             month%in%c(10:12)~month-9,
+             month%in%c(1:9)~month+3
+           )) %>% 
+    select(-cbo_proj) %>% 
+    left_join(cbo_proj %>% 
+                {if(col=="Other Spending") filter(.,subcategory %in% c("Nondefense Discretionary","Other Mandatory")) else if(col=="National Defense") filter(.,subcategory=="Defense Discretionary") else filter(.,subcategory%in%col)} %>% 
+                group_by(projected_fiscal_year,subcategory) %>% 
+                filter(baseline_date<=MAX_DATE) %>% 
+                slice(n()) %>% 
+                group_by(projected_fiscal_year) %>% 
+                summarize(value=sum(value,na.rm=TRUE)) %>% 
+                select(projected_fiscal_year,value) %>% 
+                rename(cbo_proj=value,
+                       fiscal_year=projected_fiscal_year)) %>% 
+    ungroup() %>% 
+    rowwise() %>% 
+    mutate(first_day_thismonth_weekend=(weekdays(date,abbreviate=TRUE)%in%c("Sat","Sun")|date%in%as.Date(as.character(tis::holidays(year(date))),format="%Y%m%d"))&month!=1,
+           first_day_nextmonth_weekend=(weekdays(date %m+% months(1),abbreviate=TRUE)%in%c("Sat","Sun")|(date %m+% months(1))%in%as.Date(as.character(tis::holidays(year(date))),format="%Y%m%d"))&month!=12,
+           last_day_thismonth_weekend=(weekdays((date %m+% months(1) )- 1,abbreviate=TRUE)%in%c("Sat","Sun")|((date %m+% months(1) )- 1)%in%as.Date(as.character(tis::holidays(year(date))),format="%Y%m%d"))&month!=12) %>% 
+    ungroup() %>% 
+    mutate(value_lwr=value,
+           value_upper=value)
+  
+  dates = dts %>% distinct(date=floor_date(record_date,"month")) %>% filter(date<=MAX_DATE&date>max(monthly_df$date[!is.na(monthly_df$value)])) %>% arrange(date) %>% pull(date)
+  fys = unique(as.integer(quarter(dates, with_year = TRUE, fiscal_start = 10)))
+  
+  for(dat in as.character(dates)){
+    
+    x_data1 = x_data %>% 
+      filter(date<=dat) %>% 
+      left_join(monthly_share_pred %>% select(date,pred_cumshare:pred_cumshare_upper),by="date")
+    
+    x_data1 = x_data1 %>% 
+      group_by(fiscal_year) %>% 
+      mutate(cum_total=cumsum(value),
+             cum_total_lwr=cumsum(value_lwr),
+             cum_total_upper=cumsum(value_upper)) %>% 
+      ungroup()
+    
+    x_data1$pred_total = x_data1$cum_total/x_data1$pred_cumshare
+    # x_data1$pred_total_lwr = x_data1$cum_total_lwr/x_data1$pred_cumshare_upper
+    # x_data1$pred_total_upper = x_data1$cum_total_upper/x_data1$pred_cumshare_lwr
+    x_data1  = x_data1 %>% 
+      group_by(fiscal_year) %>% 
+      fill(pred_total,.direction="down")
+    
+    if(tail(x_data1$fiscal_year,1)!=fys[1]){
+      
+      scalar = x_data1 %>% 
+        ungroup() %>% 
+        filter(fiscal_year==fys[1]) %>% 
+        mutate(cbo_pred_month=cbo_proj*pred_cumshare,
+               cbo_pred_month=case_when(fy_month==1~cbo_pred_month,
+                                        TRUE~cbo_pred_month-dplyr::lag(cbo_pred_month,1))) %>% 
+        select(date,actual,cbo_pred_month) %>% 
+        summarize(num=mean(actual/cbo_pred_month,na.rm=TRUE)) %>% 
+        pull(num)
+      
+      x_data1 = x_data1 %>% 
+        mutate(cbo_proj=case_when(fiscal_year==tail(x_data1$fiscal_year,1)~cbo_proj*scalar,
+                                  TRUE~cbo_proj))
+      
+    }else{
+      scalar=1
+    }
+    
+    x_data1 = x_data1 %>% 
+      group_by(fiscal_year) %>% 
+      mutate_at(vars(pred_total),~.*(max(c(tail(fy_month[!is.na(value)&fiscal_year>=fys[1]],1),0),na.rm=TRUE)/12)) %>% 
+      mutate(cbo_proj_month=cbo_proj*(1-max(c(tail(fy_month[!is.na(value)&fiscal_year>=fys[1]],1),0),na.rm=TRUE)/12)) %>% 
+      rowwise() %>% 
+      mutate_at(vars(pred_total),~sum(c(.,cbo_proj_month),na.rm=TRUE)) %>% 
+      ungroup() %>% 
+      mutate(final_pred_month=pred_total*pred_cumshare)
+    
+    x_data1 = x_data1 %>% 
+      mutate(cbo_proj_month=cbo_proj*pred_cumshare) %>% 
+      group_by(fiscal_year) %>% 
+      mutate_at(vars(final_pred_month,cbo_proj_month),~case_when(fy_month==1~.,TRUE~.-dplyr::lag(.,1))) %>% 
+      ungroup() %>% 
+      mutate(final_pred_month_lwr=final_pred_month+pred_cumshare_lwr*pred_total,
+             final_pred_month_upper=final_pred_month+pred_cumshare_upper*pred_total)
+    
+    if(col=="Social Security"&month(as.Date(dat))%in%c(12,1)){
+      
+      if(month(as.Date(dat))==12&weekdays(as.Date(dat) %m+% months(1),abbreviate = TRUE)=="Fri"){
+        
+        x_data1 = x_data1 %>% 
+          mutate_at(vars(final_pred_month,final_pred_month_lwr,final_pred_month_upper,cbo_proj_month),~.+.*0.3579050)
+        
+      }
+      
+      if(month(as.Date(dat))==1&weekdays(as.Date(dat),abbreviate = TRUE)=="Fri"){
+        
+        x_data1 = x_data1 %>% 
+          mutate_at(vars(final_pred_month,final_pred_month_lwr,final_pred_month_upper,cbo_proj_month),~.-.*0.3579050)
+        
+      }
+      
+    }
+    
+    tmp = predict(models_monthly$res_shrunk,x_data1 %>% filter(date==dat) %>% mutate(cbo_proj_month=final_pred_month),se.fit=TRUE)
+    x_data$value[x_data$date==dat] = tmp$fit
+    tmp = predict(models_monthly$res_shrunk,x_data1 %>% filter(date==dat) %>% mutate(cbo_proj_month=final_pred_month_lwr),se.fit=TRUE)
+    x_data$value_lwr[x_data$date==dat] = tmp$fit - 1.64*tmp$se.fit
+    tmp = predict(models_monthly$res_shrunk,x_data1 %>% filter(date==dat) %>% mutate(cbo_proj_month=final_pred_month_upper),se.fit=TRUE)
+    x_data$value_upper[x_data$date==dat] = tmp$fit + 1.64*tmp$se.fit
+    x_data$cbo_proj_month=NA
+    x_data$cbo_proj_month[x_data$date<=dat] = x_data1$cbo_proj_month
+    
+    monthly_nowcast = x_data %>% filter(date<=dat) %>% select(date,actual,pred=value,fit.lwr=value_lwr,fit.upr=value_upper,cbo_proj=cbo_proj_month)
 
-nowcast_budget_outlay = function(cbo_category){
+    if((max(daily_df$record_date[!is.na(daily_df$total_day)],na.rm=TRUE))<(ceiling_date(as.Date(dat),"month")-1)){ # testing if we have the last day of the month. If we have the last day of the month then we dont need to add the missing days
+      
+      daily_df = daily_df %>% 
+        ungroup() %>% 
+        complete(record_date = seq.Date(min(record_date), (ceiling_date(as.Date(dat),"month")-1), by = "day")) %>% 
+        mutate(record_fiscal_year=as.integer(quarter(record_date, with_year = TRUE, fiscal_start = 10)),
+               record_calendar_month=month(record_date),
+               record_calendar_year=year(record_date),
+               record_calendar_day=sprintf("%02d", day(record_date)),
+               date=floor_date(record_date,"month")) %>% 
+        mutate_at(vars(total_day,total_day_lwr,total_day_upper),~case_when(!is.na(.)~.,
+                                                         record_date<=MAX_DATE&is.na(.)~0,
+                                                         record_date>MAX_DATE~NA)) %>% 
+        fill(cbo_category,.direction="down")
+      
+    }
+    
+    daily_df1 = daily_df %>% 
+      filter(record_date<=(ceiling_date(as.Date(dat),"month")-1)) %>% 
+      mutate(imputed=ifelse(record_date<=MAX_DATE&record_date>=head(record_date[total_day!=0],1),0,1)) %>% 
+      group_by(record_fiscal_year,record_calendar_month) %>% 
+      arrange(record_calendar_day) %>% 
+      mutate(cum_total_day=cumsum(total_day),
+             cum_total_day_lwr=cumsum(total_day_lwr),
+             cum_total_day_upper=cumsum(total_day_upper),
+             total_month=sum(total_day,na.rm=TRUE),
+             total_month_lwr=sum(total_day_lwr,na.rm=TRUE),
+             total_month_upper=sum(total_day_upper,na.rm=TRUE),
+             record_calendar_day_perc=(as.numeric(record_calendar_day))/as.numeric(days_in_month(record_date)),
+             inv_record_calendar_day=1-record_calendar_day_perc) %>% 
+      mutate(fy_month=case_when(
+        record_calendar_month%in%c(10:12)~record_calendar_month-9,
+        record_calendar_month%in%c(1:9)~record_calendar_month+3
+      )) %>% 
+      group_by(record_fiscal_year) %>% 
+      arrange(fy_month) %>% 
+      mutate(cum_total_month=cumsum(total_day),
+             cum_total_month_lwr=cumsum(total_day_lwr),
+             cum_total_month_upper=cumsum(total_day_upper),
+             total_year=sum(total_month),
+             total_year_lwr=sum(total_month_lwr),
+             total_year_upper=sum(total_month_upper)) %>% 
+      ungroup() %>% 
+      mutate(date=floor_date(record_date,"month")) %>% 
+      left_join(monthly_nowcast,by="date") %>% 
+      arrange(record_date) %>% 
+      left_join(tax_days,by=c("record_date"="date")) %>% 
+      mutate(cum_share=cum_total_day/total_month,
+             cum_share_lwr=cum_total_day_lwr/total_month_lwr,
+             cum_share_upper=cum_total_day_upper/total_month_upper,
+             quarter_end=case_when(
+               record_calendar_month==4&tax_day==1~1,
+               record_calendar_month%in%c(1,6,9)&record_calendar_day==15&!(weekdays(record_date,abbreviate = TRUE)%in%c("Sat","Sun"))~1,
+               record_calendar_month%in%c(1,6,9)&record_calendar_day%in%c(16,17)&(weekdays(record_date,abbreviate = TRUE)%in%c("Mon"))~1 # only use 16 or 17 IF the 15th had fallen on a weekend
+             )) %>% 
+      group_by(date) %>% 
+      fill(tax_day,quarter_end,.direction="down") %>% 
+      mutate(tax_day=ifelse(is.na(tax_day),0,tax_day),
+             quarter_end=ifelse(is.na(quarter_end),0,quarter_end),
+             settlement_period=case_when(
+               record_date==max(record_date[!(weekdays(record_date,abbreviate = TRUE)%in%c("Sat","Sun"))])~"EOM",
+               record_date==min(record_date[day(record_date)>=15&!(weekdays(record_date,abbreviate = TRUE)%in%c("Sat","Sun"))])~"Second Settlement",
+               record_date==min(record_date[day(record_date)<=7&!(weekdays(record_date,abbreviate = TRUE)%in%c("Sat","Sun"))])~"First Settlement",
+               TRUE~"Regular Day"
+             )) %>% 
+      group_by(date) %>% 
+      mutate(weekend=weekdays(record_date,abbreviate = TRUE)%in%c("Sat","Sun"),
+             dotw=weekdays(record_date,abbreviate=TRUE),
+             holiday=record_date%in%as.Date(as.character(tis::holidays(year(date))),format="%Y%m%d"),
+             ssi_day=case_when(
+               record_calendar_day=="01"&!weekend&!holiday~1,
+               (weekdays(date%m+%months(1),abbreviate = TRUE)%in%c("Sat","Sun")|(date%m+%months(1))%in%as.Date(as.character(tis::holidays(year(date%m+%months(1)))),,format="%Y%m%d"))&record_date==last(record_date[!weekend&!holiday])~1,
+               TRUE~0
+             ),
+             ss_ssi_day=case_when(
+               weekdays(date%m+%months(1),abbreviate=TRUE)=="Fri"&record_calendar_month==12&record_calendar_day=="31"~1,
+               record_calendar_day=="03"&!weekend&!holiday~1,
+               weekend[record_calendar_day=="03"]==TRUE&record_date==last(record_date[!weekend&!holiday&day(record_date)<3])~1,
+               TRUE~0
+             ),
+             ss_day=case_when(
+               record_date%in%record_date[dotw=="Wed"][2:4]&!weekend&!holiday~1,
+               record_date%in%(as.Date(intersect(as.character(record_date[dotw=="Wed"][2:4]),as.character(record_date[holiday]))) %m-% days(1))~1,
+               TRUE~0
+             )) %>% 
+      ungroup()
+    
+    daily_df1 = daily_df1 %>% 
+      left_join(daily_df1 %>% 
+                  distinct(date) %>% 
+                  mutate(dat=1:n(),
+                         month=month(date)) %>% 
+                  rowwise() %>% 
+                  mutate(first_day_thismonth_weekend=(weekdays(date,abbreviate=TRUE)%in%c("Sat","Sun")|date%in%as.Date(as.character(tis::holidays(year(date))),format="%Y%m%d"))&month!=1,
+                         first_day_nextmonth_weekend=(weekdays(date %m+% months(1),abbreviate=TRUE)%in%c("Sat","Sun")|(date %m+% months(1))%in%as.Date(as.character(tis::holidays(year(date))),format="%Y%m%d"))&month!=12,
+                         last_day_thismonth_weekend=(weekdays((date %m+% months(1) )- 1,abbreviate=TRUE)%in%c("Sat","Sun")|((date %m+% months(1) )- 1)%in%as.Date(as.character(tis::holidays(year(date))),format="%Y%m%d"))&month!=12) %>% 
+                  ungroup() %>% 
+                  mutate(date_group=case_when(
+                    date<="2020-03-01"~"Before 2020-4",
+                    date<="2023-11-01"~"Before 2023-12",
+                    date>"2023-11-01"~"After 2023-12"
+                  ))) # for the scalar reg
+    
+    daily_df1 = daily_df1 %>% 
+      bind_cols(data.frame(predict(models_daily$share,
+                                   data=.,type="quantiles",
+                                   quantiles=c(0.5,.1,.9))) %>% 
+                  rename("pred_share"=1,"pred_share_lwr"=2,"pred_share_upper"=3)) %>% 
+      group_by(date) %>% 
+      mutate(pred_cumshare=cumsum(pred_share),
+             pred_cumshare_lwr=cumsum(pred_share_lwr),
+             pred_cumshare_upper=cumsum(pred_share_upper),
+             row=1:n()) %>% 
+      mutate_at(vars(pred_cumshare:pred_cumshare_upper),~case_when(row>=max(row[weekend==FALSE])&.<=0~1,
+                                                                   TRUE~.)) %>% 
+      mutate_at(vars(pred_cumshare:pred_cumshare_upper),~./.[n()]) %>% 
+      mutate(month=month(record_date)) %>% 
+      bind_cols(data.frame(predict(models_daily$scalar,
+                                   newdata = .,
+                                   se.fit=TRUE, 
+                                   interval="confidence", 
+                                   alpha=0.10)) %>% 
+                  rename("scalar"=1,"scalar_lwr"=2,"scalar_upper"=3,"scalar_se_fit"=4)) %>% 
+      select(-dat)
+    
+    daily_df1 = daily_df1 %>%
+      group_by(date) %>%
+      mutate(pred_month_total=cum_total_day/pred_cumshare*scalar,
+             pred_month_total=ifelse(is.nan(pred_month_total)|is.infinite(pred_month_total)|pred_month_total==0,pred,pred_month_total),
+             pred_month_total_lwr=cum_total_day_lwr/pred_cumshare_lwr*scalar_lwr,
+             pred_month_total_lwr=ifelse(is.nan(pred_month_total_lwr)|is.infinite(pred_month_total_lwr)|pred_month_total_lwr==0,fit.lwr,pred_month_total_lwr),
+             pred_month_total_upper=cum_total_day_upper/pred_cumshare_upper*scalar_upper,
+             pred_month_total_upper=ifelse(is.nan(pred_month_total_upper)|is.infinite(pred_month_total_upper)|pred_month_total_upper==0,fit.upr,pred_month_total_upper)) %>% 
+      fill(pred_month_total,pred_month_total_lwr,pred_month_total_upper,.direction = "updown")
+    
+    # if(col%in%c("Individual Income Taxes","Payroll Taxes")){
+    #   
+    #   preds = data.frame(predict(models_daily$disagg_reg,daily_df %>% mutate(month=month(record_date)),se.fit=TRUE, interval="confidence", alpha=0.10))
+    #   colnames(preds)=c("scalar_adj","scalar_lwr_adj","scalar_upper_adj","scalar_adj_se_fit")
+    #   daily_df = bind_cols(daily_df,preds) %>% 
+    #     ungroup() %>% 
+    #     mutate(scalar_lwr=ifelse(col=="Individual Income Taxes",scalar_lwr*scalar_lwr_adj,scalar_lwr*(1-scalar_upper_adj)),
+    #            scalar_upper=ifelse(col=="Individual Income Taxes",scalar_upper*scalar_upper_adj,scalar_upper*(1-scalar_lwr_adj)),
+    #            scalar=ifelse(col=="Individual Income Taxes",scalar*scalar_adj,scalar*(1-scalar_adj)))
+    #   
+    # }
+    # 
+    if(col%in%c("Other Spending","Net Interest")){
+      
+      daily_df1 = daily_df1 %>% 
+        group_by(date) %>%
+        fill(pred_month_total,pred_month_total_lwr,pred_month_total_upper,.direction="down") %>%
+        mutate(pred_total1=pred,
+               pred_total1_lwr=fit.lwr,
+               pred_total1_upper=fit.upr)
+      
+    } else{
+      
+      daily_df1 = daily_df1 %>% 
+        group_by(date) %>% 
+        mutate(pred_total1=pred_month_total*record_calendar_day_perc+pred*(1-record_calendar_day_perc),
+               pred_total1_lwr=pred_month_total_lwr*record_calendar_day_perc+fit.lwr*(1-record_calendar_day_perc),
+               pred_total1_upper=pred_month_total_upper*record_calendar_day_perc+fit.upr*(1-record_calendar_day_perc),
+               pred_total1=case_when(MAX_DATE<"2015-10-01"~pred,
+                                     is_bad(pred_total1)&is_bad(pred_month_total)&!is_bad(pred)~pred,
+                                     is_bad(pred_total1)&!is_bad(pred_month_total)&is_bad(pred)~pred_month_total,
+                                     TRUE~pred_total1),
+               pred_total1_lwr=case_when(MAX_DATE<"2015-10-01"~pred,
+                                         is_bad(pred_total1_lwr)&is_bad(pred_month_total_lwr)&!is_bad(fit.lwr)~fit.lwr,
+                                         is_bad(pred_total1_lwr)&!is_bad(pred_month_total_lwr)&is_bad(fit.lwr)~pred_month_total_lwr,
+                                         TRUE~pred_total1_lwr),
+               pred_total1_upper=case_when(MAX_DATE<"2015-10-01"~pred,
+                                           is_bad(pred_total1_upper)&is_bad(pred_month_total_upper)&!is_bad(fit.upr)~fit.upr,
+                                           is_bad(pred_total1_upper)&!is_bad(pred_month_total_upper)&is_bad(fit.upr)~pred_month_total_upper,
+                                           TRUE~pred_total1_upper)) %>% 
+        fill(pred_month_total,pred_month_total_lwr,pred_month_total_upper,pred_total1,pred_total1_lwr,pred_total1_upper,.direction="down")
+      
+    }
+    
+    daily_df1 = daily_df1 %>% 
+      rowwise() %>% 
+      mutate(min=min(c(pred_total1_lwr,pred_total1_upper)),
+             max=max(c(pred_total1_lwr,pred_total1_upper)),
+             pred_total1_lwr=min,
+             pred_total1_upper=max) %>% 
+      select(-c(min,max))
+    
+    # TODO: THINK ABOUT HOW TO GET CLOSER WHEN DISAGGREGATING
+    # see if it improves things for any category at one date and with proper backtesting
+    # if doesnt improve, just keep as a separate data series
+    
+    daily_df1 = daily_df1 %>% 
+      group_by(date) %>% 
+      mutate(final_pred_day_cum=case_when(
+        all(!is.na(actual))&all(!is_bad(cum_share))~actual*cum_share, # distribute by observed pattern
+        all(!is.na(actual))&!all(!is_bad(cum_share))~actual*pred_cumshare,
+        date<dat&!(MAX_DATE<"2015-10-01")~cum_total_day,
+        date<dat&(MAX_DATE<"2015-10-01")~pred_total1[n()]*pred_cumshare,
+        imputed==0&!(col%in%c("Other Spending","Net Interest"))&!(MAX_DATE<"2015-10-01")~cum_total_day*scalar,
+        imputed==1|col%in%c("Other Spending","Net Interest")~pred_total1[n()]*pred_cumshare
+      ),
+      final_pred_day_cum_lwr=case_when(
+        all(!is.na(actual))&all(!is_bad(cum_share))~actual*cum_share, # distribute by observed pattern
+        all(!is.na(actual))&!all(!is_bad(cum_share))~actual*pred_cumshare,
+        date<dat&!(MAX_DATE<"2015-10-01")~cum_total_day_lwr,
+        date<dat&(MAX_DATE<"2015-10-01")~pred_total1[n()]*pred_cumshare_lwr,
+        imputed==0&!(col%in%c("Other Spending","Net Interest"))&!(MAX_DATE<"2015-10-01")~cum_total_day*scalar_lwr,
+        imputed==1|col%in%c("Other Spending","Net Interest")~pred_total1_lwr[n()]*pred_cumshare_lwr
+      ),
+      final_pred_day_cum_upper=case_when(
+        all(!is.na(actual))&all(!is_bad(cum_share))~actual*cum_share, # distribute by observed pattern
+        all(!is.na(actual))&!all(!is_bad(cum_share))~actual*pred_cumshare,
+        date<dat&!(MAX_DATE<"2015-10-01")~cum_total_day_upper,
+        date<dat&(MAX_DATE<"2015-10-01")~pred_total1[n()]*pred_cumshare_upper,
+        imputed==0&!(col%in%c("Other Spending","Net Interest"))&!(MAX_DATE<"2015-10-01")~cum_total_day*scalar_upper,
+        imputed==1|col%in%c("Other Spending","Net Interest")~pred_total1_upper[n()]*pred_cumshare_upper
+      )) %>% 
+      select(record_date,record_fiscal_year,fy_month,imputed,total_day,scalar,total_month,
+             date,pred,fit.lwr,fit.upr,actual,cbo_proj,scalar,
+             intermediate_pred=pred_total1,intermediate_pred_lwr=pred_total1_lwr,intermediate_pred_upper=pred_total1_upper,
+             final_pred_day_cum,final_pred_day_cum_lwr,final_pred_day_cum_upper) %>% 
+      mutate(cbo_category=col,
+             final_pred_day=case_when(
+               record_date==record_date[1]~final_pred_day_cum,
+               TRUE~final_pred_day_cum-dplyr::lag(final_pred_day_cum,1)
+             ),
+             final_pred_day_lwr=case_when(
+               record_date==record_date[1]~final_pred_day_cum_lwr,
+               TRUE~final_pred_day_cum_lwr-dplyr::lag(final_pred_day_cum_lwr,1)
+             ),
+             final_pred_day_upper=case_when(
+               record_date==record_date[1]~final_pred_day_cum_upper,
+               TRUE~final_pred_day_cum_upper-dplyr::lag(final_pred_day_cum_upper,1)
+             ),
+             total_day_imp=case_when(
+               imputed==0~total_day*scalar,
+               imputed==1~((final_pred_day_cum[n()]-(total_month[n()]*scalar[n()]))/sum(final_pred_day[imputed==1]))*final_pred_day
+             )) %>% 
+      ungroup() %>% 
+      relocate(total_day_imp,.after=total_day) %>% 
+      select(-scalar)
+    
+    daily_df[daily_df$date<=dat,c("total_day","total_day_lwr","total_day_upper")] = daily_df1 %>% filter(date<=dat) %>% select(final_pred_day:final_pred_day_upper)
+    x_data[x_data$date==dat,c("value","value_lwr","value_upper")] = daily_df1 %>% filter(date==dat) %>% slice(n()) %>% select(final_pred_day_cum:final_pred_day_cum_upper)
+    
+  }
+  
+  daily_df = daily_df %>% 
+    mutate(final_pred_day=total_day,
+           final_pred_day_lwr=total_day_lwr,
+           final_pred_day_upper=total_day_upper,
+           cbo_proj=daily_df1$cbo_proj) %>% 
+    group_by(date) %>% 
+    mutate(final_pred_day_cum=cumsum(final_pred_day),
+           final_pred_day_cum_lwr=cumsum(final_pred_day_lwr),
+           final_pred_day_cum_upper=cumsum(final_pred_day_upper)) %>% 
+    ungroup()
+  
+  x_data = x_data  %>% 
+    select(-c(value:cbo_proj))
+  
+  if(!(max(daily_df$record_date)==paste0(max(daily_df$record_fiscal_year),"-09-30"))){
+    
+    dates = seq(max(daily_df$record_date,na.rm=TRUE)+1,as.Date(paste0(max(daily_df$record_fiscal_year),"-09-30")),by=1)
+    months = unique(month(dates))
+    
+    daily_df1 = daily_df %>% 
+      bind_rows(data.frame(record_date=seq(max(daily_df$record_date,na.rm=TRUE)+1,max(dates),by=1))) %>% 
+      group_by(record_fiscal_year) %>% 
+      arrange(record_date) %>% 
+      mutate(cum_total_fy=cumsum(final_pred_day),
+             cum_total_fy_lwr=cumsum(final_pred_day_lwr),
+             cum_total_fy_upper=cumsum(final_pred_day_upper),
+             record_fiscal_year=as.integer(quarter(record_date, with_year = TRUE, fiscal_start = 10)),
+             date=floor_date(record_date,"month"),
+             month=month(record_date),
+             fy_month=case_when(
+               month%in%c(10:12)~month-9,
+               month%in%c(1:9)~month+3
+             ),
+             imputed=ifelse(record_date>MAX_DATE,1,0)) %>% 
+      left_join(tax_days,by=c("record_date"="date")) %>% 
+      group_by(date) %>% 
+      mutate(day=day(record_date),
+             quarter_end=case_when(
+               month==4&tax_day==1~1,
+               month%in%c(1,6,9)&day==15&!(weekdays(record_date,abbreviate = TRUE)%in%c("Sat","Sun"))~1,
+               month%in%c(1,6,9)&day%in%c(16,17)&(weekdays(record_date,abbreviate = TRUE)%in%c("Mon"))~1 # only use 16 or 17 IF the 15th had fallen on a weekend
+             )) %>% 
+      group_by(date) %>% 
+      fill(tax_day,quarter_end,.direction="down") %>% 
+      mutate(tax_day=ifelse(is.na(tax_day),0,tax_day),
+             quarter_end=ifelse(is.na(quarter_end),0,quarter_end),
+             settlement_period=case_when(
+               record_date>=max(record_date[!(weekdays(record_date,abbreviate = TRUE)%in%c("Sat","Sun"))])~"EOM",
+               record_date>=min(record_date[day(record_date)>=15&!(weekdays(record_date,abbreviate = TRUE)%in%c("Sat","Sun"))])~"Second Settlement",
+               TRUE~"First Settlement"
+             )) %>% 
+      ungroup() %>% 
+      mutate(fiscal_year=as.integer(quarter(record_date, with_year = TRUE, fiscal_start = 10)),
+             tax_due=case_when(
+        !(fiscal_year%in%c(2020,2021))&month==4&col=="Individual Income Taxes"~1,
+        fiscal_year==2020&month==7&col=="Individual Income Taxes"~1,
+        fiscal_year==2021&month==5&col=="Individual Income Taxes"~1,
+        !(fiscal_year%in%c(2020))&month==4&col=="Corporate Income Taxes"~1,
+        fiscal_year==2020&month==7&col=="Corporate Income Taxes"~1,
+        fiscal_year==2020&month==9&col=="Excise Taxes"~1,
+        TRUE~0
+      )) %>% 
+      group_by(date) %>% 
+      mutate(weekend=weekdays(record_date,abbreviate = TRUE)%in%c("Sat","Sun"),
+             record_calendar_month=month(record_date),
+             record_calendar_day=sprintf("%02d", day(record_date)),
+             fed_remittances_suspended=ifelse(date>="2022-09-01",1,0),
+             dotw=weekdays(record_date,abbreviate=TRUE),
+             holiday=record_date%in%as.Date(as.character(tis::holidays(year(date))),format="%Y%m%d"),
+             ssi_day=case_when(
+               record_calendar_day=="01"&!weekend&!holiday~1,
+               (weekdays(date%m+%months(1),abbreviate = TRUE)%in%c("Sat","Sun")|(date%m+%months(1))%in%as.Date(as.character(tis::holidays(year(date%m+%months(1)))),,format="%Y%m%d"))&record_date==last(record_date[!weekend&!holiday])~1,
+               TRUE~0
+             ),
+             ss_ssi_day=case_when(
+               weekdays(date%m+%months(1),abbreviate=TRUE)=="Fri"&record_calendar_month==12&record_calendar_day=="31"~1,
+               record_calendar_day=="03"&!weekend&!holiday~1,
+               weekend[record_calendar_day=="03"]==TRUE&record_date==last(record_date[!weekend&!holiday&day(record_date)<3])~1,
+               TRUE~0
+             ),
+             ss_day=case_when(
+               record_date%in%record_date[dotw=="Wed"][2:4]&!weekend&!holiday~1,
+               record_date%in%(as.Date(intersect(as.character(record_date[dotw=="Wed"][2:4]),as.character(record_date[holiday]))) %m-% days(1))~1,
+               TRUE~0
+             )) %>% 
+      ungroup() %>% 
+      fill(cbo_category,.direction = "down")
+    
+    daily_df1 = daily_df1 %>% 
+      left_join(daily_df1 %>% 
+                  distinct(date) %>% 
+                  mutate(dat=1:n(),
+                         month=month(date)) %>% 
+                  rowwise() %>% 
+                  mutate(first_day_thismonth_weekend=(weekdays(date,abbreviate=TRUE)%in%c("Sat","Sun")|date%in%as.Date(as.character(tis::holidays(year(date))),format="%Y%m%d"))&month!=1,
+                         first_day_nextmonth_weekend=(weekdays(date %m+% months(1),abbreviate=TRUE)%in%c("Sat","Sun")|(date %m+% months(1))%in%as.Date(as.character(tis::holidays(year(date))),format="%Y%m%d"))&month!=12,
+                         last_day_thismonth_weekend=(weekdays((date %m+% months(1) )- 1,abbreviate=TRUE)%in%c("Sat","Sun")|((date %m+% months(1) )- 1)%in%as.Date(as.character(tis::holidays(year(date))),format="%Y%m%d"))&month!=12) %>% 
+                  ungroup() %>% 
+                  mutate(date_group=case_when(
+                    date<="2020-03-01"~"Before 2020-4",
+                    date<="2023-11-01"~"Before 2023-12",
+                    date>"2023-11-01"~"After 2023-12"
+                  ))) # for the scalar reg
+    
+    daily_df1 = daily_df1 %>% 
+      left_join(monthly_share_pred %>% select(date,
+                                              pred_cumshare_fy=pred_cumshare,
+                                              pred_cumshare_fy_lwr=pred_cumshare_lwr,
+                                              pred_cumshare_fy_upper=pred_cumshare_upper))
+    
+    daily_df1 = daily_df1 %>% 
+      left_join(cbo_proj %>% 
+                  {if(col=="Other Spending") filter(.,subcategory %in% c("Nondefense Discretionary","Other Mandatory")) else if(col=="National Defense") filter(.,subcategory=="Defense Discretionary") else filter(.,subcategory%in%col)} %>% 
+                  group_by(projected_fiscal_year,subcategory) %>% 
+                  filter(baseline_date<=MAX_DATE) %>% 
+                  slice(n()) %>% 
+                  group_by(projected_fiscal_year) %>% 
+                  summarize(value=sum(value,na.rm=TRUE)) %>% 
+                  select(projected_fiscal_year,value) %>% 
+                  rename(cbo_proj_fy=value,
+                         fiscal_year=projected_fiscal_year),
+                by=c("record_fiscal_year"="fiscal_year")) %>% 
+      mutate(cbo_proj_fmonth = cbo_proj_fy*pred_cumshare_fy,
+             proj_fy = cum_total_fy/pred_cumshare_fy) %>% 
+      fill(proj_fy,.direction="down") %>% 
+      group_by(date) %>% 
+      mutate(record_calendar_day_perc=(day(record_date))/as.numeric(days_in_month(record_date)),
+             total_pred=proj_fy) %>% 
+      group_by(record_fiscal_year) %>% 
+      fill(total_pred,.direction="down") %>% 
+      mutate(pred_month=total_pred*pred_cumshare_fy)
+    
+    daily_df1 = daily_df1 %>% 
+      select(-c(pred_month)) %>% 
+      left_join(daily_df1 %>% 
+                  group_by(date) %>% 
+                  slice(n()) %>% 
+                  ungroup() %>% 
+                  mutate(pred_month=case_when(fy_month==1~pred_month,
+                                              TRUE~pred_month-dplyr::lag(pred_month,1)),
+                         pred_month_lwr=pred_month+pred_cumshare_fy_lwr*total_pred,
+                         pred_month_upper=pred_month+pred_cumshare_fy_upper*total_pred,
+                         cbo_pred_month=case_when(fy_month==1~cbo_proj_fmonth,
+                                                  TRUE~cbo_proj_fmonth-dplyr::lag(cbo_proj_fmonth,1)),
+                         cbo_pred_month_lwr=cbo_pred_month+pred_cumshare_fy_lwr*cbo_proj_fy,
+                         cbo_pred_month_upper=cbo_pred_month+pred_cumshare_fy_upper*cbo_proj_fy) %>% 
+                  select(date,pred_month,pred_month_lwr,pred_month_upper,cbo_pred_month,cbo_pred_month_lwr,cbo_pred_month_upper),by="date") %>% 
+      {if(col=="Social Security") mutate_at(.,vars(pred_month,pred_month_lwr,pred_month_upper,cbo_pred_month,cbo_pred_month_lwr,cbo_pred_month_upper),
+                                            ~case_when(month(date)==12&weekdays(date %m+% months(1),abbreviate = TRUE)=="Fri"~.+.*0.3579050,
+                                                       month(date)==1&weekdays(date,abbreviate = TRUE)=="Fri"~.-.*0.3579050,
+                                                       TRUE~.)) else .} %>% 
+      mutate(record_calendar_day=sprintf("%02d", day(record_date)),
+             record_calendar_month=month(record_date),
+             record_calendar_year=year(record_date),
+             record_fiscal_year=as.integer(quarter(record_date, with_year = TRUE, fiscal_start = 10))) %>% 
+      ungroup() %>% 
+      mutate(pred_month1=pred_month*(tail(daily_df1$fy_month[!is.na(daily_df1$total_day)],1)/12)+cbo_pred_month*(1-tail(daily_df1$fy_month[!is.na(daily_df1$total_day)],1)/12),
+             pred_month1_lwr=pred_month_lwr*(tail(daily_df1$fy_month[!is.na(daily_df1$total_day)],1)/12)+cbo_pred_month_lwr*(1-tail(daily_df1$fy_month[!is.na(daily_df1$total_day)],1)/12),
+             pred_month1_upper=pred_month_upper*(tail(daily_df1$fy_month[!is.na(daily_df1$total_day)],1)/12)+cbo_pred_month_upper*(1-tail(daily_df1$fy_month[!is.na(daily_df1$total_day)],1)/12))
+    
+    preds = data.frame(predict(models_daily$share,data=daily_df1,type="quantiles",quantiles=c(0.5,.1,.9)))
+    colnames(preds)=c("pred_share","pred_share_lwr","pred_share_upper")
+    daily_df1 = bind_cols(daily_df1,preds) %>% 
+      group_by(date) %>% 
+      mutate(pred_cumshare_daily=cumsum(pred_share),
+             pred_cumshare_daily_lwr=cumsum(pred_share_lwr),
+             pred_cumshare_daily_upper=cumsum(pred_share_upper),
+             row=1:n()) %>% 
+      mutate_at(vars(pred_cumshare_daily:pred_cumshare_daily_upper),~case_when(row>=max(row[weekend==FALSE])&.<=0~1,
+                                                                   TRUE~.)) %>% 
+      mutate_at(vars(pred_cumshare_daily:pred_cumshare_daily_upper),~./.[n()]) %>% 
+      mutate_at(vars(pred_cumshare_daily:pred_cumshare_daily_upper),~ifelse(is_bad(.),0,.)) %>% 
+      mutate(num=1:n()) %>% 
+      mutate_at(vars(pred_cumshare_daily:pred_cumshare_daily_upper),~case_when(num==max(num)&.==0~1,
+                                                                               TRUE~.)) %>% 
+      select(-num)
+    
+    preds = data.frame(predict(models_daily$scalar,daily_df1,se.fit=TRUE, interval="confidence", alpha=0.10))
+    colnames(preds)=c("scalar","scalar_lwr","scalar_upper","scalar_se_fit")
+    daily_df1 = bind_cols(daily_df1,preds)
+    
+    daily_df1 = daily_df1 %>% 
+      mutate(pred_day=pred_cumshare_daily*pred_month1,
+             pred_day_lwr=pred_cumshare_daily_lwr*pred_month1_lwr,
+             pred_day_upper=pred_cumshare_daily_upper*pred_month1_upper) %>% 
+      group_by(date) %>% 
+      mutate(pred_day_cum=pred_day,
+             pred_day_cum_lwr=pred_day_lwr,
+             pred_day_cum_upper=pred_day_upper,
+             pred_day=case_when(
+               record_date==min(record_date)~pred_day,
+               TRUE~pred_day-dplyr::lag(pred_day,1)
+             ),
+             pred_day_lwr=case_when(
+               record_date==min(record_date)~pred_day_lwr,
+               TRUE~pred_day_lwr-dplyr::lag(pred_day_lwr,1)
+             ),
+             pred_day_upper=case_when(
+               record_date==min(record_date)~pred_day_upper,
+               TRUE~pred_day_upper-dplyr::lag(pred_day_upper,1)
+             ),
+             final_pred_day=ifelse(is.na(final_pred_day),pred_day,final_pred_day),
+             final_pred_day_lwr=ifelse(is.na(final_pred_day_lwr),pred_day_lwr,final_pred_day_lwr),
+             final_pred_day_upper=ifelse(is.na(final_pred_day_upper),pred_day_upper,final_pred_day_upper),
+             final_pred_day_cum=ifelse(is.na(final_pred_day_cum),pred_day_cum,final_pred_day_cum),
+             final_pred_day_cum_lwr=ifelse(is.na(final_pred_day_cum_lwr),pred_day_cum_lwr,final_pred_day_cum_lwr),
+             final_pred_day_cum_upper=ifelse(is.na(final_pred_day_cum_upper),pred_day_cum_upper,final_pred_day_cum_upper),
+             cbo_proj=ifelse(imputed==1&is.na(cbo_proj),cbo_pred_month,cbo_proj)) %>% 
+      select(any_of(c(colnames(daily_df),"pred_month1","pred_month1_lwr","pred_month1_upper"))) %>% 
+      ungroup() %>% 
+      fill(cbo_category,.direction="down")
+    
+    daily_df = daily_df1
+    
+  }
+  
+  dates = seq(max(daily_df$record_date,na.rm=TRUE)+1,as.Date(paste0(max(cbo_proj$projected_fiscal_year[cbo_proj$baseline_date<=end_date]),"-09-30")),by=1)
+  
+  daily_df2 = bind_rows(data.frame(record_date=dates)) %>% 
+    mutate(record_fiscal_year=as.integer(quarter(record_date, with_year = TRUE, fiscal_start = 10)),
+           month=month(record_date),
+           fy_month=case_when(
+             month%in%c(10:12)~month-9,
+             month%in%c(1:9)~month+3
+           ),
+           imputed=1,
+           total_day=NA,
+           total_day_imp=NA,
+           total_month=NA,
+           date=floor_date(record_date,"month")) %>% 
+    group_by(record_fiscal_year) %>% 
+    arrange(record_date) %>% 
+    left_join(tax_days,by=c("record_date"="date")) %>% 
+    group_by(date) %>% 
+    mutate(day=day(record_date),
+           month=month(record_date),
+           quarter_end=case_when(
+             month==4&tax_day==1~1,
+             month%in%c(1,6,9)&day==15&!(weekdays(record_date,abbreviate = TRUE)%in%c("Sat","Sun"))~1,
+             month%in%c(1,6,9)&day%in%c(16,17)&(weekdays(record_date,abbreviate = TRUE)%in%c("Mon"))~1 # only use 16 or 17 IF the 15th had fallen on a weekend
+           ),
+           settlement_period=case_when(
+             record_date>=max(record_date[!(weekdays(record_date,abbreviate = TRUE)%in%c("Sat","Sun"))])~"EOM",
+             record_date>=min(record_date[day(record_date)>=15&!(weekdays(record_date,abbreviate = TRUE)%in%c("Sat","Sun"))])~"Second Settlement",
+             TRUE~"First Settlement"
+           )) %>% 
+    group_by(date) %>% 
+    fill(tax_day,quarter_end,.direction="down") %>% 
+    mutate(tax_day=ifelse(is.na(tax_day),0,tax_day),
+           quarter_end=ifelse(is.na(quarter_end),0,quarter_end),
+           record_calendar_day=sprintf("%02d", day(record_date)),
+           record_calendar_month=month(record_date),
+           fy_month=case_when(
+             month%in%c(10:12)~month-9,
+             month%in%c(1:9)~month+3
+           )) %>% 
+    ungroup() %>% 
+    mutate(fiscal_year=as.integer(quarter(record_date, with_year = TRUE, fiscal_start = 10)),
+           tax_due=case_when(
+      !(fiscal_year%in%c(2020,2021))&month==4&col=="Individual Income Taxes"~1,
+      fiscal_year==2020&month==7&col=="Individual Income Taxes"~1,
+      fiscal_year==2021&month==5&col=="Individual Income Taxes"~1,
+      !(fiscal_year%in%c(2020))&month==4&col=="Corporate Income Taxes"~1,
+      fiscal_year==2020&month==7&col=="Corporate Income Taxes"~1,
+      fiscal_year==2020&month==9&col=="Excise Taxes"~1,
+      TRUE~0
+    )) %>% 
+    left_join(cbo_proj %>% 
+                {if(col=="Other Spending") filter(.,subcategory %in% c("Nondefense Discretionary","Other Mandatory")) else if(col=="National Defense") filter(.,subcategory=="Defense Discretionary") else filter(.,subcategory%in%col)} %>% 
+                group_by(projected_fiscal_year,subcategory) %>% 
+                filter(baseline_date<=MAX_DATE) %>% 
+                slice(n()) %>% 
+                group_by(projected_fiscal_year) %>% 
+                summarize(value=sum(value,na.rm=TRUE)) %>% 
+                select(projected_fiscal_year,value) %>% 
+                rename(cbo_proj_fy=value,
+                       fiscal_year=projected_fiscal_year) %>% 
+                mutate(change_cbo_proj_fy=cbo_proj_fy/cbo_proj_fy[fiscal_year==max(daily_df$record_fiscal_year)]),
+              by=c("record_fiscal_year"="fiscal_year")) %>% 
+    bind_cols(daily_df %>% 
+                filter(record_fiscal_year==max(record_fiscal_year)) %>% 
+                mutate(month=month(record_date)) %>% 
+                group_by(month) %>% 
+                slice(n()) %>% 
+                ungroup() %>% 
+                summarize(pred_total=sum(final_pred_day_cum),
+                          pred_total_lwr=sum(final_pred_day_cum_lwr),
+                          pred_total_upper=sum(final_pred_day_cum_upper)) %>% 
+                select(pred_total:pred_total_upper)) %>% 
+    mutate_at(vars(pred_total:pred_total_upper),~.*change_cbo_proj_fy) %>% 
+    group_by(date) %>% 
+    mutate(weekend=weekdays(record_date,abbreviate = TRUE)%in%c("Sat","Sun"),
+           record_calendar_month=month(record_date),
+           record_calendar_day=sprintf("%02d", day(record_date)),
+           fed_remittances_suspended=ifelse(date>="2022-09-01",1,0),
+           dotw=weekdays(record_date,abbreviate=TRUE),
+           holiday=record_date%in%as.Date(as.character(tis::holidays(year(date))),format="%Y%m%d"),
+           ssi_day=case_when(
+             record_calendar_day=="01"&!weekend&!holiday~1,
+             (weekdays(date%m+%months(1),abbreviate = TRUE)%in%c("Sat","Sun")|(date%m+%months(1))%in%as.Date(as.character(tis::holidays(year(date%m+%months(1)))),,format="%Y%m%d"))&record_date==last(record_date[!weekend&!holiday])~1,
+             TRUE~0
+           ),
+           ss_ssi_day=case_when(
+             weekdays(date%m+%months(1),abbreviate=TRUE)=="Fri"&record_calendar_month==12&record_calendar_day=="31"~1,
+             record_calendar_day=="03"&!weekend&!holiday~1,
+             weekend[record_calendar_day=="03"]==TRUE&record_date==last(record_date[!weekend&!holiday&day(record_date)<3])~1,
+             TRUE~0
+           ),
+           ss_day=case_when(
+             record_date%in%record_date[dotw=="Wed"][2:4]&!weekend&!holiday~1,
+             record_date%in%(as.Date(intersect(as.character(record_date[dotw=="Wed"][2:4]),as.character(record_date[holiday]))) %m-% days(1))~1,
+             TRUE~0
+           )) %>% 
+    ungroup()
+  
+  daily_df2 = daily_df2 %>% 
+    left_join(daily_df2 %>% 
+                distinct(date) %>% 
+                mutate(month=month(date)) %>% 
+                rowwise() %>% 
+                mutate(first_day_thismonth_weekend=(weekdays(date,abbreviate=TRUE)%in%c("Sat","Sun")|date%in%as.Date(as.character(tis::holidays(year(date))),format="%Y%m%d"))&month!=1,
+                       first_day_nextmonth_weekend=(weekdays(date %m+% months(1),abbreviate=TRUE)%in%c("Sat","Sun")|(date %m+% months(1))%in%as.Date(as.character(tis::holidays(year(date))),format="%Y%m%d"))&month!=12,
+                       last_day_thismonth_weekend=(weekdays((date %m+% months(1) )- 1,abbreviate=TRUE)%in%c("Sat","Sun")|((date %m+% months(1) )- 1)%in%as.Date(as.character(tis::holidays(year(date))),format="%Y%m%d"))&month!=12) %>% 
+                ungroup())
+  
+  daily_df2 = daily_df2 %>% 
+    left_join(monthly_share_pred %>% select(date,
+                                            pred_cumshare_fy=pred_cumshare,
+                                            pred_cumshare_fy_lwr=pred_cumshare_lwr,
+                                            pred_cumshare_fy_upper=pred_cumshare_upper))
+  
+  daily_df2 = daily_df2 %>% 
+    mutate(cbo_proj_fmonth = cbo_proj_fy*pred_cumshare_fy,
+           pred_month=pred_total*pred_cumshare_fy)
+  
+  daily_df2 = daily_df2 %>% 
+    select(-c(pred_month)) %>% 
+    left_join(daily_df2 %>% 
+                group_by(date) %>% 
+                slice(n()) %>% 
+                ungroup() %>% 
+                mutate(pred_month=case_when(fy_month==1~pred_month,
+                                            TRUE~pred_month-dplyr::lag(pred_month,1)),
+                       pred_month_lwr=pred_month+pred_cumshare_fy_lwr*pred_total,
+                       pred_month_upper=pred_month+pred_cumshare_fy_upper*pred_total,
+                       cbo_pred_month=case_when(fy_month==1~cbo_proj_fmonth,
+                                                TRUE~cbo_proj_fmonth-dplyr::lag(cbo_proj_fmonth,1)),
+                       cbo_pred_month_lwr=cbo_pred_month+pred_cumshare_fy_lwr*cbo_proj_fy,
+                       cbo_pred_month_upper=cbo_pred_month+pred_cumshare_fy_upper*cbo_proj_fy) %>% 
+                select(date,pred_month,pred_month_lwr,pred_month_upper,cbo_pred_month,cbo_pred_month_lwr,cbo_pred_month_upper),by="date") %>% 
+    {if(col=="Social Security") mutate_at(.,vars(pred_month,pred_month_lwr,pred_month_upper,cbo_pred_month,cbo_pred_month_lwr,cbo_pred_month_upper),
+                                          ~case_when(month(date)==12&weekdays(date %m+% months(1),abbreviate = TRUE)=="Fri"~.+.*0.3579050,
+                                                     month(date)==1&weekdays(date,abbreviate = TRUE)=="Fri"~.-.*0.3579050,
+                                                     TRUE~.)) else .} %>% 
+    mutate(record_calendar_year=year(record_date)) %>% 
+    ungroup() %>% 
+    mutate(pred_month1=pred_month*(.5)+cbo_pred_month*(.5),
+           pred_month1_lwr=pred_month_lwr*(.5)+cbo_pred_month_lwr*(.5),
+           pred_month1_upper=pred_month_upper*(.5)+cbo_pred_month_upper*(.5))
+  
+  preds = data.frame(predict(models_daily$share,data=daily_df2,type="quantiles",quantiles=c(0.5,.1,.9)))
+  colnames(preds)=c("pred_share","pred_share_lwr","pred_share_upper")
+  daily_df2 = bind_cols(daily_df2,preds) %>% 
+    group_by(date) %>% 
+    mutate(pred_cumshare_daily=cumsum(pred_share),
+           pred_cumshare_daily_lwr=cumsum(pred_share_lwr),
+           pred_cumshare_daily_upper=cumsum(pred_share_upper),
+           row=1:n()) %>% 
+    mutate_at(vars(pred_cumshare_daily:pred_cumshare_daily_upper),~case_when(row>=max(row[weekend==FALSE])&.<=0~1,
+                                                                 TRUE~.)) %>% 
+    mutate_at(vars(pred_cumshare_daily:pred_cumshare_daily_upper),~./.[n()]) %>% 
+    mutate_at(vars(pred_cumshare_daily:pred_cumshare_daily_upper),~ifelse(is_bad(.),0,.)) %>% 
+    mutate(num=1:n()) %>% 
+    mutate_at(vars(pred_cumshare_daily:pred_cumshare_daily_upper),~case_when(num==max(num)&.==0~1,
+                                                                             TRUE~.)) %>% 
+    select(-num) %>% 
+    mutate(pred_month2=pred_month1,
+           pred_month2_lwr=pred_month1_lwr,
+           pred_month2_upper=pred_month1_upper)
+  
+  daily_df2= daily_df2 %>% 
+    mutate(pred_day=pred_cumshare_daily*pred_month2,
+           pred_day_lwr=pred_cumshare_daily_lwr*pred_month2_lwr,
+           pred_day_upper=pred_cumshare_daily_upper*pred_month2_upper,
+           final_pred_day=NA,
+           final_pred_day_lwr=NA,
+           final_pred_day_upper=NA,
+           final_pred_day_cum=NA,
+           final_pred_day_cum_lwr=NA,
+           final_pred_day_cum_upper=NA) %>% 
+    group_by(date) %>% 
+    mutate(pred_day_cum=pred_day,
+           pred_day_cum_lwr=pred_day_lwr,
+           pred_day_cum_upper=pred_day_upper,
+           pred_day=case_when(
+             record_date==min(record_date)~pred_day,
+             TRUE~pred_day-dplyr::lag(pred_day,1)
+           ),
+           pred_day_lwr=case_when(
+             record_date==min(record_date)~pred_day_lwr,
+             TRUE~pred_day_lwr-dplyr::lag(pred_day_lwr,1)
+           ),
+           pred_day_upper=case_when(
+             record_date==min(record_date)~pred_day_upper,
+             TRUE~pred_day_upper-dplyr::lag(pred_day_upper,1)
+           ),
+           final_pred_day=ifelse(is.na(final_pred_day),pred_day,final_pred_day),
+           final_pred_day_lwr=ifelse(is.na(final_pred_day_lwr),pred_day_lwr,final_pred_day_lwr),
+           final_pred_day_upper=ifelse(is.na(final_pred_day_upper),pred_day_upper,final_pred_day_upper),
+           final_pred_day_cum=ifelse(is.na(final_pred_day_cum),pred_day_cum,final_pred_day_cum),
+           final_pred_day_cum_lwr=ifelse(is.na(final_pred_day_cum_lwr),pred_day_cum_lwr,final_pred_day_cum_lwr),
+           final_pred_day_cum_upper=ifelse(is.na(final_pred_day_cum_upper),pred_day_cum_upper,final_pred_day_cum_upper)) %>% 
+    mutate(pred_month1=pred_month2,
+           pred_month1_lwr=pred_month2_lwr,
+           pred_month1_upper=pred_month2_upper,
+           cbo_category=col,
+           cbo_proj=cbo_pred_month) %>% 
+    select(any_of(c(colnames(daily_df)))) %>% 
+    ungroup()
+  
+  daily_df = bind_rows(daily_df,daily_df2)
+  
+  return(list(daily_df=daily_df,nowcast=monthly_nowcast))
+  
+}
+
+get_budget_outlay_df = function(cbo_category){
   
   if(cbo_category=="Medicare"){
     mandatory = spending_by_function %>% 
@@ -558,79 +2392,12 @@ nowcast_budget_outlay = function(cbo_category){
       mutate(total=sum(value,na.rm=TRUE)) %>% 
       ungroup() %>%  
       mutate(share=value/total,
-             month=month(date))
-    
-    monthly_shares_reg = lm_robust(share~factor(month),monthly_shares %>% group_by(fiscal_year) %>% filter(n()==12))
-    
-    fcast_df1 = read_csv(paste0("Data/Processing/imputed_data/imputed_data_asof",floor_date(Sys.Date(),"year")-1,".csv")) %>% 
-      select(-any_of(paste0("gt_",bad_vars$category))) %>% 
-      arrange(date) %>%
-      mutate(year=year(date),
-             month=month(date)) %>%
-      select(-c(PCE,PRS85006112)) %>%
-      select(-one_of("ADPMNUSNERSA")) %>% 
-      left_join(mandatory %>% 
-                  mutate(record_date=floor_date(record_date,"month"),
-                         current_month_net_rcpt_amt=as.numeric(current_month_rcpt_outly_amt)/1000000000) %>% 
-                  select(record_date,current_month_net_rcpt_amt) %>% 
-                  rename(date=record_date,
-                         value=current_month_net_rcpt_amt)) %>% # join the yvariable
-      ungroup() %>% 
-      mutate_at(vars(PAYEMS:JTSJOL,INDPRO:DGS10),~((./dplyr::lag(.,1)-1)*100)) %>%
-      mutate_at(vars(UNRATE:DTCDFSA066MSFRBPHI,grep("gt_",colnames(.),value=TRUE)),~(.-dplyr::lag(.,1))) %>%
-      mutate(lag1=dplyr::lag(value,1),
-             lag2=dplyr::lag(value,2),
-             lag3=dplyr::lag(value,3),
-             lag4=dplyr::lag(value,4)) %>%
-      ungroup() %>% 
-      mutate(fiscal_year=as.integer(quarter(date, with_year = TRUE, fiscal_start = 10)))  %>% 
-      left_join(cbo_proj %>% 
-                  filter(subcategory=="Medicare") %>% 
-                  group_by(projected_fiscal_year) %>% 
-                  slice(n()) %>% 
-                  select(projected_fiscal_year,value) %>% 
-                  rename(cbo_proj=value,
-                         fiscal_year=projected_fiscal_year))
-    fcast_df1$cbo_proj_month = as.numeric(predict(monthly_shares_reg,data.frame(month=fcast_df1$month)))*fcast_df1$cbo_proj
-    fcast_df1 = fcast_df1 %>% 
-      mutate(cbo_proj_diff=(value/cbo_proj_month-1)*100) %>% 
-      mutate(lag1_cbo_proj_diff=dplyr::lag(cbo_proj_diff,1),
-             lag2_cbo_proj_diff=dplyr::lag(cbo_proj_diff,2))
-
-    fcast_df2 = read_csv(paste0("Data/Processing/imputed_data/imputed_data_asof",Sys.Date(),".csv")) %>% 
-      select(-any_of(paste0("gt_",bad_vars$category))) %>% 
-      arrange(date) %>%
-      mutate(year=year(date),
-             month=month(date)) %>%
-      select(-c(PCE,PRS85006112)) %>%
-      select(-one_of("ADPMNUSNERSA")) %>% 
-      left_join(mandatory %>% 
-                  mutate(record_date=floor_date(record_date,"month"),
-                         current_month_net_rcpt_amt=as.numeric(current_month_rcpt_outly_amt)/1000000000) %>% 
-                  select(record_date,current_month_net_rcpt_amt) %>% 
-                  rename(date=record_date,
-                         value=current_month_net_rcpt_amt)) %>% # join the yvariable
-      ungroup() %>% 
-      mutate_at(vars(PAYEMS:JTSJOL,INDPRO:DGS10),~((./dplyr::lag(.,1)-1)*100)) %>%
-      mutate_at(vars(UNRATE:DTCDFSA066MSFRBPHI,grep("gt_",colnames(.),value=TRUE)),~(.-dplyr::lag(.,1))) %>%
-      mutate(lag1=dplyr::lag(value,1),
-             lag2=dplyr::lag(value,2),
-             lag3=dplyr::lag(value,3),
-             lag4=dplyr::lag(value,4)) %>%
-      ungroup() %>% 
-      mutate(fiscal_year=as.integer(quarter(date, with_year = TRUE, fiscal_start = 10)))  %>% 
-      left_join(cbo_proj %>% 
-                  filter(subcategory=="Medicare") %>% 
-                  group_by(projected_fiscal_year) %>% 
-                  slice(n()) %>% 
-                  select(projected_fiscal_year,value) %>% 
-                  rename(cbo_proj=value,
-                         fiscal_year=projected_fiscal_year))
-    fcast_df2$cbo_proj_month = as.numeric(predict(monthly_shares_reg,data.frame(month=fcast_df2$month)))*fcast_df2$cbo_proj
-    fcast_df2 = fcast_df2 %>% 
-      mutate(cbo_proj_diff=(value/cbo_proj_month-1)*100) %>% 
-      mutate(lag1_cbo_proj_diff=dplyr::lag(cbo_proj_diff,1),
-             lag2_cbo_proj_diff=dplyr::lag(cbo_proj_diff,2))
+             month=month(date)) %>% 
+      rowwise() %>% 
+      mutate(first_day_thismonth_weekend=(weekdays(date,abbreviate=TRUE)%in%c("Sat","Sun")|date%in%as.Date(as.character(tis::holidays(year(date))),format="%Y%m%d"))&month!=1,
+             first_day_nextmonth_weekend=(weekdays(date %m+% months(1),abbreviate=TRUE)%in%c("Sat","Sun")|(date %m+% months(1))%in%as.Date(as.character(tis::holidays(year(date))),format="%Y%m%d"))&month!=12,
+             last_day_thismonth_weekend=(weekdays((date %m+% months(1) )- 1,abbreviate=TRUE)%in%c("Sat","Sun")|((date %m+% months(1) )- 1)%in%as.Date(as.character(tis::holidays(year(date))),format="%Y%m%d"))&month!=12) %>% 
+      ungroup()
     
   }
   
@@ -654,78 +2421,6 @@ nowcast_budget_outlay = function(cbo_category){
       mutate(share=value/total,
              month=month(date))
     
-    monthly_shares_reg = lm_robust(share~factor(month),monthly_shares %>% group_by(fiscal_year) %>% filter(n()==12))
-    
-    fcast_df1 = read_csv(paste0("Data/Processing/imputed_data/imputed_data_asof",floor_date(Sys.Date(),"year")-1,".csv")) %>% 
-      select(-any_of(paste0("gt_",bad_vars$category))) %>% 
-      arrange(date) %>%
-      mutate(year=year(date),
-             month=month(date)) %>%
-      select(-c(PCE,PRS85006112)) %>%
-      select(-one_of("ADPMNUSNERSA")) %>% 
-      left_join(mandatory %>% 
-                  mutate(record_date=floor_date(record_date,"month"),
-                         current_month_net_rcpt_amt=as.numeric(current_month_rcpt_outly_amt)/1000000000) %>% 
-                  select(record_date,current_month_net_rcpt_amt) %>% 
-                  rename(date=record_date,
-                         value=current_month_net_rcpt_amt)) %>% # join the yvariable
-      ungroup() %>% 
-      mutate_at(vars(PAYEMS:JTSJOL,INDPRO:DGS10),~((./dplyr::lag(.,1)-1)*100)) %>%
-      mutate_at(vars(UNRATE:DTCDFSA066MSFRBPHI,grep("gt_",colnames(.),value=TRUE)),~(.-dplyr::lag(.,1))) %>%
-      mutate(lag1=dplyr::lag(value,1),
-             lag2=dplyr::lag(value,2),
-             lag3=dplyr::lag(value,3),
-             lag4=dplyr::lag(value,4)) %>%
-      ungroup() %>% 
-      mutate(fiscal_year=as.integer(quarter(date, with_year = TRUE, fiscal_start = 10)))  %>% 
-      left_join(cbo_proj %>% 
-                  filter(subcategory=="Medicaid") %>% 
-                  group_by(projected_fiscal_year) %>% 
-                  slice(n()) %>% 
-                  select(projected_fiscal_year,value) %>% 
-                  rename(cbo_proj=value,
-                         fiscal_year=projected_fiscal_year))
-    fcast_df1$cbo_proj_month = as.numeric(predict(monthly_shares_reg,data.frame(month=fcast_df1$month)))*fcast_df1$cbo_proj
-    fcast_df1 = fcast_df1 %>% 
-      mutate(cbo_proj_diff=(value/cbo_proj_month-1)*100) %>% 
-      mutate(lag1_cbo_proj_diff=dplyr::lag(cbo_proj_diff,1),
-             lag2_cbo_proj_diff=dplyr::lag(cbo_proj_diff,2))
-    
-    fcast_df2 = read_csv(paste0("Data/Processing/imputed_data/imputed_data_asof",Sys.Date(),".csv")) %>% 
-      select(-any_of(paste0("gt_",bad_vars$category))) %>% 
-      arrange(date) %>%
-      mutate(year=year(date),
-             month=month(date)) %>%
-      select(-c(PCE,PRS85006112)) %>%
-      select(-one_of("ADPMNUSNERSA")) %>% 
-      left_join(mandatory %>% 
-                  mutate(record_date=floor_date(record_date,"month"),
-                         current_month_net_rcpt_amt=as.numeric(current_month_rcpt_outly_amt)/1000000000) %>% 
-                  select(record_date,current_month_net_rcpt_amt) %>% 
-                  rename(date=record_date,
-                         value=current_month_net_rcpt_amt)) %>% # join the yvariable
-      ungroup() %>% 
-      mutate_at(vars(PAYEMS:JTSJOL,INDPRO:DGS10),~((./dplyr::lag(.,1)-1)*100)) %>%
-      mutate_at(vars(UNRATE:DTCDFSA066MSFRBPHI,grep("gt_",colnames(.),value=TRUE)),~(.-dplyr::lag(.,1))) %>%
-      mutate(lag1=dplyr::lag(value,1),
-             lag2=dplyr::lag(value,2),
-             lag3=dplyr::lag(value,3),
-             lag4=dplyr::lag(value,4)) %>%
-      ungroup() %>% 
-      mutate(fiscal_year=as.integer(quarter(date, with_year = TRUE, fiscal_start = 10)))  %>% 
-      left_join(cbo_proj %>% 
-                  filter(subcategory=="Medicaid") %>% 
-                  group_by(projected_fiscal_year) %>% 
-                  slice(n()) %>% 
-                  select(projected_fiscal_year,value) %>% 
-                  rename(cbo_proj=value,
-                         fiscal_year=projected_fiscal_year))
-    fcast_df2$cbo_proj_month = as.numeric(predict(monthly_shares_reg,data.frame(month=fcast_df2$month)))*fcast_df2$cbo_proj
-    fcast_df2 = fcast_df2 %>% 
-      mutate(cbo_proj_diff=(value/cbo_proj_month-1)*100) %>% 
-      mutate(lag1_cbo_proj_diff=dplyr::lag(cbo_proj_diff,1),
-             lag2_cbo_proj_diff=dplyr::lag(cbo_proj_diff,2))
-    
   }
   
   if(cbo_category=="Social Security"){
@@ -746,78 +2441,6 @@ nowcast_budget_outlay = function(cbo_category){
       ungroup() %>%  
       mutate(share=value/total,
              month=month(date))
-    
-    monthly_shares_reg = lm_robust(share~factor(month),monthly_shares %>% group_by(fiscal_year) %>% filter(n()==12))
-    
-    fcast_df1 = read_csv(paste0("Data/Processing/imputed_data/imputed_data_asof",floor_date(Sys.Date(),"year")-1,".csv")) %>% 
-      select(-any_of(paste0("gt_",bad_vars$category))) %>% 
-      arrange(date) %>%
-      mutate(year=year(date),
-             month=month(date)) %>%
-      select(-c(PCE,PRS85006112)) %>%
-      select(-one_of("ADPMNUSNERSA")) %>% 
-      left_join(mandatory %>% 
-                  mutate(record_date=floor_date(record_date,"month"),
-                         current_month_net_rcpt_amt=as.numeric(current_month_rcpt_outly_amt)/1000000000) %>% 
-                  select(record_date,current_month_net_rcpt_amt) %>% 
-                  rename(date=record_date,
-                         value=current_month_net_rcpt_amt)) %>% # join the yvariable
-      ungroup() %>% 
-      mutate_at(vars(PAYEMS:JTSJOL,INDPRO:DGS10),~((./dplyr::lag(.,1)-1)*100)) %>%
-      mutate_at(vars(UNRATE:DTCDFSA066MSFRBPHI,grep("gt_",colnames(.),value=TRUE)),~(.-dplyr::lag(.,1))) %>%
-      mutate(lag1=dplyr::lag(value,1),
-             lag2=dplyr::lag(value,2),
-             lag3=dplyr::lag(value,3),
-             lag4=dplyr::lag(value,4)) %>%
-      ungroup() %>% 
-      mutate(fiscal_year=as.integer(quarter(date, with_year = TRUE, fiscal_start = 10)))  %>% 
-      left_join(cbo_proj %>% 
-                  filter(subcategory=="Social Security") %>% 
-                  group_by(projected_fiscal_year) %>% 
-                  slice(n()) %>% 
-                  select(projected_fiscal_year,value) %>% 
-                  rename(cbo_proj=value,
-                         fiscal_year=projected_fiscal_year))
-    fcast_df1$cbo_proj_month = as.numeric(predict(monthly_shares_reg,data.frame(month=fcast_df1$month)))*fcast_df1$cbo_proj
-    fcast_df1 = fcast_df1 %>% 
-      mutate(cbo_proj_diff=(value/cbo_proj_month-1)*100) %>% 
-      mutate(lag1_cbo_proj_diff=dplyr::lag(cbo_proj_diff,1),
-             lag2_cbo_proj_diff=dplyr::lag(cbo_proj_diff,2))
-    
-    fcast_df2 = read_csv(paste0("Data/Processing/imputed_data/imputed_data_asof",Sys.Date(),".csv")) %>% 
-      select(-any_of(paste0("gt_",bad_vars$category))) %>% 
-      arrange(date) %>%
-      mutate(year=year(date),
-             month=month(date)) %>%
-      select(-c(PCE,PRS85006112)) %>%
-      select(-one_of("ADPMNUSNERSA")) %>% 
-      left_join(mandatory %>% 
-                  mutate(record_date=floor_date(record_date,"month"),
-                         current_month_net_rcpt_amt=as.numeric(current_month_rcpt_outly_amt)/1000000000) %>% 
-                  select(record_date,current_month_net_rcpt_amt) %>% 
-                  rename(date=record_date,
-                         value=current_month_net_rcpt_amt)) %>% # join the yvariable
-      ungroup() %>% 
-      mutate_at(vars(PAYEMS:JTSJOL,INDPRO:DGS10),~((./dplyr::lag(.,1)-1)*100)) %>%
-      mutate_at(vars(UNRATE:DTCDFSA066MSFRBPHI,grep("gt_",colnames(.),value=TRUE)),~(.-dplyr::lag(.,1))) %>%
-      mutate(lag1=dplyr::lag(value,1),
-             lag2=dplyr::lag(value,2),
-             lag3=dplyr::lag(value,3),
-             lag4=dplyr::lag(value,4)) %>%
-      ungroup() %>% 
-      mutate(fiscal_year=as.integer(quarter(date, with_year = TRUE, fiscal_start = 10)))  %>% 
-      left_join(cbo_proj %>% 
-                  filter(subcategory=="Social Security") %>% 
-                  group_by(projected_fiscal_year) %>% 
-                  slice(n()) %>% 
-                  select(projected_fiscal_year,value) %>% 
-                  rename(cbo_proj=value,
-                         fiscal_year=projected_fiscal_year))
-    fcast_df2$cbo_proj_month = as.numeric(predict(monthly_shares_reg,data.frame(month=fcast_df2$month)))*fcast_df2$cbo_proj
-    fcast_df2 = fcast_df2 %>% 
-      mutate(cbo_proj_diff=(value/cbo_proj_month-1)*100) %>% 
-      mutate(lag1_cbo_proj_diff=dplyr::lag(cbo_proj_diff,1),
-             lag2_cbo_proj_diff=dplyr::lag(cbo_proj_diff,2))
     
   }
   
@@ -840,77 +2463,6 @@ nowcast_budget_outlay = function(cbo_category){
       mutate(share=value/total,
              month=month(date))
     
-    monthly_shares_reg = lm_robust(share~factor(month),monthly_shares %>% group_by(fiscal_year) %>% filter(n()==12))
-    
-    fcast_df1 = read_csv(paste0("Data/Processing/imputed_data/imputed_data_asof",floor_date(Sys.Date(),"year")-1,".csv")) %>% 
-      select(-any_of(paste0("gt_",bad_vars$category))) %>% 
-      arrange(date) %>%
-      mutate(year=year(date),
-             month=month(date)) %>%
-      select(-c(PCE,PRS85006112)) %>%
-      select(-one_of("ADPMNUSNERSA")) %>% 
-      left_join(mandatory %>% 
-                  mutate(record_date=floor_date(record_date,"month"),
-                         current_month_net_rcpt_amt=as.numeric(current_month_rcpt_outly_amt)/1000000000) %>% 
-                  select(record_date,current_month_net_rcpt_amt) %>% 
-                  rename(date=record_date,
-                         value=current_month_net_rcpt_amt)) %>% # join the yvariable
-      ungroup() %>% 
-      mutate_at(vars(PAYEMS:JTSJOL,INDPRO:DGS10),~((./dplyr::lag(.,1)-1)*100)) %>%
-      mutate_at(vars(UNRATE:DTCDFSA066MSFRBPHI,grep("gt_",colnames(.),value=TRUE)),~(.-dplyr::lag(.,1))) %>%
-      mutate(lag1=dplyr::lag(value,1),
-             lag2=dplyr::lag(value,2),
-             lag3=dplyr::lag(value,3),
-             lag4=dplyr::lag(value,4)) %>%
-      ungroup() %>% 
-      mutate(fiscal_year=as.integer(quarter(date, with_year = TRUE, fiscal_start = 10)))  %>% 
-      left_join(cbo_proj %>% 
-                  filter(subcategory=="Defense Discretionary") %>% 
-                  group_by(projected_fiscal_year) %>% 
-                  slice(n()) %>% 
-                  select(projected_fiscal_year,value) %>% 
-                  rename(cbo_proj=value,
-                         fiscal_year=projected_fiscal_year))
-    fcast_df1$cbo_proj_month = as.numeric(predict(monthly_shares_reg,data.frame(month=fcast_df1$month)))*fcast_df1$cbo_proj
-    fcast_df1 = fcast_df1 %>% 
-      mutate(cbo_proj_diff=(value/cbo_proj_month-1)*100) %>% 
-      mutate(lag1_cbo_proj_diff=dplyr::lag(cbo_proj_diff,1),
-             lag2_cbo_proj_diff=dplyr::lag(cbo_proj_diff,2))
-    
-    fcast_df2 = read_csv(paste0("Data/Processing/imputed_data/imputed_data_asof",Sys.Date(),".csv")) %>% 
-      select(-any_of(paste0("gt_",bad_vars$category))) %>% 
-      arrange(date) %>%
-      mutate(year=year(date),
-             month=month(date)) %>%
-      select(-c(PCE,PRS85006112)) %>%
-      select(-one_of("ADPMNUSNERSA")) %>% 
-      left_join(mandatory %>% 
-                  mutate(record_date=floor_date(record_date,"month"),
-                         current_month_net_rcpt_amt=as.numeric(current_month_rcpt_outly_amt)/1000000000) %>% 
-                  select(record_date,current_month_net_rcpt_amt) %>% 
-                  rename(date=record_date,
-                         value=current_month_net_rcpt_amt)) %>% # join the yvariable
-      ungroup() %>% 
-      mutate_at(vars(PAYEMS:JTSJOL,INDPRO:DGS10),~((./dplyr::lag(.,1)-1)*100)) %>%
-      mutate_at(vars(UNRATE:DTCDFSA066MSFRBPHI,grep("gt_",colnames(.),value=TRUE)),~(.-dplyr::lag(.,1))) %>%
-      mutate(lag1=dplyr::lag(value,1),
-             lag2=dplyr::lag(value,2),
-             lag3=dplyr::lag(value,3),
-             lag4=dplyr::lag(value,4)) %>%
-      ungroup() %>% 
-      mutate(fiscal_year=as.integer(quarter(date, with_year = TRUE, fiscal_start = 10)))  %>% 
-      left_join(cbo_proj %>% 
-                  filter(subcategory=="Defense Discretionary") %>% 
-                  group_by(projected_fiscal_year) %>% 
-                  slice(n()) %>% 
-                  select(projected_fiscal_year,value) %>% 
-                  rename(cbo_proj=value,
-                         fiscal_year=projected_fiscal_year))
-    fcast_df2$cbo_proj_month = as.numeric(predict(monthly_shares_reg,data.frame(month=fcast_df2$month)))*fcast_df2$cbo_proj
-    fcast_df2 = fcast_df2 %>% 
-      mutate(cbo_proj_diff=(value/cbo_proj_month-1)*100) %>% 
-      mutate(lag1_cbo_proj_diff=dplyr::lag(cbo_proj_diff,1),
-             lag2_cbo_proj_diff=dplyr::lag(cbo_proj_diff,2))
   }
   
   if(cbo_category=="Net Interest"){
@@ -932,77 +2484,6 @@ nowcast_budget_outlay = function(cbo_category){
       mutate(share=value/total,
              month=month(date))
     
-    monthly_shares_reg = lm_robust(share~factor(month),monthly_shares %>% group_by(fiscal_year) %>% filter(n()==12))
-    
-    fcast_df1 = read_csv(paste0("Data/Processing/imputed_data/imputed_data_asof",floor_date(Sys.Date(),"year")-1,".csv")) %>% 
-      select(-any_of(paste0("gt_",bad_vars$category))) %>% 
-      arrange(date) %>%
-      mutate(year=year(date),
-             month=month(date)) %>%
-      select(-c(PCE,PRS85006112)) %>%
-      select(-one_of("ADPMNUSNERSA")) %>% 
-      left_join(mandatory %>% 
-                  mutate(record_date=floor_date(record_date,"month"),
-                         current_month_net_rcpt_amt=as.numeric(current_month_rcpt_outly_amt)/1000000000) %>% 
-                  select(record_date,current_month_net_rcpt_amt) %>% 
-                  rename(date=record_date,
-                         value=current_month_net_rcpt_amt)) %>% # join the yvariable
-      ungroup() %>% 
-      mutate_at(vars(PAYEMS:JTSJOL,INDPRO:DGS10),~((./dplyr::lag(.,1)-1)*100)) %>%
-      mutate_at(vars(UNRATE:DTCDFSA066MSFRBPHI,grep("gt_",colnames(.),value=TRUE)),~(.-dplyr::lag(.,1))) %>%
-      mutate(lag1=dplyr::lag(value,1),
-             lag2=dplyr::lag(value,2),
-             lag3=dplyr::lag(value,3),
-             lag4=dplyr::lag(value,4)) %>%
-      ungroup() %>% 
-      mutate(fiscal_year=as.integer(quarter(date, with_year = TRUE, fiscal_start = 10)))  %>% 
-      left_join(cbo_proj %>% 
-                  filter(subcategory=="Net Interest") %>% 
-                  group_by(projected_fiscal_year) %>% 
-                  slice(n()) %>% 
-                  select(projected_fiscal_year,value) %>% 
-                  rename(cbo_proj=value,
-                         fiscal_year=projected_fiscal_year))
-    fcast_df1$cbo_proj_month = as.numeric(predict(monthly_shares_reg,data.frame(month=fcast_df1$month)))*fcast_df1$cbo_proj
-    fcast_df1 = fcast_df1 %>% 
-      mutate(cbo_proj_diff=(value/cbo_proj_month-1)*100) %>% 
-      mutate(lag1_cbo_proj_diff=dplyr::lag(cbo_proj_diff,1),
-             lag2_cbo_proj_diff=dplyr::lag(cbo_proj_diff,2))
-    
-    fcast_df2 = read_csv(paste0("Data/Processing/imputed_data/imputed_data_asof",Sys.Date(),".csv")) %>% 
-      select(-any_of(paste0("gt_",bad_vars$category))) %>% 
-      arrange(date) %>%
-      mutate(year=year(date),
-             month=month(date)) %>%
-      select(-c(PCE,PRS85006112)) %>%
-      select(-one_of("ADPMNUSNERSA")) %>% 
-      left_join(mandatory %>% 
-                  mutate(record_date=floor_date(record_date,"month"),
-                         current_month_net_rcpt_amt=as.numeric(current_month_rcpt_outly_amt)/1000000000) %>% 
-                  select(record_date,current_month_net_rcpt_amt) %>% 
-                  rename(date=record_date,
-                         value=current_month_net_rcpt_amt)) %>% # join the yvariable
-      ungroup() %>% 
-      mutate_at(vars(PAYEMS:JTSJOL,INDPRO:DGS10),~((./dplyr::lag(.,1)-1)*100)) %>%
-      mutate_at(vars(UNRATE:DTCDFSA066MSFRBPHI,grep("gt_",colnames(.),value=TRUE)),~(.-dplyr::lag(.,1))) %>%
-      mutate(lag1=dplyr::lag(value,1),
-             lag2=dplyr::lag(value,2),
-             lag3=dplyr::lag(value,3),
-             lag4=dplyr::lag(value,4)) %>%
-      ungroup() %>% 
-      mutate(fiscal_year=as.integer(quarter(date, with_year = TRUE, fiscal_start = 10)))  %>% 
-      left_join(cbo_proj %>% 
-                  filter(subcategory=="Net Interest") %>% 
-                  group_by(projected_fiscal_year) %>% 
-                  slice(n()) %>% 
-                  select(projected_fiscal_year,value) %>% 
-                  rename(cbo_proj=value,
-                         fiscal_year=projected_fiscal_year))
-    fcast_df2$cbo_proj_month = as.numeric(predict(monthly_shares_reg,data.frame(month=fcast_df2$month)))*fcast_df2$cbo_proj
-    fcast_df2 = fcast_df2 %>% 
-      mutate(cbo_proj_diff=(value/cbo_proj_month-1)*100) %>% 
-      mutate(lag1_cbo_proj_diff=dplyr::lag(cbo_proj_diff,1),
-             lag2_cbo_proj_diff=dplyr::lag(cbo_proj_diff,2))
   }
   
   if(cbo_category=="Other Spending"){
@@ -1047,170 +2528,86 @@ nowcast_budget_outlay = function(cbo_category){
       mutate(share=value/total,
              month=month(date))
     
-    monthly_shares_reg = lm_robust(share~factor(month),monthly_shares %>% group_by(fiscal_year) %>% filter(n()==12))
-    
-    fcast_df1 = read_csv(paste0("Data/Processing/imputed_data/imputed_data_asof",floor_date(Sys.Date(),"year")-1,".csv")) %>% 
-      select(-any_of(paste0("gt_",bad_vars$category))) %>% 
-      arrange(date) %>%
-      mutate(year=year(date),
-             month=month(date)) %>%
-      select(-c(PCE,PRS85006112)) %>%
-      select(-one_of("ADPMNUSNERSA")) %>% 
-      left_join(mandatory %>% 
-                  mutate(record_date=floor_date(record_date,"month"),
-                         current_month_net_rcpt_amt=as.numeric(current_month_rcpt_outly_amt)/1000000000) %>% 
-                  select(record_date,current_month_net_rcpt_amt) %>% 
-                  rename(date=record_date,
-                         value=current_month_net_rcpt_amt)) %>% # join the yvariable
-      ungroup() %>% 
-      mutate_at(vars(PAYEMS:JTSJOL,INDPRO:DGS10),~((./dplyr::lag(.,1)-1)*100)) %>%
-      mutate_at(vars(UNRATE:DTCDFSA066MSFRBPHI,grep("gt_",colnames(.),value=TRUE)),~(.-dplyr::lag(.,1))) %>%
-      mutate(lag1=dplyr::lag(value,1),
-             lag2=dplyr::lag(value,2),
-             lag3=dplyr::lag(value,3),
-             lag4=dplyr::lag(value,4)) %>%
-      ungroup() %>% 
-      mutate(fiscal_year=as.integer(quarter(date, with_year = TRUE, fiscal_start = 10)))  %>% 
-      left_join(cbo_proj %>% 
-                  filter(subcategory%in%c("Nondefense Discretionary","Other Mandatory")) %>% 
-                  group_by(projected_fiscal_year,subcategory) %>% 
-                  slice(n()) %>% 
-                  group_by(projected_fiscal_year) %>% 
-                  summarize(value=sum(value,na.rm=TRUE)) %>% 
-                  rename(cbo_proj=value,
-                         fiscal_year=projected_fiscal_year))
-    fcast_df1$cbo_proj_month = as.numeric(predict(monthly_shares_reg,data.frame(month=fcast_df1$month)))*fcast_df1$cbo_proj
-    fcast_df1 = fcast_df1 %>% 
-      mutate(cbo_proj_diff=(value/cbo_proj_month-1)*100) %>% 
-      mutate(lag1_cbo_proj_diff=dplyr::lag(cbo_proj_diff,1),
-             lag2_cbo_proj_diff=dplyr::lag(cbo_proj_diff,2))
-    
-    fcast_df1 = read_csv(paste0("Data/Processing/imputed_data/imputed_data_asof",floor_date(Sys.Date(),"year")-1,".csv")) %>% 
-      select(-any_of(paste0("gt_",bad_vars$category))) %>% 
-      arrange(date) %>%
-      mutate(year=year(date),
-             month=month(date)) %>%
-      select(-c(PCE,PRS85006112)) %>%
-      select(-one_of("ADPMNUSNERSA")) %>% 
-      left_join(mandatory %>% 
-                  mutate(record_date=floor_date(record_date,"month"),
-                         current_month_net_rcpt_amt=as.numeric(current_month_rcpt_outly_amt)/1000000000) %>% 
-                  select(record_date,current_month_net_rcpt_amt) %>% 
-                  rename(date=record_date,
-                         value=current_month_net_rcpt_amt)) %>% # join the yvariable
-      ungroup() %>% 
-      mutate_at(vars(PAYEMS:JTSJOL,INDPRO:DGS10),~((./dplyr::lag(.,1)-1)*100)) %>%
-      mutate_at(vars(UNRATE:DTCDFSA066MSFRBPHI,grep("gt_",colnames(.),value=TRUE)),~(.-dplyr::lag(.,1))) %>%
-      mutate(lag1=dplyr::lag(value,1),
-             lag2=dplyr::lag(value,2),
-             lag3=dplyr::lag(value,3),
-             lag4=dplyr::lag(value,4)) %>%
-      ungroup() %>% 
-      mutate(fiscal_year=as.integer(quarter(date, with_year = TRUE, fiscal_start = 10)))  %>% 
-      left_join(cbo_proj %>% 
-                  filter(subcategory%in%c("Nondefense Discretionary","Other Mandatory")) %>% 
-                  group_by(projected_fiscal_year,subcategory) %>% 
-                  slice(n()) %>% 
-                  group_by(projected_fiscal_year) %>% 
-                  summarize(value=sum(value,na.rm=TRUE)) %>% 
-                  rename(cbo_proj=value,
-                         fiscal_year=projected_fiscal_year))
-    fcast_df1$cbo_proj_month = as.numeric(predict(monthly_shares_reg,data.frame(month=fcast_df1$month)))*fcast_df1$cbo_proj
-    fcast_df1 = fcast_df1 %>% 
-      mutate(cbo_proj_diff=(value/cbo_proj_month-1)*100) %>% 
-      mutate(lag1_cbo_proj_diff=dplyr::lag(cbo_proj_diff,1),
-             lag2_cbo_proj_diff=dplyr::lag(cbo_proj_diff,2))
-    
-    fcast_df2 = read_csv(paste0("Data/Processing/imputed_data/imputed_data_asof",Sys.Date(),".csv")) %>% 
-      select(-any_of(paste0("gt_",bad_vars$category))) %>% 
-      arrange(date) %>%
-      mutate(year=year(date),
-             month=month(date)) %>%
-      select(-c(PCE,PRS85006112)) %>%
-      select(-one_of("ADPMNUSNERSA")) %>% 
-      left_join(mandatory %>% 
-                  mutate(record_date=floor_date(record_date,"month"),
-                         current_month_net_rcpt_amt=as.numeric(current_month_rcpt_outly_amt)/1000000000) %>% 
-                  select(record_date,current_month_net_rcpt_amt) %>% 
-                  rename(date=record_date,
-                         value=current_month_net_rcpt_amt)) %>% # join the yvariable
-      ungroup() %>% 
-      mutate_at(vars(PAYEMS:JTSJOL,INDPRO:DGS10),~((./dplyr::lag(.,1)-1)*100)) %>%
-      mutate_at(vars(UNRATE:DTCDFSA066MSFRBPHI,grep("gt_",colnames(.),value=TRUE)),~(.-dplyr::lag(.,1))) %>%
-      mutate(lag1=dplyr::lag(value,1),
-             lag2=dplyr::lag(value,2),
-             lag3=dplyr::lag(value,3),
-             lag4=dplyr::lag(value,4)) %>%
-      ungroup() %>% 
-      mutate(fiscal_year=as.integer(quarter(date, with_year = TRUE, fiscal_start = 10)))  %>% 
-      left_join(cbo_proj %>% 
-                  filter(subcategory%in%c("Nondefense Discretionary","Other Mandatory")) %>% 
-                  group_by(projected_fiscal_year,subcategory) %>% 
-                  slice(n()) %>% 
-                  group_by(projected_fiscal_year) %>% 
-                  summarize(value=sum(value,na.rm=TRUE)) %>% 
-                  rename(cbo_proj=value,
-                         fiscal_year=projected_fiscal_year))
-    fcast_df2$cbo_proj_month = as.numeric(predict(monthly_shares_reg,data.frame(month=fcast_df2$month)))*fcast_df2$cbo_proj
-    fcast_df2 = fcast_df2 %>% 
-      mutate(cbo_proj_diff=(value/cbo_proj_month-1)*100) %>% 
-      mutate(lag1_cbo_proj_diff=dplyr::lag(cbo_proj_diff,1),
-             lag2_cbo_proj_diff=dplyr::lag(cbo_proj_diff,2))
-    
   }
   
-  X = model.matrix(as.formula(paste0("value","~",paste(colnames(fcast_df1)[c(2:which(colnames(fcast_df1)=="gt_999"))],collapse="+"))),
-                   fcast_df1 %>% filter(date<"2024-01-01"&year(date)>=2006&!is.na(value)))[, -1]
-  y = (fcast_df1 %>% filter(date<"2024-01-01"&year(date)>=2006&!is.na(value)))[['value']]
+
+  return(monthly_shares)
   
-  weight = (1:nrow(X))/nrow(X)
-  weight = ifelse(weight<.5,.5,weight)
-  fit_lasso_state = glmnet(X, y, alpha = 1,pmax=20,weights = weight)
-  # weight by how recent the data is
+}
+
+get_monthly_shares_df_spending = function(col_mts,col_cbo){
+  monthly_shares = get_budget_outlay_df(col_cbo) %>% 
+    mutate(share=value/total,
+           month=month(date),
+           fy_month=case_when(
+             month%in%c(10:12)~month-9,
+             month%in%c(1:9)~month+3
+           )) %>% 
+    group_by(fiscal_year) %>% 
+    arrange(fy_month) %>% 
+    mutate(cum_total=cumsum(value),
+           cum_share=cumsum(share),
+           num=n()) %>% 
+    left_join(cbo_proj %>% 
+                {if(col_cbo=="Other Spending") filter(.,subcategory %in% c("Nondefense Discretionary","Other Mandatory")) else if(col_cbo=="National Defense") filter(.,subcategory=="Defense Discretionary") else filter(.,subcategory%in%col_cbo)} %>% 
+                group_by(projected_fiscal_year,subcategory) %>% 
+                filter(baseline_date<=as.Date(paste0(projected_fiscal_year,"-09-30"))) %>% 
+                slice(n()) %>% 
+                group_by(projected_fiscal_year) %>% 
+                summarize(value=sum(value,na.rm=TRUE)) %>% 
+                select(projected_fiscal_year,value) %>% 
+                rename(cbo_proj=value,
+                       fiscal_year=projected_fiscal_year)) %>% 
+    ungroup() %>%
+    rowwise() %>% 
+    mutate(first_day_thismonth_weekend=(weekdays(date,abbreviate=TRUE)%in%c("Sat","Sun")|date%in%as.Date(as.character(tis::holidays(year(date))),format="%Y%m%d"))&month!=1,
+           first_day_nextmonth_weekend=(weekdays(date %m+% months(1),abbreviate=TRUE)%in%c("Sat","Sun")|(date %m+% months(1))%in%as.Date(as.character(tis::holidays(year(date))),format="%Y%m%d"))&month!=12,
+           last_day_thismonth_weekend=(weekdays((date %m+% months(1) )- 1,abbreviate=TRUE)%in%c("Sat","Sun")|((date %m+% months(1) )- 1)%in%as.Date(as.character(tis::holidays(year(date))),format="%Y%m%d"))&month!=12) %>% 
+    ungroup()
   
-  selected_coefs_state = data.frame(varImp(fit_lasso_state,lambda=min(fit_lasso_state$lambda), scale = FALSE)) %>% filter(Overall!=0)
-  selected_coefs_state$var = as.numeric(gsub("gt_","",rownames(selected_coefs_state)))
-  coef_value_state = coef(fit_lasso_state,s=min(fit_lasso_state$lambda))[,1][-1]
-  coef_value_state = coef_value_state[coef_value_state!=0]
-  selected_coefs_state = cbind(selected_coefs_state,coef_value_state)
-  selected_coefs_state$category = sapply(selected_coefs_state$var,which_category)
-  selected_coefs_state = selected_coefs_state %>% arrange(-Overall)
+  return(monthly_shares)
+}
+
+get_monthly_shares_df_revenue = function(mts_dataset,col_mts,cbo_component,cbo_category){
+  monthly_shares = mts_dataset %>% 
+    filter(classification_desc==col_mts) %>% 
+    mutate(record_date=floor_date(record_date,"month"),
+           current_month_net_rcpt_amt=as.numeric(current_month_net_rcpt_amt)/1000000000) %>% 
+    select(record_date,current_month_net_rcpt_amt) %>% 
+    rename(date=record_date,
+           value=current_month_net_rcpt_amt) %>% 
+    mutate(fiscal_year=as.integer(quarter(date, with_year = TRUE, fiscal_start = 10))) %>% 
+    group_by(fiscal_year) %>% 
+    mutate(total=sum(value,na.rm=TRUE)) %>% 
+    ungroup() %>%  
+    mutate(share=value/total,
+           month=month(date),
+           fy_month=case_when(
+             month%in%c(10:12)~month-9,
+             month%in%c(1:9)~month+3
+           )) %>% 
+    group_by(fiscal_year) %>% 
+    arrange(fy_month) %>% 
+    mutate(cum_total=cumsum(value),
+           cum_share=cumsum(share),
+           num=n()) %>% 
+    left_join(cbo_proj %>% 
+                filter(component==cbo_component&category==cbo_category) %>% 
+                group_by(projected_fiscal_year) %>% 
+                filter(baseline_date<=as.Date(paste0(projected_fiscal_year,"-09-30"))) %>% 
+                slice(n()) %>% 
+                select(projected_fiscal_year,value) %>% 
+                rename(cbo_proj=value,
+                       fiscal_year=projected_fiscal_year)) %>% 
+    mutate(error=total/cbo_proj) %>% 
+    ungroup() %>% 
+    arrange(fiscal_year,fy_month) %>% 
+    mutate(error_ly=dplyr::lag(error,12),
+           error_ly=ifelse(fiscal_year==2016,error[fiscal_year==2015][1],error_ly)) %>% 
+    ungroup() %>%
+    select(-num) 
   
-  test = lm_robust(as.formula(paste0("value","~lag1+lag2+lag3+lag4+cbo_proj_month+",paste(c(rownames(selected_coefs_state)),collapse="+"))),
-                   data = fcast_df1 %>% filter(date<='2024-01-01') %>% mutate(weight=(1:n())/n()))
-  
-  if(is.infinite(max(abs(which(is.na(tail(fcast_df2$value,5)))-6)))){
-    next
-  }else{
-    for(dat in tail(fcast_df2$date,max(abs(which(is.na(tail(fcast_df2$value,5)))-6)))){
-      
-      fcast_df2$value[fcast_df2$date==dat] = predict(test,fcast_df2 %>% filter(date==dat))
-      
-      fcast_df2 = fcast_df2 %>% 
-        mutate(lag1=dplyr::lag(value,1),
-               lag2=dplyr::lag(value,2),
-               lag3=dplyr::lag(value,3),
-               lag4=dplyr::lag(value,4))
-      
-    }
-  }
-  
-  
-  pred_df = data.frame(
-    date=fcast_df2[['date']],
-    var=cbo_category,
-    predict(test,fcast_df2,se.fit=TRUE, interval="confidence", alpha=0.70),
-    actual=fcast_df2[['value']],
-    cbo_proj=fcast_df2[['cbo_proj_month']]
-  ) %>% 
-    rename(pred=fit.fit)
-  
-  return(list(
-    'data'=fcast_df2,
-    'reg'=test,
-    'pred_df'=pred_df,
-    'monthly_shares_reg'=monthly_shares_reg
-  ))
+  return(monthly_shares)
   
 }
 
@@ -1373,7 +2770,6 @@ impute_function_mice = function(df,dat){
   
 }
 
-
 impute_function_kalman = function(df,dat){
   
   require(imputeTS)
@@ -1449,6 +2845,8 @@ get_imputed_data = function(dat,col,testing){
 
 fcast_gdp_ols = function(dat,col,testing=FALSE){
   
+  conflicted::conflicts_prefer(dplyr::lag)
+  
   set.seed(178)
   
   fcast_df1 = get_imputed_data(max(c(((ceiling_date(as.Date(dat),"quarter"))-1) %m-% years(1),'2010-03-31')),col,testing)
@@ -1485,7 +2883,7 @@ fcast_gdp_ols = function(dat,col,testing=FALSE){
       rowwise() %>%  
       mutate(num=max(c(.5,num))) %>% 
       ungroup() %>% 
-      mutate(num=importance_weights(num)) %>% 
+      mutate(num=hardhat::importance_weights(num)) %>% 
       filter(year(date)>=2006&!is.na(!!sym(col)))
     
     # tuning_mod = cv.glmnet(x= model.matrix(as.formula(paste0(col,"~lag1+lag2+",paste(vars,collapse="+"))),
@@ -1513,6 +2911,30 @@ fcast_gdp_ols = function(dat,col,testing=FALSE){
 
     tidy_lm = tidy(tuning_mod)
     
+    if(col=="GDPC1"){
+      
+      not_allowed = data.frame(
+        term=c("RRSFS", "CE16OV", "PAYEMS", "gt_145", "gt_672",       
+               "gt_340", "gt_531" , "TOTBUSIMNSA", "gt_670", "gt_899",        
+               "gt_718", "IR", "CPILFESL", "gt_652", "IHLIDXUS",
+               "gt_1268", "DTCDISA066MSFRBNY", "GACDISA066MSFRBNY", "ICSA","gt_671"),
+        estimate=c(-1, -1, -1, -1, -1,       
+                   -1, -1, -1, -1, -1,        
+                   -1, -1, -1, -1, -1,
+                   -1, 1, -1, 1,-1)
+      )
+      
+      check_df = bind_rows(tidy_lm %>% select(term,estimate) %>% mutate(estimate=sign(estimate)),
+                           not_allowed)
+      
+      check_df$flag = duplicated(check_df)
+      
+      checked=all(check_df$flag==FALSE)
+      
+      vars = tidy_lm %>% filter(!(term%in%check_df$term[check_df$flag==TRUE])&!grepl("Intercept|lag1",term)&p.value<.3) %>% distinct(term) %>% pull(term)
+      
+      
+    }
     if(col=="PCECC96"){
       
       not_allowed = data.frame(
@@ -1542,10 +2964,10 @@ fcast_gdp_ols = function(dat,col,testing=FALSE){
       not_allowed = data.frame(
         term=c("AMDMVS","gt_999","gt_989","gt_1339","gt_983","gt_255",
                "DSPIC96","gt_814","gt_229","INDPRO","gt_813","PERMIT",
-               "IQ","gt_312","gt_957","BOPTIMP","HSN1F","DFF","GACDISA066MSFRBNY"),
+               "IQ","gt_312","gt_957","BOPTIMP","HSN1F","DFF","GACDISA066MSFRBNY","AMDMVS"),
         estimate=c(-1,-1,-1,1,-1,-1,
                    -1,-1,-1,-1,-1,-1,
-                   1,-1,-1,-1,1,1,-1)
+                   1,-1,-1,-1,1,1,-1,1)
       )
       
       check_df = bind_rows(tidy_lm %>% select(term,estimate) %>% mutate(estimate=sign(estimate)),
@@ -1626,7 +3048,6 @@ fcast_gdp_ols = function(dat,col,testing=FALSE){
       
     }
     
-    
     i=i+1
     
   }
@@ -1638,7 +3059,7 @@ fcast_gdp_ols = function(dat,col,testing=FALSE){
   i=2
   if(length(dates)>1){
     
-    fcast_df1$lag1[fcast_df1$date==dates[i]] = predict(test,fcast_df1 %>% filter(date==dates[i-1]))
+    fcast_df1$lag1[fcast_df1$date==dates[i]] = predict(tuning_mod,fcast_df1 %>% filter(date==dates[i-1]))
     
   }
   
@@ -1721,5 +3142,20 @@ fcast_gdp_ols2 = function(dat,col,testing=FALSE){
   
   return(list(gdp_pred_df,explainer,breakdown))
   
+}
+
+
+make_state_trends = function(end_date,bad_vars,most_recent=TRUE){
+  if(most_recent){
+    state_trends = read_csv(paste0("Data/Processing/gt_data/",list.files("Data/Processing/gt_data")[which.max(gsub("trends_full_sa_|.csv","",list.files("Data/Processing/gt_data")))])) %>% # get first file that would include this date
+      mutate(release_date=date+6)
+  }else{
+    if(is.na(list.files("Data/Processing/gt_data")[which(gsub("trends_full_sa_|.csv","",list.files("Data/Processing/gt_data"))>=gsub("-","",end_date))[1]])){ stop("No google trends data with this date.")}
+    state_trends = read_csv(paste0("Data/Processing/gt_data/",list.files("Data/Processing/gt_data")[which(gsub("trends_full_sa_|.csv","",list.files("Data/Processing/gt_data"))>=gsub("-","",end_date))[1]])) %>% # get first file that would include this date
+      mutate(release_date=date+6)
+  }
+  state_trends = state_trends %>%
+    filter(!(category%in%bad_vars$category)&date<=(as.Date(end_date)+6))
+  return(state_trends)
 }
 
