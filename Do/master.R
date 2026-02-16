@@ -19,7 +19,7 @@ reticulate::py_require(c('google-api-python-client',
                          'dill'))
 
 end_date = Sys.Date()
-headroom_date = "2026-01-01"
+headroom_date = max(c("2026-01-01",end_date %m-% years(1)))
 announcement_date = NA
 
 reticulate::py_run_file("Do/1a_pull_trends_data.py")

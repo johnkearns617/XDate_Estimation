@@ -16,6 +16,9 @@ library(tidyverse)
 library(funspotr)
 library(data.table)
 
+conflicted::conflicts_prefer(lubridate::year)
+conflicted::conflicts_prefer(lubridate::month)
+
 load(url("https://github.com/johnkearns617/XDate_Estimation/raw/refs/heads/main/Data/Processing/image_saves/chart_data.RData"))
 
 charts = list()
@@ -28,6 +31,8 @@ select(absolute_paths) %>%
 filter(grepl("image_saves",absolute_paths)&grepl("data_asof_",absolute_paths)) %>%
 pull(absolute_paths),
 15)){
+  
+  if(substr(dat,109,118)<"2026-01-01"){ next }
   
   load(url(dat))
   
@@ -74,28 +79,35 @@ ui <- fluidPage(
 server <- function(input, output) {
 
     output$xdate_chart <- renderPlotly({
-      ggplotly(ggplot(my_chart %>% filter(date<="2025-09-30") %>% mutate(label=paste0("$",round(running_bal,2),"B")),aes(x=date)) + 
+      ggplotly(ggplot(my_chart %>% filter(record_date<=(record_date[1] %m+% years(5))) %>% mutate(label=paste0("$",round(running_bal,2),"B")),
+                      aes(x=record_date,group=1,text = paste("Date:", record_date,
+                                                       "<br>Fiscal space remaining ($B):", round(running_bal,2),
+                                                       "<br>Upper bound:", round(running_bal_upper,2),
+                                                       "<br>Lower bound:",round(running_bal_lower,2),
+                                                       "<br>Estimated date to hit debt ceiling:",exmeasures_date,
+                                                       "<br>Estimated X-date:",my_chart %>% filter(record_date>=dat_value&running_bal<=0) %>% slice(1) %>% pull(record_date)))) + 
         geom_ribbon(aes(ymin=running_bal_lower,ymax=running_bal_upper),alpha=.3) +
         geom_line(aes(y=running_bal)) +
+        geom_vline(xintercept=as.Date(exmeasures_date),color="red") +
         theme_bw() +
         labs(x="",y="Fiscal Space Remaining ($B)")
-        )
+        ,tooltip="text")
     })
     
     output$xdate = renderText({
       
-      paste0("The estimated X-Date is: ",my_chart %>% filter(running_bal==0) %>% ungroup() %>% slice(1) %>% pull(date),"\n",
-             "and as early as: ",my_chart %>% filter(running_bal_lower==0) %>% ungroup() %>% slice(1) %>% pull(date))
+      paste0("The estimated X-Date is: ",my_chart %>% filter(record_date>=dat_value&running_bal<=0) %>% slice(1) %>% pull(record_date),"\n",
+             "and as early as: ",my_chart %>% filter(record_date>=dat_value&running_bal_lower<=0) %>% slice(1) %>% pull(record_date))
       
     })
     
     output$historical_chart = renderPlotly({
       
       ggplotly(
-        ggplot(charts,aes(x=date,color=as.Date(date_run),group=date_run)) + 
+        ggplot(charts,aes(x=record_date,color=as.Date(date_run),group=date_run)) + 
         #geom_ribbon(aes(ymin=running_bal_lower,ymax=running_bal_upper),alpha=.3) +
         geom_line(aes(y=running_bal,alpha=as.Date(date_run))) +
-        geom_line(data=charts %>% mutate(date_run=as.Date(date_run)) %>% filter(date_run==max(date_run)),aes(x=date,y=running_bal),color="black") +
+        geom_line(data=charts %>% mutate(date_run=as.Date(date_run)) %>% filter(date_run==max(date_run)),aes(x=record_date,y=running_bal),color="black") +
         scale_color_gradient(low='red',high='green') +
         theme_bw() +
         labs(x="",y="Fiscal Space Remaining ($B)") +
@@ -106,7 +118,7 @@ server <- function(input, output) {
     
     output$yearly_chart = renderPlotly({
       ggplotly(
-        ggplot(yearly_chart_df %>% filter(year>=2015),aes(x=year,y=scaled_yearly,fill=group)) +
+        ggplot(yearly_chart_df %>% filter(year>=2015),aes(x=year,y=scaled_yearly,fill=cbo_category)) +
           geom_bar(stat="identity") +
           geom_line(inherit.aes = FALSE,aes(x=year,y=yearly_deficit)) +
           geom_point(inherit.aes = FALSE,aes(x=year,y=yearly_deficit)) +
@@ -122,10 +134,10 @@ server <- function(input, output) {
       if(!is.null(d$x)){
       
         plotly::ggplotly(
-          ggplot(monthly_chart_df %>% filter((year(actual_date)==d$x&month(actual_date)<=9)|(year(actual_date)==(d$x-1)&month(actual_date)>9)),aes(x=as.yearmon(actual_date),y=scaled_monthly,fill=group)) +
+          ggplot(monthly_chart_df %>% filter((year(record_date)==d$x&month(record_date)<=9)|(year(record_date)==(d$x-1)&month(record_date)>9)),aes(x=as.yearmon(record_date),y=scaled_monthly,fill=cbo_category)) +
             geom_bar(stat="identity") +
-            geom_line(inherit.aes = FALSE,aes(x=as.yearmon(actual_date),y=monthly_deficit)) +
-            geom_point(inherit.aes = FALSE,aes(x=as.yearmon(actual_date),y=monthly_deficit)) +
+            geom_line(inherit.aes = FALSE,aes(x=as.yearmon(record_date),y=monthly_deficit)) +
+            geom_point(inherit.aes = FALSE,aes(x=as.yearmon(record_date),y=monthly_deficit)) +
             theme_bw() +
             labs(x="",y="Outlays/Receipts ($B)",title=paste0("Fiscal year: ",d$x)) +
             scale_fill_manual(values=colors_df$cols,
@@ -144,10 +156,10 @@ server <- function(input, output) {
       if(!is.null(d$x)){
         
         plotly::ggplotly(
-          ggplot(daily_chart_df %>% filter(as.yearmon(actual_date)==d$x),aes(x=actual_date,y=scaled_daily,fill=group)) +
+          ggplot(daily_chart_df %>% filter(as.yearmon(record_date)==d$x),aes(x=record_date,y=final_pred_day,fill=cbo_category)) +
             geom_bar(stat="identity") +
-            geom_line(inherit.aes = FALSE,aes(x=actual_date,y=daily_deficit)) +
-            geom_point(inherit.aes = FALSE,aes(x=actual_date,y=daily_deficit)) +
+            geom_line(inherit.aes = FALSE,aes(x=record_date,y=daily_deficit)) +
+            geom_point(inherit.aes = FALSE,aes(x=record_date,y=daily_deficit)) +
             theme_bw() +
             labs(x="",y="Outlays/Receipts ($B)") +
             scale_fill_manual(values=colors_df$cols,
