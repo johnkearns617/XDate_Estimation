@@ -67,6 +67,7 @@ conflicted::conflict_prefer("filter","dplyr")
 conflicted::conflicts_prefer(dplyr::lead)
 conflicted::conflicts_prefer(dplyr::select)
 conflicted::conflicts_prefer(tidyr::replace_na)
+conflicted::conflicts_prefer(lubridate::year)
 
 set.seed(178)
 
