@@ -26,14 +26,14 @@ library(rjson)
 library(httr)
 library(jsonlite)
 
-conflicted::conflict_prefer("filter","dplyr")
+conflicted::conflict_prefer(dplyr::filter)
 conflicted::conflicts_prefer(jsonlite::fromJSON)
 conflicted::conflicts_prefer(httr::config)
-conflicted::conflicts_prefer("lag","dplyr")
-conflicted::conflicts_prefer("lead","dplyr")
-conflicted::conflicts_prefer("quarter","lubridate")
-conflicted::conflicts_prefer("yearmon","zoo")
-conflicted::conflicts_prefer("yearqtr","zoo")
+conflicted::conflicts_prefer(dplyr::lag)
+conflicted::conflicts_prefer(dplyr::lead)
+conflicted::conflicts_prefer(lubridate::quarter)
+conflicted::conflicts_prefer(zoo::yearmon)
+conflicted::conflicts_prefer(zoo::yearqtr)
 
 
 
