@@ -27,6 +27,7 @@ library(missMDA)
 library(FactoMineR)
 library(mice)
 library(tis)
+library(ranger)
 
 conflicted::conflicts_prefer(dplyr::last)
 
