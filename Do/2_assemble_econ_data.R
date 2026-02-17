@@ -26,7 +26,7 @@ library(rjson)
 library(httr)
 library(jsonlite)
 
-conflicted::conflict_prefer(dplyr::filter,
+conflicted::conflicts_prefer(dplyr::filter,
                             jsonlite::fromJSON,
                             httr::config,
                             dplyr::lag,
