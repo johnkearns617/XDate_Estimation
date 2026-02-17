@@ -29,9 +29,8 @@ library(mice)
 library(DALEX)
 library(tis)
 
-conflicted::conflict_prefer("filter","dplyr")
 conflicted::conflicts_prefer(DALEX::explain)
-conflicted::conflict_prefer("select","dplyr")
+conflicted::conflict_prefer(dplyr::select)
 
 
 set.seed(178)
