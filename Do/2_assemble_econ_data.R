@@ -33,7 +33,9 @@ conflicted::conflicts_prefer(dplyr::filter,
                             dplyr::lead,
                             lubridate::quarter,
                             zoo::yearmon,
-                            zoo::yearqtr)
+                            zoo::yearqtr,
+                            lubridate::month,
+                            lubridate::day)
 
 
 
