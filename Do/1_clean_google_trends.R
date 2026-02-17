@@ -23,8 +23,8 @@ library(signal)
 library(plm)
 library(boiwsa)
 
-conflicted::conflict_prefer("filter","dplyr")
-conflicted::conflicts_prefer("print","base")
+conflicted::conflicts_prefer(dplyr::filter,
+                             base::print)
 
 data(categories) # categories from Google Trends
 
