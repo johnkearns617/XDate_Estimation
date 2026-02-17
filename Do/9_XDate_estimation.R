@@ -27,8 +27,6 @@ library(missMDA)
 library(FactoMineR)
 library(mice)
 
-conflicted::conflict_prefer("filter","dplyr")
-
 set.seed(178)
 
 #### headroom calculation ####
