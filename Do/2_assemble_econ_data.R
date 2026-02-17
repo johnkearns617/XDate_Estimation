@@ -29,6 +29,14 @@ library(jsonlite)
 conflicted::conflict_prefer("filter","dplyr")
 conflicted::conflicts_prefer(jsonlite::fromJSON)
 conflicted::conflicts_prefer(httr::config)
+conflicted::conflicts_prefer("lag","dplyr")
+conflicted::conflicts_prefer("lead","dplyr")
+conflicted::conflicts_prefer("quarter","lubridate")
+conflicted::conflicts_prefer("yearmon","zoo")
+conflicted::conflicts_prefer("yearqtr","zoo")
+
+
+
 
 data(categories) # categories from Google Trends
 
