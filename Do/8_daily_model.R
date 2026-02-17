@@ -27,10 +27,6 @@ library(missMDA)
 library(FactoMineR)
 library(mice)
 
-conflicted::conflicts_prefer(dplyr::lag)
-conflicted::conflict_prefer("filter","dplyr")
-conflicted::conflicts_prefer(dplyr::lead)
-conflicted::conflicts_prefer(dplyr::select)
 conflicted::conflicts_prefer(tidyr::replace_na)
 
 set.seed(178)
