@@ -24,8 +24,6 @@ library(plm)
 library(blsAPI)
 library(rjson)
 
-conflicted::conflict_prefer("filter","dplyr")
-
 set.seed(178)
 
 # trends data
