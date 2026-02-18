@@ -24,47 +24,6 @@ def main():
                   developerKey=r.gt_key,
                   discoveryServiceUrl=DISCOVERY_URL)
 
-  # Single Graph Example, no restrictions
-  graph = service.getGraph(terms='apple')
-  response = graph.execute()
-  pprint.pprint(response)
-
-  # Averages, no restrictions.
-  averages = service.getGraphAverages(terms=['apple', 'orange'])
-  response = averages.execute()
-  pprint.pprint(response)
-
-  # Regions, no restrictions.
-  regions = service.regions().list(term='apple')
-  response = regions.execute()
-  pprint.pprint(response)
-  # Top queries, no restrictions.
-  top_queries = service.getTopQueries(term='apple')
-  response = top_queries.execute()
-  pprint.pprint(response)
-
-  # Top topics, no restrictions.
-  # The result for topics (top & rising) is a list of knowledge graph
-  # topics (entity ids - mids), which can be resolved using freebase.com
-  top_topics = service.getTopTopics(term='apple')
-  response = top_topics.execute()
-  pprint.pprint(response)
-
-  # Note that returned values for rising queries and topics represents
-  # percentage of rising in searches since previous time range. If there
-  # were close to 0 searches for the term in the previous time range, the
-  # value will be Double.MAX_VALUE and considered "breakout".
-
-  # Rising queries, no restrictions.
-  rising_queries = service.getRisingQueries(term='apple')
-  response = rising_queries.execute()
-  pprint.pprint(response)
-
-  # Rising topics, no restrictions.
-  rising_topics = service.getRisingTopics(term='apple')
-  response = rising_topics.execute()
-  pprint.pprint(response)
-
   # Creating restrictions.
   # Note that you need both a startDate and an endDate or none.
   # Dates should be a month and a year in the format YYYY-MM e.g. '2010-01'
