@@ -95,6 +95,8 @@ tax_days = read_csv("Data/Raw/tax_days_2000_2040.csv") %>%
   mutate(tax_day=1) %>% 
   select(date,tax_day)
 
+overlay_df = read_csv("Data/Raw/overlay_df.csv")
+overlay_daily_df = overlay_df %>% slice(1) %>% mutate_all(~NA) # replace when you have value
 #imputed_df = read_csv(paste0("Data/Processing/imputed_data/imputed_data_asof",Sys.Date(),".csv"))
 
 nowcast_misc_receipts = nowcast_daily_budget_receipt(dts,receipts,end_date,"Miscellaneous Receipts","Total -- Miscellaneous Receipts",NA)

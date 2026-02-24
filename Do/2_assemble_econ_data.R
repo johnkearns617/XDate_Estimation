@@ -1061,6 +1061,27 @@ funds = data.table::rbindlist(list(
 cbo_proj = read_csv("https://raw.githubusercontent.com/US-CBO/eval-projections/refs/heads/main/input_data/baselines.csv")
 cbo_actual = read_csv("https://raw.githubusercontent.com/US-CBO/eval-projections/refs/heads/main/input_data/actuals.csv")
 
+if(end_date>="2025-02-22"){
+  
+  cbo_proj = cbo_proj %>% 
+    mutate(value=case_when(
+      baseline_date<"2026-02-01"~value,
+      subcategory!="Customs Duties"~value,
+      projected_fiscal_year==2026~value-148.25,
+      projected_fiscal_year==2027~value-186.75,
+      projected_fiscal_year==2028~value-80,
+      projected_fiscal_year==2029~value-82.5,
+      projected_fiscal_year==2030~value-85.5,
+      projected_fiscal_year==2031~value-88.5,
+      projected_fiscal_year==2032~value-92,
+      projected_fiscal_year==2033~value-96,
+      projected_fiscal_year==2034~value-99,
+      projected_fiscal_year==2035~value-104,
+      projected_fiscal_year==2036~value-110
+    ))
+  
+}
+
 temp <- tempfile()
 download.file("https://www.cbo.gov/system/files/2026-02/55022-2026-02-Historical-Economic-Data.zip",temp)
 cbo_econ <- read_csv(unz(temp, "Quarterly_February2026.csv")) %>% 

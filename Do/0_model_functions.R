@@ -561,6 +561,12 @@ nowcast_daily_budget_receipt = function(dts,mts_dataset,end_date,col,col_mts,tes
   models_daily = readRDS(paste0("Data/Processing/Models/nowcast_daily_",col,".RDS"))
   models_monthly = readRDS(paste0("Data/Processing/Models/nowcast_",col,".RDS"))
   
+  overlays = overlay_df %>% 
+    filter(date_active<=end_date&(is.na(date_inactive)|date_inactive<end_date)&category==col)
+  
+  overlays_daily = overlay_daily_df %>% 
+    filter(date_active<=end_date&(is.na(date_inactive)|date_inactive<end_date)&category==col)
+  
   # get monthly predicted share at outset to avoid copying code over and over
   monthly_share_pred = data.frame(date=seq.Date(floor_date(min(dts$record_date),"month"),
                                                 as.Date(paste0(max(cbo_proj$projected_fiscal_year[cbo_proj$baseline_date<=end_date]),"-09-01")),
@@ -795,6 +801,19 @@ nowcast_daily_budget_receipt = function(dts,mts_dataset,end_date,col,col_mts,tes
       mutate(final_pred_month_lwr=final_pred_month+pred_cumshare_lwr*pred_total,
              final_pred_month_upper=final_pred_month+pred_cumshare_upper*pred_total)
     
+    if(nrow(overlays)>0){
+      
+      x_data1 = x_data1 %>% 
+        mutate(up_diff=final_pred_month_upper-final_pred_month,
+               down_diff=final_pred_month_lwr-final_pred_month) %>% 
+        left_join(overlays %>% select(date,overlay_value=value)) %>% 
+        mutate(final_pred_month=ifelse(is.na(overlay_value),final_pred_month,overlay_value),
+               final_pred_month_lwr=ifelse(is.na(overlay_value),final_pred_month_lwr,overlay_value+down_diff),
+               final_pred_month_upper=ifelse(is.na(overlay_value),final_pred_month_upper,overlay_value+up_diff)) %>% 
+        select(-c(up_diff,down_diff,overlay_value))
+      
+    }
+    
     tmp = predict(models_monthly$res_shrunk,x_data1 %>% filter(date==dat) %>% mutate(cbo_proj_month=final_pred_month),se.fit=TRUE)
     x_data$value[x_data$date==dat] = tmp$fit
     tmp = predict(models_monthly$res_shrunk,x_data1 %>% filter(date==dat) %>% mutate(cbo_proj_month=final_pred_month_lwr),se.fit=TRUE)
@@ -989,6 +1008,19 @@ nowcast_daily_budget_receipt = function(dts,mts_dataset,end_date,col,col_mts,tes
                                            is_bad(pred_total1_upper)&!is_bad(pred_month_total_upper)&is_bad(fit.upr)~pred_month_total_upper,
                                            TRUE~pred_total1_upper)) %>% 
         fill(pred_month_total,pred_month_total_lwr,pred_month_total_upper,pred_total1,pred_total1_lwr,pred_total1_upper,.direction="down")
+      
+    }
+    
+    if(nrow(overlays)>0){
+      
+      daily_df1 = daily_df1 %>% 
+        mutate(up_diff=pred_total1_upper-pred_total1,
+               down_diff=pred_total1_lwr-pred_total1) %>% 
+        left_join(overlays %>% select(date,overlay_value=value)) %>% 
+        mutate(pred_total1=ifelse(is.na(overlay_value),pred_total1,overlay_value),
+               pred_total1_lwr=ifelse(is.na(overlay_value),pred_total1_lwr,overlay_value+down_diff),
+               pred_total1_upper=ifelse(is.na(overlay_value),pred_total1_upper,overlay_value+up_diff)) %>% 
+        select(-c(up_diff,down_diff,overlay_value))
       
     }
     
@@ -1203,6 +1235,17 @@ nowcast_daily_budget_receipt = function(dts,mts_dataset,end_date,col,col_mts,tes
              pred_month1_lwr=pred_month_lwr*(tail(daily_df1$fy_month[!is.na(daily_df1$total_day)],1)/12)+cbo_pred_month_lwr*(1-tail(daily_df1$fy_month[!is.na(daily_df1$total_day)],1)/12),
              pred_month1_upper=pred_month_upper*(tail(daily_df1$fy_month[!is.na(daily_df1$total_day)],1)/12)+cbo_pred_month_upper*(1-tail(daily_df1$fy_month[!is.na(daily_df1$total_day)],1)/12))
     
+    if(nrow(overlays)>0){
+      daily_df1 = daily_df1 %>% 
+        mutate(up_diff=pred_month1_upper-pred_month1,
+               down_diff=pred_month1_lwr-pred_month1) %>% 
+        left_join(overlays %>% select(date,overlay_value=value)) %>% 
+        mutate(pred_month1=ifelse(is.na(overlay_value),pred_month1,overlay_value),
+               pred_month1_lwr=ifelse(is.na(overlay_value),pred_month1_lwr,overlay_value+down_diff),
+               pred_month1_upper=ifelse(is.na(overlay_value),pred_month1_upper,overlay_value+up_diff)) %>% 
+        select(-c(up_diff,down_diff,overlay_value))
+    }
+    
     preds = data.frame(predict(models_daily$share,data=daily_df1,type="quantiles",quantiles=c(0.5,.1,.9)))
     colnames(preds)=c("pred_share","pred_share_lwr","pred_share_upper")
     daily_df1 = bind_cols(daily_df1,preds) %>% 
@@ -1212,7 +1255,7 @@ nowcast_daily_budget_receipt = function(dts,mts_dataset,end_date,col,col_mts,tes
              pred_cumshare_daily_upper=cumsum(pred_share_upper),
              row=1:n()) %>% 
       mutate_at(vars(pred_cumshare_daily:pred_cumshare_daily_upper),~case_when(row>=max(row[weekend==FALSE])&.<=0~1,
-                                                                   TRUE~.)) %>% 
+                                                                               TRUE~.)) %>% 
       mutate_at(vars(pred_cumshare_daily:pred_cumshare_daily_upper),~./.[n()])
     
     preds = data.frame(predict(models_daily$scalar,daily_df1,se.fit=TRUE, interval="confidence", alpha=0.10))
@@ -1376,6 +1419,17 @@ nowcast_daily_budget_receipt = function(dts,mts_dataset,end_date,col,col_mts,tes
            pred_month1_lwr=pred_month_lwr*(.5)+cbo_pred_month_lwr*(.5),
            pred_month1_upper=pred_month_upper*(.5)+cbo_pred_month_upper*(.5))
   
+  if(nrow(overlays)>0){
+    daily_df2 = daily_df2 %>% 
+      mutate(up_diff=pred_month1_upper-pred_month1,
+             down_diff=pred_month1_lwr-pred_month1) %>% 
+      left_join(overlays %>% select(date,overlay_value=value)) %>% 
+      mutate(pred_month1=ifelse(is.na(overlay_value),pred_month1,overlay_value),
+             pred_month1_lwr=ifelse(is.na(overlay_value),pred_month1_lwr,overlay_value+down_diff),
+             pred_month1_upper=ifelse(is.na(overlay_value),pred_month1_upper,overlay_value+up_diff)) %>% 
+      select(-c(up_diff,down_diff,overlay_value))
+  }
+  
   preds = data.frame(predict(models_daily$share,data=daily_df2,type="quantiles",quantiles=c(0.5,.1,.9)))
   colnames(preds)=c("pred_share","pred_share_lwr","pred_share_upper")
   daily_df2 = bind_cols(daily_df2,preds) %>% 
@@ -1385,7 +1439,7 @@ nowcast_daily_budget_receipt = function(dts,mts_dataset,end_date,col,col_mts,tes
            pred_cumshare_daily_upper=cumsum(pred_share_upper),
            row=1:n()) %>% 
     mutate_at(vars(pred_cumshare_daily:pred_cumshare_daily_upper),~case_when(row>=max(row[weekend==FALSE])&.<=0~1,
-                                                                 TRUE~.)) %>% 
+                                                                             TRUE~.)) %>% 
     mutate_at(vars(pred_cumshare_daily:pred_cumshare_daily_upper),~./.[n()]) %>% 
     mutate(pred_month2=pred_month1,
            pred_month2_lwr=pred_month1_lwr,
@@ -1433,6 +1487,23 @@ nowcast_daily_budget_receipt = function(dts,mts_dataset,end_date,col,col_mts,tes
   
   daily_df = bind_rows(daily_df,daily_df2)
   
+  if(nrow(overlays_daily)>0){
+    
+    daily_df = daily_df %>% 
+      mutate(up_diff=final_pred_day_upper-final_pred_day,
+             down_diff=final_pred_day_lwr-final_pred_day) %>% 
+      left_join(overlays_daily %>% select(date,overlay_value=value)) %>% 
+      group_by(date) %>% 
+      mutate(final_pred_day=ifelse(is.na(overlay_value),final_pred_day,overlay_value),
+             final_pred_day_lwr=ifelse(is.na(overlay_value),final_pred_day_lwr,overlay_value+down_diff),
+             final_pred_day_upper=ifelse(is.na(overlay_value),final_pred_day_upper,overlay_value+up_diff),
+             final_pred_day_cum=cumsum(final_pred_day),
+             final_pred_day_cum_lwr=cumsum(final_pred_day_lwr),
+             final_pred_day_cum_upper=cumsum(final_pred_day_upper)) %>% 
+      select(-c(up_diff,down_diff,overlay_value))
+    
+  }
+  
   return(list(daily_df=daily_df,nowcast=monthly_nowcast))
   
 }
@@ -1441,6 +1512,12 @@ nowcast_daily_budget_outlay = function(dts,mts_dataset,end_date,col,col_mts,test
   
   models_daily = readRDS(paste0("Data/Processing/Models/nowcast_daily_",col,".RDS"))
   models_monthly = readRDS(paste0("Data/Processing/Models/nowcast_",col,".RDS"))
+  
+  overlays = overlay_df %>% 
+    filter(date_active<=end_date&(is.na(date_inactive)|date_inactive<end_date)&category==col)
+  
+  overlays_daily = overlay_daily_df %>% 
+    filter(date_active<=end_date&(is.na(date_inactive)|date_inactive<end_date)&category==col)
   
   # get monthly predicted share at outset to avoid copying code over and over
   monthly_share_pred = data.frame(date=seq.Date(floor_date(min(dts$record_date),"month"),
@@ -1671,6 +1748,7 @@ nowcast_daily_budget_outlay = function(dts,mts_dataset,end_date,col,col_mts,test
       mutate(final_pred_month_lwr=final_pred_month+pred_cumshare_lwr*pred_total,
              final_pred_month_upper=final_pred_month+pred_cumshare_upper*pred_total)
     
+    
     if(col=="Social Security"&month(as.Date(dat))%in%c(12,1)){
       
       if(month(as.Date(dat))==12&weekdays(as.Date(dat) %m+% months(1),abbreviate = TRUE)=="Fri"){
@@ -1686,6 +1764,19 @@ nowcast_daily_budget_outlay = function(dts,mts_dataset,end_date,col,col_mts,test
           mutate_at(vars(final_pred_month,final_pred_month_lwr,final_pred_month_upper,cbo_proj_month),~.-.*0.3579050)
         
       }
+      
+    }
+    
+    if(nrow(overlays)>0){
+      
+      x_data1 = x_data1 %>% 
+        mutate(up_diff=final_pred_month_upper-final_pred_month,
+               down_diff=final_pred_month_lwr-final_pred_month) %>% 
+        left_join(overlays %>% select(date,overlay_value=value)) %>% 
+        mutate(final_pred_month=ifelse(is.na(overlay_value),final_pred_month,overlay_value),
+               final_pred_month_lwr=ifelse(is.na(overlay_value),final_pred_month_lwr,overlay_value+down_diff),
+               final_pred_month_upper=ifelse(is.na(overlay_value),final_pred_month_upper,overlay_value+up_diff)) %>% 
+        select(-c(up_diff,down_diff,overlay_value))
       
     }
     
@@ -1876,6 +1967,19 @@ nowcast_daily_budget_outlay = function(dts,mts_dataset,end_date,col,col_mts,test
                                            is_bad(pred_total1_upper)&!is_bad(pred_month_total_upper)&is_bad(fit.upr)~pred_month_total_upper,
                                            TRUE~pred_total1_upper)) %>% 
         fill(pred_month_total,pred_month_total_lwr,pred_month_total_upper,pred_total1,pred_total1_lwr,pred_total1_upper,.direction="down")
+      
+    }
+    
+    if(nrow(overlays)>0){
+      
+      daily_df1 = daily_df1 %>% 
+        mutate(up_diff=pred_total1_upper-pred_total1,
+               down_diff=pred_total1_lwr-pred_total1) %>% 
+        left_join(overlays %>% select(date,overlay_value=value)) %>% 
+        mutate(pred_total1=ifelse(is.na(overlay_value),pred_total1,overlay_value),
+               pred_total1_lwr=ifelse(is.na(overlay_value),pred_total1_lwr,overlay_value+down_diff),
+               pred_total1_upper=ifelse(is.na(overlay_value),pred_total1_upper,overlay_value+up_diff)) %>% 
+        select(-c(up_diff,down_diff,overlay_value))
       
     }
     
@@ -2107,6 +2211,17 @@ nowcast_daily_budget_outlay = function(dts,mts_dataset,end_date,col,col_mts,test
              pred_month1_lwr=pred_month_lwr*(tail(daily_df1$fy_month[!is.na(daily_df1$total_day)],1)/12)+cbo_pred_month_lwr*(1-tail(daily_df1$fy_month[!is.na(daily_df1$total_day)],1)/12),
              pred_month1_upper=pred_month_upper*(tail(daily_df1$fy_month[!is.na(daily_df1$total_day)],1)/12)+cbo_pred_month_upper*(1-tail(daily_df1$fy_month[!is.na(daily_df1$total_day)],1)/12))
     
+    if(nrow(overlays)>0){
+      daily_df1 = daily_df1 %>% 
+        mutate(up_diff=pred_month1_upper-pred_month1,
+               down_diff=pred_month1_lwr-pred_month1) %>% 
+        left_join(overlays %>% select(date,overlay_value=value)) %>% 
+        mutate(pred_month1=ifelse(is.na(overlay_value),pred_month1,overlay_value),
+               pred_month1_lwr=ifelse(is.na(overlay_value),pred_month1_lwr,overlay_value+down_diff),
+               pred_month1_upper=ifelse(is.na(overlay_value),pred_month1_upper,overlay_value+up_diff)) %>% 
+        select(-c(up_diff,down_diff,overlay_value))
+    }
+    
     preds = data.frame(predict(models_daily$share,data=daily_df1,type="quantiles",quantiles=c(0.5,.1,.9)))
     colnames(preds)=c("pred_share","pred_share_lwr","pred_share_upper")
     daily_df1 = bind_cols(daily_df1,preds) %>% 
@@ -2307,6 +2422,17 @@ nowcast_daily_budget_outlay = function(dts,mts_dataset,end_date,col,col_mts,test
            pred_month1_lwr=pred_month_lwr*(.5)+cbo_pred_month_lwr*(.5),
            pred_month1_upper=pred_month_upper*(.5)+cbo_pred_month_upper*(.5))
   
+  if(nrow(overlays)>0){
+    daily_df2 = daily_df2 %>% 
+      mutate(up_diff=pred_month1_upper-pred_month1,
+             down_diff=pred_month1_lwr-pred_month1) %>% 
+      left_join(overlays %>% select(date,overlay_value=value)) %>% 
+      mutate(pred_month1=ifelse(is.na(overlay_value),pred_month1,overlay_value),
+             pred_month1_lwr=ifelse(is.na(overlay_value),pred_month1_lwr,overlay_value+down_diff),
+             pred_month1_upper=ifelse(is.na(overlay_value),pred_month1_upper,overlay_value+up_diff)) %>% 
+      select(-c(up_diff,down_diff,overlay_value))
+  }
+  
   preds = data.frame(predict(models_daily$share,data=daily_df2,type="quantiles",quantiles=c(0.5,.1,.9)))
   colnames(preds)=c("pred_share","pred_share_lwr","pred_share_upper")
   daily_df2 = bind_cols(daily_df2,preds) %>% 
@@ -2368,6 +2494,23 @@ nowcast_daily_budget_outlay = function(dts,mts_dataset,end_date,col,col_mts,test
     ungroup()
   
   daily_df = bind_rows(daily_df,daily_df2)
+  
+  if(nrow(overlays_daily)>0){
+    
+    daily_df = daily_df %>% 
+      mutate(up_diff=final_pred_day_upper-final_pred_day,
+             down_diff=final_pred_day_lwr-final_pred_day) %>% 
+      left_join(overlays_daily %>% select(date,overlay_value=value)) %>% 
+      group_by(date) %>% 
+      mutate(final_pred_day=ifelse(is.na(overlay_value),final_pred_day,overlay_value),
+             final_pred_day_lwr=ifelse(is.na(overlay_value),final_pred_day_lwr,overlay_value+down_diff),
+             final_pred_day_upper=ifelse(is.na(overlay_value),final_pred_day_upper,overlay_value+up_diff),
+             final_pred_day_cum=cumsum(final_pred_day),
+             final_pred_day_cum_lwr=cumsum(final_pred_day_lwr),
+             final_pred_day_cum_upper=cumsum(final_pred_day_upper)) %>% 
+      select(-c(up_diff,down_diff,overlay_value))
+    
+  }
   
   return(list(daily_df=daily_df,nowcast=monthly_nowcast))
   
