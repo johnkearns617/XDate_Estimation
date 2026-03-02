@@ -1098,8 +1098,8 @@ nowcast_daily_budget_receipt = function(dts,mts_dataset,end_date,col,col_mts,tes
   daily_df = daily_df %>% 
     mutate(final_pred_day=total_day,
            final_pred_day_lwr=total_day_lwr,
-           final_pred_day_upper=total_day_upper,
-           cbo_proj=daily_df1$cbo_proj) %>% 
+           final_pred_day_upper=total_day_upper) %>% 
+    left_join(daily_df1 %>% select(date,cbo_proj)) %>% 
     group_by(date) %>% 
     mutate(final_pred_day_cum=cumsum(final_pred_day),
            final_pred_day_cum_lwr=cumsum(final_pred_day_lwr),
@@ -2054,8 +2054,8 @@ nowcast_daily_budget_outlay = function(dts,mts_dataset,end_date,col,col_mts,test
   daily_df = daily_df %>% 
     mutate(final_pred_day=total_day,
            final_pred_day_lwr=total_day_lwr,
-           final_pred_day_upper=total_day_upper,
-           cbo_proj=daily_df1$cbo_proj) %>% 
+           final_pred_day_upper=total_day_upper) %>% 
+    left_join(daily_df1 %>% select(date,cbo_proj)) %>% 
     group_by(date) %>% 
     mutate(final_pred_day_cum=cumsum(final_pred_day),
            final_pred_day_cum_lwr=cumsum(final_pred_day_lwr),
