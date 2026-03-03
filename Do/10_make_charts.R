@@ -95,6 +95,6 @@ plotly::ggplotly(
 
 dat_value=Sys.Date()
 
-save(dat_value,yearly_chart_df,monthly_chart_df,daily_chart_df,colors_df,my_chart,daily_outlays_all,daily_receipts_all,deficit_summary,actuals,nowcast_outlay,nowcast_receipt,nowcast_deficit,exmeasures_date,exmeasures_lwr_date,exmeasures_upper_date,national_econ,file=paste0("Data/Processing/image_saves/data_asof_",Sys.Date(),".RData"))
+save(dat_value,yearly_chart_df,monthly_chart_df,daily_chart_df,colors_df,my_chart,daily_outlays_all,daily_receipts_all,deficit_summary,actuals,nowcast_outlay,nowcast_receipt,nowcast_deficit,exmeasures_date,exmeasures_lwr_date,exmeasures_upper_date,national_econ,file=paste0("Data/Processing/image_saves/data_asof_",end_date,".RData"))
 save(dat_value,yearly_chart_df,monthly_chart_df,daily_chart_df,colors_df,my_chart,daily_outlays_all,daily_receipts_all,deficit_summary,actuals,nowcast_outlay,nowcast_receipt,nowcast_deficit,exmeasures_date,exmeasures_lwr_date,exmeasures_upper_date,national_econ,file=paste0("Data/Processing/image_saves/chart_data.RData"))
 
