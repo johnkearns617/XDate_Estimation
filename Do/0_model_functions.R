@@ -620,7 +620,7 @@ nowcast_daily_budget_receipt = function(dts,mts_dataset,end_date,col,col_mts,tes
     arrange(date) %>% 
     mutate(actual=value)
   
-  MAX_DATE = ifelse(!is.na(testing),testing,max(dts$record_date))
+  MAX_DATE = ifelse(!is.na(testing),testing,as.character(max(dts$record_date,floor_date(end_date,"month"))))
   
   monthly_df = monthly_df %>% 
     mutate_at(vars(value,total,share,cum_total,cum_share),~ifelse(date>=floor_date(as.Date(MAX_DATE),"month"),NA,.)) %>% 
@@ -742,7 +742,7 @@ nowcast_daily_budget_receipt = function(dts,mts_dataset,end_date,col,col_mts,tes
     mutate(value_lwr=value,
            value_upper=value)
   
-  dates = dts %>% distinct(date=floor_date(record_date,"month")) %>% filter(date<=MAX_DATE&date>max(monthly_df$date[!is.na(monthly_df$value)])) %>% arrange(date) %>% pull(date)
+  dates = x_data %>% filter(date<=MAX_DATE&date>max(monthly_df$date[!is.na(monthly_df$value)])) %>% arrange(date) %>% pull(date)
   fys = unique(as.integer(quarter(dates, with_year = TRUE, fiscal_start = 10)))
   
   for(dat in as.character(dates)){
@@ -1569,7 +1569,7 @@ nowcast_daily_budget_outlay = function(dts,mts_dataset,end_date,col,col_mts,test
     arrange(date) %>% 
     mutate(actual=value)
   
-  MAX_DATE = ifelse(!is.na(testing),testing,as.character(end_date))
+  MAX_DATE = ifelse(!is.na(testing),testing,as.character(max(dts$record_date,floor_date(end_date,"month"))))
   
   monthly_df = monthly_df %>% 
     mutate_at(vars(value,total,share,cum_total,cum_share),~ifelse(date>=floor_date(as.Date(MAX_DATE),"month"),NA,.)) %>% 
@@ -1689,7 +1689,7 @@ nowcast_daily_budget_outlay = function(dts,mts_dataset,end_date,col,col_mts,test
     mutate(value_lwr=value,
            value_upper=value)
   
-  dates = dts %>% distinct(date=floor_date(record_date,"month")) %>% filter(date<=MAX_DATE&date>max(monthly_df$date[!is.na(monthly_df$value)])) %>% arrange(date) %>% pull(date)
+  dates = x_data %>% filter(date<=MAX_DATE&date>max(monthly_df$date[!is.na(monthly_df$value)])) %>% arrange(date) %>% pull(date)
   fys = unique(as.integer(quarter(dates, with_year = TRUE, fiscal_start = 10)))
   
   for(dat in as.character(dates)){
