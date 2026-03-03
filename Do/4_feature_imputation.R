@@ -35,7 +35,7 @@ set.seed(178)
 
 # get data
 # Function can take any date
-df = make_df(end_date,bad_vars,most_recent = FALSE) %>% 
+df = make_df(end_date,bad_vars,national_econ,most_recent = FALSE) %>% 
   group_by(year,qtr) %>%
   fill(PRS85006112,CIS1020000000000I,.direction="down") %>% 
   ungroup() %>% 

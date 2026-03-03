@@ -143,8 +143,8 @@ new_bind <- function(a, b) {
 #' 
 #' @param 
 
-make_df = function(end_date,bad_vars,most_recent=TRUE){
-  df = get_national_econ_data(end_date) %>%
+make_df = function(end_date,bad_vars,national_econ,most_recent=TRUE){
+  df = national_econ %>%
     filter(date<=end_date) %>%
     mutate(value=ifelse(release_date>end_date,NA,value)) %>%
     pivot_wider(id_cols=c('date'),names_from='series_id',values_from='value') %>%
@@ -152,7 +152,7 @@ make_df = function(end_date,bad_vars,most_recent=TRUE){
            qtr=quarter(date)) %>%
     relocate(date,.before=1) %>%
     # other state variables
-    left_join(make_state_trends(end_date,bad_vars,most_recent) %>%
+    full_join(make_state_trends(end_date,bad_vars,most_recent) %>%
                 filter(!(category%in%bad_vars$category)) %>%
                 group_by(category) %>%
                 complete(date = full_seq(c(date,as.Date(end_date)), 1)) %>%
@@ -164,6 +164,7 @@ make_df = function(end_date,bad_vars,most_recent=TRUE){
                 group_by(year,month,series_id) %>%
                 summarize(deviation=mean(deviation,na.rm=TRUE)) %>%
                 mutate(date=as.Date(paste0(year,"-",month,"-","01"),format="%Y-%m-%d")) %>%
+                filter(date<=end_date) %>% 
                 pivot_wider(id_cols=c('date'),names_from='series_id',values_from=c('deviation')),
               by=c('date'))
   return(df)
@@ -1099,7 +1100,7 @@ nowcast_daily_budget_receipt = function(dts,mts_dataset,end_date,col,col_mts,tes
     mutate(final_pred_day=total_day,
            final_pred_day_lwr=total_day_lwr,
            final_pred_day_upper=total_day_upper) %>% 
-    left_join(daily_df1 %>% select(date,cbo_proj)) %>% 
+    left_join(daily_df1 %>% select(record_date,cbo_proj)) %>% 
     group_by(date) %>% 
     mutate(final_pred_day_cum=cumsum(final_pred_day),
            final_pred_day_cum_lwr=cumsum(final_pred_day_lwr),
@@ -2055,7 +2056,7 @@ nowcast_daily_budget_outlay = function(dts,mts_dataset,end_date,col,col_mts,test
     mutate(final_pred_day=total_day,
            final_pred_day_lwr=total_day_lwr,
            final_pred_day_upper=total_day_upper) %>% 
-    left_join(daily_df1 %>% select(date,cbo_proj)) %>% 
+    left_join(daily_df1 %>% select(record_date,cbo_proj)) %>% 
     group_by(date) %>% 
     mutate(final_pred_day_cum=cumsum(final_pred_day),
            final_pred_day_cum_lwr=cumsum(final_pred_day_lwr),
