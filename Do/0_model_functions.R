@@ -1711,7 +1711,7 @@ nowcast_daily_budget_outlay = function(dts,mts_dataset,end_date,col,col_mts,test
     ),
     quarter_end=ifelse(month%in%c(1,4,6,9),1,0)) %>% 
     mutate(refund_share=case_when(
-      is.na(refund_share)~predict(refund_shares_reg,.)$predictions,
+      is.na(refund_share)~predict(models_daily$refund_reg,.)$predictions,
       TRUE~refund_share
     ),
     transaction_today_amt=case_when(
