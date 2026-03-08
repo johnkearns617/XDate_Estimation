@@ -688,10 +688,53 @@ nowcast_daily_budget_receipt = function(dts,mts_dataset,end_date,col,col_mts,tes
     arrange(date) %>% 
     fill(error,error_ly,.direction="down")
   
+  refund_share = bind_rows(receipts %>% 
+                             filter(grepl("Total -- Individual Income Taxes",classification_desc)) %>% 
+                             select(record_date,refund_amt=current_month_refund_amt) %>% 
+                             mutate(var="Non-refundable",refund_amt=as.numeric(refund_amt)),
+                           outlays %>% filter(grepl("Payment Where|Refund|Build America",classification_desc)|
+                                                (parent_id%in%outlays$classification_id[outlays$classification_desc=="Internal Revenue Service:"]&classification_desc=="Other")) %>% 
+                             select(record_date,refund_amt=current_month_net_outly_amt) %>% 
+                             group_by(record_date) %>% 
+                             summarize(refund_amt=sum(as.numeric(refund_amt)),var="Refundable")) %>% 
+    group_by(record_date) %>% 
+    mutate(share=refund_amt/sum(refund_amt,na.rm=TRUE),
+           share=ifelse(is.na(share),0,share),
+           fiscal_year=as.integer(quarter(record_date, with_year = TRUE, fiscal_start = 10)),
+           month=month(record_date)) %>% 
+    mutate(tax_due=case_when(
+      !(fiscal_year%in%c(2020,2021))&month==4~1,
+      fiscal_year==2020&month==7~1,
+      fiscal_year==2021&month==5~1,
+      TRUE~0
+    ),
+    quarter_end=ifelse(month%in%c(1,4,6,9),1,0)) %>% 
+    filter(record_date<=floor_date(as.Date(MAX_DATE),"month")) 
+  
   daily_df = dts %>% 
     filter(record_date<=MAX_DATE) %>% #TODO: REMOVE WHEN DONE TESTING 
     filter(cbo_category%in%case_when(col%in%c("Individual Income Taxes","Payroll Taxes")~c("Individual Income Taxes","Payroll Taxes"),
                                      TRUE~col)&!grepl("from Depositaries",transaction_catg)&record_date<=end_date) %>% 
+    {if(col%in%c("Individual Income Taxes","Payroll Taxes")) mutate(.,date=floor_date(record_date,"month")) %>% 
+        left_join(refund_share %>% filter(var=="Refundable") %>% select(date=record_date,refund_share=share) %>% mutate(date=floor_date(date,"month"))) %>% 
+        mutate(fiscal_year=as.integer(quarter(record_date, with_year = TRUE, fiscal_start = 10)),
+               month=month(record_date)) %>% 
+        mutate(tax_due=case_when(
+          !(fiscal_year%in%c(2020,2021))&month==4~1,
+          fiscal_year==2020&month==7~1,
+          fiscal_year==2021&month==5~1,
+          TRUE~0
+        ),
+        quarter_end=ifelse(month%in%c(1,4,6,9),1,0)) %>% 
+        mutate(refund_share=case_when(
+          is.na(refund_share)~predict(models_daily$refund_reg,.)$predictions,
+          TRUE~refund_share
+        ),
+        refund_share=1-refund_share,
+        transaction_today_amt=case_when(
+          grepl("Individual Tax Refunds|Tax Refunds Individual",transaction_catg)~transaction_today_amt*refund_share,
+          TRUE~transaction_today_amt
+        )) %>% select(-c(quarter_end,tax_due,fiscal_year,refund_share)) else . } %>% 
     mutate(cbo_category=col) %>% 
     group_by(record_fiscal_year,record_calendar_month,record_calendar_day) %>% 
     summarize(record_date=record_date[1],
@@ -1631,9 +1674,51 @@ nowcast_daily_budget_outlay = function(dts,mts_dataset,end_date,col,col_mts,test
     arrange(date) %>% 
     fill(error,error_ly,.direction="down")
   
+  refund_share = bind_rows(receipts %>% 
+                             filter(grepl("Total -- Individual Income Taxes",classification_desc)) %>% 
+                             select(record_date,refund_amt=current_month_refund_amt) %>% 
+                             mutate(var="Non-refundable",refund_amt=as.numeric(refund_amt)),
+                           outlays %>% filter(grepl("Payment Where|Refund|Build America",classification_desc)|
+                                                (parent_id%in%outlays$classification_id[outlays$classification_desc=="Internal Revenue Service:"]&classification_desc=="Other")) %>% 
+                             select(record_date,refund_amt=current_month_net_outly_amt) %>% 
+                             group_by(record_date) %>% 
+                             summarize(refund_amt=sum(as.numeric(refund_amt)),var="Refundable")) %>% 
+    group_by(record_date) %>% 
+    mutate(share=refund_amt/sum(refund_amt,na.rm=TRUE),
+           share=ifelse(is.na(share),0,share),
+           fiscal_year=as.integer(quarter(record_date, with_year = TRUE, fiscal_start = 10)),
+           month=month(record_date)) %>% 
+    mutate(tax_due=case_when(
+      !(fiscal_year%in%c(2020,2021))&month==4~1,
+      fiscal_year==2020&month==7~1,
+      fiscal_year==2021&month==5~1,
+      TRUE~0
+    ),
+    quarter_end=ifelse(month%in%c(1,4,6,9),1,0)) %>% 
+    filter(record_date<=floor_date(as.Date(MAX_DATE),"month")) 
+  
   daily_df = dts %>% 
-    filter(record_date<=MAX_DATE) %>% #TODO: REMOVE WHEN DONE TESTING 
-    filter(cbo_category%in%col&!grepl("from Depositaries",transaction_catg)&record_date<=end_date) %>% 
+    filter(((cbo_category%in%col&!grepl("from Depositaries",transaction_catg))|(col=="Other Spending"&grepl("Individual Tax Refunds|Tax Refunds Individual",transaction_catg)))&record_date<=MAX_DATE) %>%
+    { if(col=="Other Spending")     mutate(.,date=floor_date(record_date,"month")) %>% 
+        left_join(refund_share %>% filter(var=="Refundable") %>% select(date=record_date,refund_share=share) %>% mutate(date=floor_date(date,"month"))) %>% 
+    mutate(fiscal_year=as.integer(quarter(record_date, with_year = TRUE, fiscal_start = 10)),
+           month=month(record_date)) %>% 
+    mutate(tax_due=case_when(
+      !(fiscal_year%in%c(2020,2021))&month==4~1,
+      fiscal_year==2020&month==7~1,
+      fiscal_year==2021&month==5~1,
+      TRUE~0
+    ),
+    quarter_end=ifelse(month%in%c(1,4,6,9),1,0)) %>% 
+    mutate(refund_share=case_when(
+      is.na(refund_share)~predict(refund_shares_reg,.)$predictions,
+      TRUE~refund_share
+    ),
+    transaction_today_amt=case_when(
+      grepl("Individual Tax Refunds|Tax Refunds Individual",transaction_catg)~transaction_today_amt*refund_share,
+      TRUE~transaction_today_amt
+    )) %>% # refundable tax credit is counted in Other Spending (under IRS subheading)
+    select(-c(quarter_end,tax_due,fiscal_year)) else .} %>% 
     mutate(cbo_category=col) %>% 
     group_by(record_fiscal_year,record_calendar_month,record_calendar_day) %>% 
     summarize(record_date=record_date[1],

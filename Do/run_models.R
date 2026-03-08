@@ -1049,8 +1049,60 @@ saveRDS(list(share=monthly_shares_reg,scalar=reg_scalar),file="Data/Processing/M
 
 
 #### Individual and Payroll Income Taxes ####
+refund_share = bind_rows(receipts %>% 
+            filter(grepl("Total -- Individual Income Taxes",classification_desc)) %>% 
+            select(record_date,refund_amt=current_month_refund_amt) %>% 
+            mutate(var="Non-refundable",refund_amt=as.numeric(refund_amt)),
+          outlays %>% filter(grepl("Payment Where|Refund|Build America",classification_desc)|
+                               (parent_id%in%outlays$classification_id[outlays$classification_desc=="Internal Revenue Service:"]&classification_desc=="Other")) %>% 
+            select(record_date,refund_amt=current_month_net_outly_amt) %>% 
+            group_by(record_date) %>% 
+            summarize(refund_amt=sum(as.numeric(refund_amt)),var="Refundable")) %>% 
+  group_by(record_date) %>% 
+  mutate(share=refund_amt/sum(refund_amt,na.rm=TRUE),
+         share=ifelse(is.na(share),0,share),
+         fiscal_year=as.integer(quarter(record_date, with_year = TRUE, fiscal_start = 10)),
+         month=month(record_date)) %>% 
+  mutate(tax_due=case_when(
+    !(fiscal_year%in%c(2020,2021))&month==4~1,
+    fiscal_year==2020&month==7~1,
+    fiscal_year==2021&month==5~1,
+    TRUE~0
+  ),
+  quarter_end=ifelse(month%in%c(1,4,6,9),1,0)) %>% 
+  filter(record_date<=(as.Date(run_date_fy) %m+% months(12))) 
+
+refund_shares_reg <- ranger(share ~ quarter_end + month + tax_due, 
+                             data = refund_share %>% filter(var=="Refundable"&record_date<=run_date_fy&fiscal_year>2015&record_date!="2020-04-01"), 
+                             importance = 'permutation',
+                             scale.permutation.importance = TRUE,
+                             quantreg = TRUE,
+                             mtry = 3,
+                             write.forest = TRUE)
+
 daily_df = receipt_daily_df %>% 
   filter(cbo_category%in%c("Individual Income Taxes","Payroll Taxes")&record_date<=run_date_fy) %>% 
+  mutate(date=floor_date(record_date,"month")) %>% 
+  left_join(refund_share %>% filter(var=="Refundable") %>% select(date=record_date,refund_share=share) %>% mutate(date=floor_date(date,"month"))) %>% 
+  mutate(fiscal_year=as.integer(quarter(record_date, with_year = TRUE, fiscal_start = 10)),
+         month=month(record_date)) %>% 
+  mutate(tax_due=case_when(
+    !(fiscal_year%in%c(2020,2021))&month==4~1,
+    fiscal_year==2020&month==7~1,
+    fiscal_year==2021&month==5~1,
+    TRUE~0
+  ),
+  quarter_end=ifelse(month%in%c(1,4,6,9),1,0)) %>% 
+  mutate(refund_share=case_when(
+    is.na(refund_share)~predict(refund_shares_reg,.)$predictions,
+    TRUE~refund_share
+  ),
+  refund_share=1-refund_share,
+  transaction_today_amt=case_when(
+    grepl("Individual Tax Refunds|Tax Refunds Individual",transaction_catg)~transaction_today_amt*refund_share,
+    TRUE~transaction_today_amt
+  )) %>% # non-refundable tax credit is counted in Individual Tax Receipts
+  select(-c(quarter_end,tax_due,fiscal_year)) %>% 
   group_by(record_fiscal_year,record_calendar_month,record_calendar_day) %>% 
   summarize(record_date=record_date[1],
             total_day=sum(transaction_today_amt/1000,na.rm=TRUE)) %>% 
@@ -1156,8 +1208,8 @@ share_df = bind_rows(get_monthly_shares_df_revenue(receipts,"Total -- Individual
 
 share_reg = lm_robust(share~factor(month)+factor(tax_due)+factor(quarter_end),share_df %>% filter(date!="2020-04-01"))
 
-saveRDS(list(share=monthly_shares_reg,scalar=reg_scalar,disagg_reg=share_reg),file="Data/Processing/Models/nowcast_daily_Individual Income Taxes.RDS")
-saveRDS(list(share=monthly_shares_reg,scalar=reg_scalar,disagg_reg=share_reg),file="Data/Processing/Models/nowcast_daily_Payroll Taxes.RDS")
+saveRDS(list(share=monthly_shares_reg,scalar=reg_scalar,disagg_reg=share_reg,refund_reg=refund_shares_reg),file="Data/Processing/Models/nowcast_daily_Individual Income Taxes.RDS")
+saveRDS(list(share=monthly_shares_reg,scalar=reg_scalar,disagg_reg=share_reg,refund_reg=refund_shares_reg),file="Data/Processing/Models/nowcast_daily_Payroll Taxes.RDS")
 
 
 #### Corporate Income Taxes ####
@@ -1612,8 +1664,60 @@ daily_df$pred_total = daily_df$cum_total_day/daily_df$pred_cumshare
 saveRDS(list(share=monthly_shares_reg,scalar=reg_scalar),file="Data/Processing/Models/nowcast_daily_Social Security.RDS")
 
 #### Other Spending ####
+refund_share = bind_rows(receipts %>% 
+                           filter(grepl("Total -- Individual Income Taxes",classification_desc)) %>% 
+                           select(record_date,refund_amt=current_month_refund_amt) %>% 
+                           mutate(var="Non-refundable",refund_amt=as.numeric(refund_amt)),
+                         outlays %>% filter(grepl("Payment Where|Refund|Build America",classification_desc)|
+                                              (parent_id%in%outlays$classification_id[outlays$classification_desc=="Internal Revenue Service:"]&classification_desc=="Other")) %>% 
+                           select(record_date,refund_amt=current_month_net_outly_amt) %>% 
+                           group_by(record_date) %>% 
+                           summarize(refund_amt=sum(as.numeric(refund_amt)),var="Refundable")) %>% 
+  group_by(record_date) %>% 
+  mutate(share=refund_amt/sum(refund_amt,na.rm=TRUE),
+         share=ifelse(is.na(share),0,share),
+         fiscal_year=as.integer(quarter(record_date, with_year = TRUE, fiscal_start = 10)),
+         month=month(record_date)) %>% 
+  mutate(tax_due=case_when(
+    !(fiscal_year%in%c(2020,2021))&month==4~1,
+    fiscal_year==2020&month==7~1,
+    fiscal_year==2021&month==5~1,
+    TRUE~0
+  ),
+  quarter_end=ifelse(month%in%c(1,4,6,9),1,0)) %>% 
+  filter(record_date<=(as.Date(run_date_fy) %m+% months(12))) 
+
+refund_shares_reg <- ranger(share ~ quarter_end + month + tax_due, 
+                            data = refund_share %>% filter(var=="Refundable"&record_date<=run_date_fy&fiscal_year>2015&record_date!="2020-04-01"), 
+                            importance = 'permutation',
+                            scale.permutation.importance = TRUE,
+                            quantreg = TRUE,
+                            mtry = 3,
+                            write.forest = TRUE)
+
+
 daily_df = receipt_daily_df %>% 
-  filter(cbo_category=="Other Spending"&!grepl("from Depositaries",transaction_catg)&record_date<=run_date_fy) %>% 
+  filter(((cbo_category=="Other Spending"&!grepl("from Depositaries",transaction_catg))|grepl("Individual Tax Refunds|Tax Refunds Individual",transaction_catg))&record_date<=run_date_fy) %>% 
+  mutate(date=floor_date(record_date,"month")) %>% 
+  left_join(refund_share %>% filter(var=="Refundable") %>% select(date=record_date,refund_share=share) %>% mutate(date=floor_date(date,"month"))) %>% 
+  mutate(fiscal_year=as.integer(quarter(record_date, with_year = TRUE, fiscal_start = 10)),
+         month=month(record_date)) %>% 
+  mutate(tax_due=case_when(
+    !(fiscal_year%in%c(2020,2021))&month==4~1,
+    fiscal_year==2020&month==7~1,
+    fiscal_year==2021&month==5~1,
+    TRUE~0
+  ),
+  quarter_end=ifelse(month%in%c(1,4,6,9),1,0)) %>% 
+  mutate(refund_share=case_when(
+    is.na(refund_share)~predict(refund_shares_reg,.)$predictions,
+    TRUE~refund_share
+  ),
+  transaction_today_amt=case_when(
+    grepl("Individual Tax Refunds|Tax Refunds Individual",transaction_catg)~transaction_today_amt*refund_share,
+    TRUE~transaction_today_amt
+  )) %>% # refundable tax credit is counted in Other Spending (under IRS subheading)
+  select(-c(quarter_end,tax_due,fiscal_year)) %>% 
   group_by(record_fiscal_year,record_calendar_month,record_calendar_day) %>% 
   summarize(record_date=record_date[1],
             total_day=sum(transaction_today_amt/1000,na.rm=TRUE)) %>% 
@@ -1686,7 +1790,7 @@ reg_scalar = lm_robust(value~dat*factor(date<"2021-01-01")+factor(month),
 )
 
 monthly_shares_reg <- ranger(share ~ record_calendar_month + record_calendar_day  + weekend, 
-                             data = daily_df, 
+                             data = daily_df %>% filter(date!="2020-04-01"), 
                              importance = 'permutation',
                              scale.permutation.importance = TRUE,
                              quantreg = TRUE,
@@ -1703,7 +1807,7 @@ daily_df$pred_total = daily_df$cum_total_day/daily_df$pred_cumshare
 
 #reg_combine = lm_robust(actual~record_calendar_day_perc*pred_total+record_calendar_day_perc*pred,daily_df)
 
-saveRDS(list(share=monthly_shares_reg,scalar=reg_scalar),file="Data/Processing/Models/nowcast_daily_Other Spending.RDS")
+saveRDS(list(share=monthly_shares_reg,scalar=reg_scalar,refund_reg=refund_shares_reg),file="Data/Processing/Models/nowcast_daily_Other Spending.RDS")
 
 #### National Defense ####
 daily_df = receipt_daily_df %>% 
