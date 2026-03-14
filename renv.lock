@@ -3189,6 +3189,31 @@
       ],
       "Hash": "dfc034a172fd88fc66b1a703894c4185"
     },
+    "reactR": {
+      "Package": "reactR",
+      "Version": "0.6.1",
+      "Source": "Repository",
+      "Repository": "RSPM",
+      "Requirements": [
+        "htmltools"
+      ],
+      "Hash": "b8e3d93f508045812f47136c7c44c251"
+    },
+    "reactable": {
+      "Package": "reactable",
+      "Version": "0.4.4",
+      "Source": "Repository",
+      "Repository": "RSPM",
+      "Requirements": [
+        "R",
+        "digest",
+        "htmltools",
+        "htmlwidgets",
+        "jsonlite",
+        "reactR"
+      ],
+      "Hash": "6069eb2a6597963eae0605c1875ff14c"
+    },
     "readr": {
       "Package": "readr",
       "Version": "2.1.5",
@@ -3637,6 +3662,38 @@
         "xtable"
       ],
       "Hash": "4b4477baa9a939c5577e5ddb4bf01f28"
+    },
+    "shinyWidgets": {
+      "Package": "shinyWidgets",
+      "Version": "0.9.1",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Requirements": [
+        "R",
+        "bslib",
+        "grDevices",
+        "htmltools",
+        "jsonlite",
+        "rlang",
+        "sass",
+        "shiny"
+      ],
+      "Hash": "e8f592e8c0a636fef0c253c8196d78c7"
+    },
+    "shinycssloaders": {
+      "Package": "shinycssloaders",
+      "Version": "1.1.0",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Requirements": [
+        "R",
+        "digest",
+        "glue",
+        "grDevices",
+        "htmltools",
+        "shiny"
+      ],
+      "Hash": "2b45a467a30d6a88a1892a738c0900cf"
     },
     "signal": {
       "Package": "signal",
