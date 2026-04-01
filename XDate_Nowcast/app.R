@@ -94,7 +94,7 @@ if (!is.null(monthly_charts_all) && nrow(monthly_charts_all) > 0) {
   run_dates <- sort(unique(as.Date(monthly_charts_all$date_run)), decreasing = TRUE)
   today_run <- run_dates[1]
   yest_run  <- if (length(run_dates) >= 2) run_dates[2] else run_dates[1]
-  ago30_run <- tail(run_dates[which(month(run_dates)==month(run_dates[1]))],1)
+  ago30_run <- min(run_dates)
   
   get_totals <- function(rd) {
     monthly_charts_all %>%
@@ -941,8 +941,7 @@ server <- function(input, output, session) {
       
       curr_actual <- curr_net %>% dplyr::filter(!is_forecast)
       curr_fcst   <- curr_net %>% dplyr::filter(is_forecast|(any(is_forecast)&any(!is_forecast)&dom==max(dom[!is_forecast])))
-      if(nrow(curr_fcst)==0){ curr_fcst = data.frame() }
-      
+
       p <- ggplot() +
         # Prior-year lines, colour-graded oldest→newest
         geom_line(
@@ -959,38 +958,43 @@ server <- function(input, output, session) {
         scale_color_manual(
           values = prior_colors,
           name   = "Prior Year"
-        ) +
+        ) 
         # Current-year actual (solid red)
-        geom_line(
-          data = curr_actual,
-          inherit.aes = FALSE,
-          aes(x   = dom,
-              y   = daily_deficit,
-              group=1,
-              text = paste0(
-                "<b>", curr_year_num, " (", month_label, ") — Actual</b>",
-                "<br>Day ", dom, ": $", round(daily_deficit, 2), "B"
-              )),
-          color     = "#c0392b",
-          linewidth = 1.4,
-          lineend   = "round"
-        ) +
+        if(nrow(curr_actual)>0){
+          p = p + geom_line(
+            data = curr_actual,
+            inherit.aes = FALSE,
+            aes(x   = dom,
+                y   = daily_deficit,
+                group=1,
+                text = paste0(
+                  "<b>", curr_year_num, " (", month_label, ") — Actual</b>",
+                  "<br>Day ", dom, ": $", round(daily_deficit, 2), "B"
+                )),
+            color     = "#c0392b",
+            linewidth = 1.4,
+            lineend   = "round"
+          )
+        } 
         # Current-year forecast (dashed red)
-        geom_line(
-          data = curr_fcst,
-          aes(x   = dom,
-              y   = daily_deficit,
-              group=1,
-              text = paste0(
-                "<b>", curr_year_num, " (", month_label, ") — Forecast</b>",
-                "<br>Day ", dom, ": $", round(daily_deficit, 2), "B"
-              )),
-          color     = "#c0392b",
-          linewidth = 1.4,
-          linetype  = "dashed",
-          lineend   = "round"
-        ) +
-        geom_hline(yintercept = 0, color = "#9e8f86",
+        if(nrow(curr_fcst)>0){
+          p = p + geom_line(
+            data = curr_fcst,
+            aes(x   = dom,
+                y   = daily_deficit,
+                group=1,
+                text = paste0(
+                  "<b>", curr_year_num, " (", month_label, ") — Forecast</b>",
+                  "<br>Day ", dom, ": $", round(daily_deficit, 2), "B"
+                )),
+            color     = "#c0392b",
+            linewidth = 1.4,
+            linetype  = "dashed",
+            lineend   = "round"
+          )
+        } 
+      
+      p = p + geom_hline(yintercept = 0, color = "#9e8f86",
                    linetype = "dotted", linewidth = 0.35) +
         scale_x_continuous(
           breaks = c(1, 5, 10, 15, 20, 25, 31),
@@ -1091,9 +1095,10 @@ server <- function(input, output, session) {
               )),
           linewidth = 0.55
         ) +
-        scale_color_manual(values = prior_fy_colors, name = "Prior FY") +
+        scale_color_manual(values = prior_fy_colors, name = "Prior FY") 
         # Current FY actual (solid red)
-        geom_line(
+        if(nrow(curr_fy_actual)>0){ 
+          p = p + geom_line(
           data = curr_fy_actual,
           aes(x    = fy_month,
               y    = monthly_deficit,
@@ -1106,24 +1111,28 @@ server <- function(input, output, session) {
           color     = "#c0392b",
           linewidth = 1.4,
           lineend   = "round"
-        ) +
+        ) 
+        }
         # Current FY forecast (dashed red)
-        geom_line(
-          data = curr_fy_fcst,
-          aes(x    = fy_month,
-              y    = monthly_deficit,
-              group=1,
-              text  = paste0(
-                "<b>FY", curr_fy_year_num, " — Forecast</b>",
-                "<br>", fy_month_labels[fy_month],
-                ": $", round(monthly_deficit, 2), "B"
-              )),
-          color     = "#c0392b",
-          linewidth = 1.4,
-          linetype  = "dashed",
-          lineend   = "round"
-        ) +
-        geom_hline(yintercept = 0, color = "#9e8f86",
+        if(nrow(curr_fy_fcst)>0){
+          p = p + geom_line(
+            data = curr_fy_fcst,
+            aes(x    = fy_month,
+                y    = monthly_deficit,
+                group=1,
+                text  = paste0(
+                  "<b>FY", curr_fy_year_num, " — Forecast</b>",
+                  "<br>", fy_month_labels[fy_month],
+                  ": $", round(monthly_deficit, 2), "B"
+                )),
+            color     = "#c0392b",
+            linewidth = 1.4,
+            linetype  = "dashed",
+            lineend   = "round"
+          ) 
+        }
+        
+        p = p + geom_hline(yintercept = 0, color = "#9e8f86",
                    linetype = "dotted", linewidth = 0.35) +
         scale_x_continuous(
           breaks = 1:12,
