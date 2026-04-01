@@ -32,7 +32,7 @@ for (dat in tail(
   select(absolute_paths) %>%
   filter(grepl("image_saves", absolute_paths) & grepl("data_asof_", absolute_paths)) %>%
   pull(absolute_paths),
-  15
+  30
 )) {
   if (substr(dat, 109, 118) < "2026-01-01") next
   load(url(dat))
@@ -72,7 +72,7 @@ daily_comp_base <- daily_chart_df %>%
     cal_year     = lubridate::year(record_date),
     dom          = lubridate::day(record_date),
     is_curr      = cal_year == lubridate::year(as.Date(dat_value)),
-    is_forecast  = record_date > as.Date(dat_value)
+    is_forecast  = record_date >= as.Date(dat_value)
   )
 
 # FY monthly comparison: tag every row in monthly_chart_df
@@ -84,7 +84,7 @@ monthly_comp_base <- monthly_chart_df %>%
     fy_month     = ifelse(cal_month >= 10, cal_month - 9, cal_month + 3),
     curr_fy_year = lubridate::year(fy_end),
     is_curr_fy   = fy == lubridate::year(fy_end),
-    is_forecast  = record_date > as.Date(dat_value)
+    is_forecast  = record_date >= as.Date(dat_value)
   )
 
 # ── Forecast revision table prep ──────────────────────────────────────────────
@@ -94,7 +94,7 @@ if (!is.null(monthly_charts_all) && nrow(monthly_charts_all) > 0) {
   run_dates <- sort(unique(as.Date(monthly_charts_all$date_run)), decreasing = TRUE)
   today_run <- run_dates[1]
   yest_run  <- if (length(run_dates) >= 2) run_dates[2] else run_dates[1]
-  ago30_run <- run_dates[which.min(abs(run_dates - (today_run - 30)))]
+  ago30_run <- tail(run_dates[which(month(run_dates)==month(run_dates[1]))],1)
   
   get_totals <- function(rd) {
     monthly_charts_all %>%
@@ -941,6 +941,7 @@ server <- function(input, output, session) {
       
       curr_actual <- curr_net %>% dplyr::filter(!is_forecast)
       curr_fcst   <- curr_net %>% dplyr::filter(is_forecast|(any(is_forecast)&any(!is_forecast)&dom==max(dom[!is_forecast])))
+      if(nrow(curr_fcst)==0){ curr_fcst = data.frame() }
       
       p <- ggplot() +
         # Prior-year lines, colour-graded oldest→newest
