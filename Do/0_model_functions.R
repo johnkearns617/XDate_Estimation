@@ -985,7 +985,10 @@ nowcast_daily_budget_receipt = function(dts,mts_dataset,end_date,col,col_mts,tes
              pred_month_total_lwr=ifelse(is.nan(pred_month_total_lwr)|is.infinite(pred_month_total_lwr)|pred_month_total_lwr==0,fit.lwr,pred_month_total_lwr),
              pred_month_total_upper=cum_total_day_upper/pred_cumshare_lwr*scalar_upper,
              pred_month_total_upper=ifelse(is.nan(pred_month_total_upper)|is.infinite(pred_month_total_upper)|pred_month_total_upper==0,fit.upr,pred_month_total_upper)) %>% 
-      fill(pred_month_total,pred_month_total_lwr,pred_month_total_upper,.direction = "updown")
+      ungroup() %>% 
+      mutate_at(vars(pred_month_total,pred_month_total_lwr,pred_month_total_upper),~ifelse(.<(min(daily_df1$actual,na.rm=TRUE)-(5*sd(daily_df1$actual,na.rm=TRUE))),min(daily_df1$actual,na.rm=TRUE)-(5*sd(daily_df1$actual,na.rm=TRUE)),.)) %>% 
+      mutate_at(vars(pred_month_total,pred_month_total_lwr,pred_month_total_upper),~ifelse(.>(max(daily_df1$actual,na.rm=TRUE)+(5*sd(daily_df1$actual,na.rm=TRUE))),max(daily_df1$actual,na.rm=TRUE)+(5*sd(daily_df1$actual,na.rm=TRUE)),.))
+    
     
     if(col%in%c("Individual Income Taxes","Payroll Taxes")){
       
@@ -2010,7 +2013,9 @@ nowcast_daily_budget_outlay = function(dts,mts_dataset,end_date,col,col_mts,test
              pred_month_total_lwr=ifelse(is.nan(pred_month_total_lwr)|is.infinite(pred_month_total_lwr)|pred_month_total_lwr==0,fit.lwr,pred_month_total_lwr),
              pred_month_total_upper=cum_total_day_upper/pred_cumshare_upper*scalar_upper,
              pred_month_total_upper=ifelse(is.nan(pred_month_total_upper)|is.infinite(pred_month_total_upper)|pred_month_total_upper==0,fit.upr,pred_month_total_upper)) %>% 
-      fill(pred_month_total,pred_month_total_lwr,pred_month_total_upper,.direction = "updown")
+      ungroup() %>% 
+      mutate_at(vars(pred_month_total,pred_month_total_lwr,pred_month_total_upper),~ifelse(.<(min(daily_df1$actual,na.rm=TRUE)-(5*sd(daily_df1$actual,na.rm=TRUE))),min(daily_df1$actual,na.rm=TRUE)-(5*sd(daily_df1$actual,na.rm=TRUE)),.)) %>% 
+      mutate_at(vars(pred_month_total,pred_month_total_lwr,pred_month_total_upper),~ifelse(.>(max(daily_df1$actual,na.rm=TRUE)+(5*sd(daily_df1$actual,na.rm=TRUE))),max(daily_df1$actual,na.rm=TRUE)+(5*sd(daily_df1$actual,na.rm=TRUE)),.))
     
     # if(col%in%c("Individual Income Taxes","Payroll Taxes")){
     #   
