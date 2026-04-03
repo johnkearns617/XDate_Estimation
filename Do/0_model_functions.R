@@ -988,7 +988,7 @@ nowcast_daily_budget_receipt = function(dts,mts_dataset,end_date,col,col_mts,tes
       ungroup() %>% 
       mutate_at(vars(pred_month_total,pred_month_total_lwr,pred_month_total_upper),~ifelse(.<(min(daily_df1$actual,na.rm=TRUE)-(5*sd(daily_df1$actual,na.rm=TRUE))),min(daily_df1$actual,na.rm=TRUE)-(5*sd(daily_df1$actual,na.rm=TRUE)),.)) %>% 
       mutate_at(vars(pred_month_total,pred_month_total_lwr,pred_month_total_upper),~ifelse(.>(max(daily_df1$actual,na.rm=TRUE)+(5*sd(daily_df1$actual,na.rm=TRUE))),max(daily_df1$actual,na.rm=TRUE)+(5*sd(daily_df1$actual,na.rm=TRUE)),.))
-    
+    # TODO: is there a better way to impute current data?
     
     if(col%in%c("Individual Income Taxes","Payroll Taxes")){
       
@@ -2016,6 +2016,7 @@ nowcast_daily_budget_outlay = function(dts,mts_dataset,end_date,col,col_mts,test
       ungroup() %>% 
       mutate_at(vars(pred_month_total,pred_month_total_lwr,pred_month_total_upper),~ifelse(.<(min(daily_df1$actual,na.rm=TRUE)-(5*sd(daily_df1$actual,na.rm=TRUE))),min(daily_df1$actual,na.rm=TRUE)-(5*sd(daily_df1$actual,na.rm=TRUE)),.)) %>% 
       mutate_at(vars(pred_month_total,pred_month_total_lwr,pred_month_total_upper),~ifelse(.>(max(daily_df1$actual,na.rm=TRUE)+(5*sd(daily_df1$actual,na.rm=TRUE))),max(daily_df1$actual,na.rm=TRUE)+(5*sd(daily_df1$actual,na.rm=TRUE)),.))
+    # TODO: is there a better way to impute current data?
     
     # if(col%in%c("Individual Income Taxes","Payroll Taxes")){
     #   
