@@ -79,7 +79,10 @@ get_national_econ_data = function(end_date){
                   "DGS10","DFF")){
     
     if(metric%in%c("DGS10","DFF")){
-      df = fredr(paste0(metric),frequency="wef")
+      
+      df = tryCatch({
+        fredr(paste0(metric),frequency="wef")
+      },error=function(e) fredr(paste0(metric),frequency="wef"))
       
       df = df %>% 
         mutate(release_date=date) %>% 
@@ -1090,14 +1093,20 @@ cbo_econ <- read_csv(unz(temp, "Quarterly_February2026.csv")) %>%
   mutate(date=as.Date(as.yearqtr(date,format="%Yq%q")))
 unlink(temp)
 
-outlays_fred = fredr(paste0("MTSO133FMS")) %>% 
+outlays_fred = tryCatch({
+    fredr(paste0("MTSO133FMS"))
+  },error=function(e) fredr(paste0("MTSO133FMS"))) %>% 
   mutate(fiscal_year=as.integer(quarter(date, with_year = TRUE, fiscal_start = 10)),
          value=value/1000)
 
-receipts_fred = fredr(paste0("MTSR133FMS")) %>% 
+receipts_fred = tryCatch({
+    fredr(paste0("MTSR133FMS"))
+  },error=function(e) fredr(paste0("MTSR133FMS"))) %>% 
   mutate(fiscal_year=as.integer(quarter(date, with_year = TRUE, fiscal_start = 10)),
          value=value/1000)
 
-deficit_fred = fredr(paste0("MTSDS133FMS")) %>% 
+deficit_fred = tryCatch({
+    fredr(paste0("MTSDS133FMS"))
+  },error=function(e) fredr(paste0("MTSDS133FMS"))) %>% 
   mutate(fiscal_year=as.integer(quarter(date, with_year = TRUE, fiscal_start = 10)))
 
