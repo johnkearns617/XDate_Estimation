@@ -61,6 +61,8 @@ fredr_set_key(fred_key)
 #### get other national economic variables ####
 get_national_econ_data = function(end_date){
   
+  fredr_set_key(fred_key)
+  
   national_econ = data.frame()
   for(metric in c("PAYEMS","CE16OV","JTSJOL","UNRATE","ADPMNUSNERSA","PRS85006112",
                   "GACDISA066MSFRBNY","DTCDISA066MSFRBNY","GACDFSA066MSFRBPHI","DTCDFSA066MSFRBPHI","INDPRO",
