@@ -56,6 +56,8 @@ gdpnow_vintages = fredr_series_vintagedates("GDPNOW")
 # load old data
 load("Data/Processing/fiscal_service_data_old.RData")
 
+fredr_set_key(fred_key)
+
 #### get other national economic variables ####
 get_national_econ_data = function(end_date){
   
