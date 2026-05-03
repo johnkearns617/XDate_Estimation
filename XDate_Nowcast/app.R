@@ -44,7 +44,7 @@ for (dat in tail(
   if (exists("monthly_chart_df"))
     monthly_charts[[dat]] <- monthly_chart_df %>% mutate(date_run = res)
 }
-charts                <- data.table::rbindlist(charts)
+charts                <- data.table::rbindlist(charts,fill=TRUE)
 monthly_charts_all    <- if (length(monthly_charts) > 0)
   data.table::rbindlist(monthly_charts, fill = TRUE) else NULL
 
