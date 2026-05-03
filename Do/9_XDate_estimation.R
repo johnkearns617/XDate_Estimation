@@ -124,8 +124,14 @@ if(is.na(limit$open_today_bal[limit$record_date=="2026-04-30"])){
   
   for(i in which(is.na(limit$total_debt_level))){
     
-    limit$total_debt_level[i] = limit$total_debt_level[i-1]+limit$daily_deficit[i]
+    limit$total_debt_level[i] = limit$total_debt_level[i-1]+limit$final_pred_day[i]
     limit$open_today_bal[i] = limit$open_today_bal[i-1]
+    
+    limit$total_debt_level_lwr[i] = limit$total_debt_level_lwr[i-1]+limit$final_pred_day_lwr[i]
+    limit$open_today_bal_lwr[i] = limit$open_today_bal_lwr[i-1]
+    
+    limit$total_debt_level_upper[i] = limit$total_debt_level_upper[i-1]+limit$final_pred_day_upper[i]
+    limit$open_today_bal_upper[i] = limit$open_today_bal_upper[i-1]
     
   }
   
