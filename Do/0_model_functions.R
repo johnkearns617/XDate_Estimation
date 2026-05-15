@@ -580,10 +580,10 @@ nowcast_daily_budget_receipt = function(dts,mts_dataset,end_date,col,col_mts,tes
            fed_remittances_suspended=ifelse(date>="2022-09-01",1,0)) %>%  # keep this activated unless they go back to a low interest environment, but given the path of interest payments, unlikely to ever happen
     mutate(fiscal_year=as.integer(quarter(date, with_year = TRUE, fiscal_start = 10)),
            tax_due=case_when(
-             !(fiscal_year%in%c(2020,2021))&month==4&col=="Individual Income Taxes"~1,
-             fiscal_year==2020&month==7&col=="Individual Income Taxes"~1,
-             fiscal_year==2021&month==5&col=="Individual Income Taxes"~1,
-             !(fiscal_year%in%c(2020))&month==4&col=="Corporate Income Taxes"~1,
+             !(fiscal_year%in%c(2020,2021))&month==4&col%in%c("Individual Income Taxes","Payroll Taxes")~1,
+             fiscal_year==2020&month==7&col==col%in%c("Individual Income Taxes","Payroll Taxes")~1,
+             fiscal_year==2021&month==5&col==col%in%c("Individual Income Taxes","Payroll Taxes")~1,
+             !(fiscal_year%in%c(2020))&month==4&col%in%c("Individual Income Taxes","Payroll Taxes")~1,
              fiscal_year==2020&month==7&col=="Corporate Income Taxes"~1,
              fiscal_year==2020&month==9&col=="Excise Taxes"~1,
              TRUE~0
@@ -638,10 +638,10 @@ nowcast_daily_budget_receipt = function(dts,mts_dataset,end_date,col,col_mts,tes
                                  !grepl("Income",col)&month%in%c(1,4,6,9)~1,
                                  TRUE~0),
            tax_due=case_when(
-             !(fiscal_year%in%c(2020,2021))&month==4&col=="Individual Income Taxes"~1,
-             fiscal_year==2020&month==7&col=="Individual Income Taxes"~1,
-             fiscal_year==2021&month==5&col=="Individual Income Taxes"~1,
-             !(fiscal_year%in%c(2020))&month==4&col=="Corporate Income Taxes"~1,
+             !(fiscal_year%in%c(2020,2021))&month==4&col%in%c("Individual Income Taxes","Payroll Taxes")~1,
+             fiscal_year==2020&month==7&col==col%in%c("Individual Income Taxes","Payroll Taxes")~1,
+             fiscal_year==2021&month==5&col==col%in%c("Individual Income Taxes","Payroll Taxes")~1,
+             !(fiscal_year%in%c(2020))&month==4&col%in%c("Individual Income Taxes","Payroll Taxes")~1,
              fiscal_year==2020&month==7&col=="Corporate Income Taxes"~1,
              fiscal_year==2020&month==9&col=="Excise Taxes"~1,
              TRUE~0
@@ -996,14 +996,14 @@ nowcast_daily_budget_receipt = function(dts,mts_dataset,end_date,col,col_mts,tes
                                    mutate(month=month(record_date),
                                           fiscal_year=year(record_date),
                                           quarter_end=case_when(col=="Corporate Income Taxes"&month%in%c(12,4,6,9)~1,
-                                                                col=="Individual Income Taxes"&month%in%c(1,4,6,9)~1,
-                                                                !grepl("Income",col)&month%in%c(1,4,6,9)~1,
+                                                                col%in%c("Individual Income Taxes","Payroll Taxes")&month%in%c(1,4,6,9)~1,
+                                                                !grepl("Income|Payroll",col)&month%in%c(1,4,6,9)~1,
                                                                 TRUE~0),
                                           tax_due=case_when(
-                                            !(fiscal_year%in%c(2020,2021))&month==4&col=="Individual Income Taxes"~1,
-                                            fiscal_year==2020&month==7&col=="Individual Income Taxes"~1,
-                                            fiscal_year==2021&month==5&col=="Individual Income Taxes"~1,
-                                            !(fiscal_year%in%c(2020))&month==4&col=="Corporate Income Taxes"~1,
+                                            !(fiscal_year%in%c(2020,2021))&month==4&col%in%c("Individual Income Taxes","Payroll Taxes")~1,
+                                            fiscal_year==2020&month==7&col==col%in%c("Individual Income Taxes","Payroll Taxes")~1,
+                                            fiscal_year==2021&month==5&col==col%in%c("Individual Income Taxes","Payroll Taxes")~1,
+                                            !(fiscal_year%in%c(2020))&month==4&col%in%c("Individual Income Taxes","Payroll Taxes")~1,
                                             fiscal_year==2020&month==7&col=="Corporate Income Taxes"~1,
                                             fiscal_year==2020&month==9&col=="Excise Taxes"~1,
                                             TRUE~0
@@ -1198,10 +1198,10 @@ nowcast_daily_budget_receipt = function(dts,mts_dataset,end_date,col,col_mts,tes
       ungroup() %>% 
       mutate(fiscal_year=as.integer(quarter(record_date, with_year = TRUE, fiscal_start = 10)),
              tax_due=case_when(
-               !(fiscal_year%in%c(2020,2021))&month==4&col=="Individual Income Taxes"~1,
-               fiscal_year==2020&month==7&col=="Individual Income Taxes"~1,
-               fiscal_year==2021&month==5&col=="Individual Income Taxes"~1,
-               !(fiscal_year%in%c(2020))&month==4&col=="Corporate Income Taxes"~1,
+               !(fiscal_year%in%c(2020,2021))&month==4&col%in%c("Individual Income Taxes","Payroll Taxes")~1,
+               fiscal_year==2020&month==7&col==col%in%c("Individual Income Taxes","Payroll Taxes")~1,
+               fiscal_year==2021&month==5&col==col%in%c("Individual Income Taxes","Payroll Taxes")~1,
+               !(fiscal_year%in%c(2020))&month==4&col%in%c("Individual Income Taxes","Payroll Taxes")~1,
                fiscal_year==2020&month==7&col=="Corporate Income Taxes"~1,
                fiscal_year==2020&month==9&col=="Excise Taxes"~1,
                TRUE~0
@@ -1388,10 +1388,10 @@ nowcast_daily_budget_receipt = function(dts,mts_dataset,end_date,col,col_mts,tes
     ungroup() %>% 
     mutate(fiscal_year=as.integer(quarter(record_date, with_year = TRUE, fiscal_start = 10)),
            tax_due=case_when(
-             !(fiscal_year%in%c(2020,2021))&month==4&col=="Individual Income Taxes"~1,
-             fiscal_year==2020&month==7&col=="Individual Income Taxes"~1,
-             fiscal_year==2021&month==5&col=="Individual Income Taxes"~1,
-             !(fiscal_year%in%c(2020))&month==4&col=="Corporate Income Taxes"~1,
+             !(fiscal_year%in%c(2020,2021))&month==4&col%in%c("Individual Income Taxes","Payroll Taxes")~1,
+             fiscal_year==2020&month==7&col==col%in%c("Individual Income Taxes","Payroll Taxes")~1,
+             fiscal_year==2021&month==5&col==col%in%c("Individual Income Taxes","Payroll Taxes")~1,
+             !(fiscal_year%in%c(2020))&month==4&col%in%c("Individual Income Taxes","Payroll Taxes")~1,
              fiscal_year==2020&month==7&col=="Corporate Income Taxes"~1,
              fiscal_year==2020&month==9&col=="Excise Taxes"~1,
              TRUE~0
@@ -2197,14 +2197,14 @@ nowcast_daily_budget_outlay = function(dts,mts_dataset,end_date,col,col_mts,test
       ungroup() %>% 
       mutate(fiscal_year=as.integer(quarter(record_date, with_year = TRUE, fiscal_start = 10)),
              tax_due=case_when(
-        !(fiscal_year%in%c(2020,2021))&month==4&col=="Individual Income Taxes"~1,
-        fiscal_year==2020&month==7&col=="Individual Income Taxes"~1,
-        fiscal_year==2021&month==5&col=="Individual Income Taxes"~1,
-        !(fiscal_year%in%c(2020))&month==4&col=="Corporate Income Taxes"~1,
-        fiscal_year==2020&month==7&col=="Corporate Income Taxes"~1,
-        fiscal_year==2020&month==9&col=="Excise Taxes"~1,
-        TRUE~0
-      )) %>% 
+               !(fiscal_year%in%c(2020,2021))&month==4&col%in%c("Individual Income Taxes","Payroll Taxes")~1,
+               fiscal_year==2020&month==7&col==col%in%c("Individual Income Taxes","Payroll Taxes")~1,
+               fiscal_year==2021&month==5&col==col%in%c("Individual Income Taxes","Payroll Taxes")~1,
+               !(fiscal_year%in%c(2020))&month==4&col%in%c("Individual Income Taxes","Payroll Taxes")~1,
+               fiscal_year==2020&month==7&col=="Corporate Income Taxes"~1,
+               fiscal_year==2020&month==9&col=="Excise Taxes"~1,
+               TRUE~0
+             )) %>% 
       group_by(date) %>% 
       mutate(weekend=weekdays(record_date,abbreviate = TRUE)%in%c("Sat","Sun"),
              record_calendar_month=month(record_date),
@@ -2413,14 +2413,14 @@ nowcast_daily_budget_outlay = function(dts,mts_dataset,end_date,col,col_mts,test
     ungroup() %>% 
     mutate(fiscal_year=as.integer(quarter(record_date, with_year = TRUE, fiscal_start = 10)),
            tax_due=case_when(
-      !(fiscal_year%in%c(2020,2021))&month==4&col=="Individual Income Taxes"~1,
-      fiscal_year==2020&month==7&col=="Individual Income Taxes"~1,
-      fiscal_year==2021&month==5&col=="Individual Income Taxes"~1,
-      !(fiscal_year%in%c(2020))&month==4&col=="Corporate Income Taxes"~1,
-      fiscal_year==2020&month==7&col=="Corporate Income Taxes"~1,
-      fiscal_year==2020&month==9&col=="Excise Taxes"~1,
-      TRUE~0
-    )) %>% 
+             !(fiscal_year%in%c(2020,2021))&month==4&col%in%c("Individual Income Taxes","Payroll Taxes")~1,
+             fiscal_year==2020&month==7&col==col%in%c("Individual Income Taxes","Payroll Taxes")~1,
+             fiscal_year==2021&month==5&col==col%in%c("Individual Income Taxes","Payroll Taxes")~1,
+             !(fiscal_year%in%c(2020))&month==4&col%in%c("Individual Income Taxes","Payroll Taxes")~1,
+             fiscal_year==2020&month==7&col=="Corporate Income Taxes"~1,
+             fiscal_year==2020&month==9&col=="Excise Taxes"~1,
+             TRUE~0
+           )) %>% 
     left_join(cbo_proj %>% 
                 {if(col=="Other Spending") filter(.,subcategory %in% c("Nondefense Discretionary","Other Mandatory")) else if(col=="National Defense") filter(.,subcategory=="Defense Discretionary") else filter(.,subcategory%in%col)} %>% 
                 group_by(projected_fiscal_year,subcategory) %>% 
