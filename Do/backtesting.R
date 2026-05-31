@@ -13,6 +13,8 @@ Sys.setenv(TZ='America/New_York')
 
 fredr_set_key(fred_key)
 
+source('Do/0_model_functions.R')
+
 backtest_models = list()
 
 for(dat1 in as.character(seq(from=as.Date("2024-10-01"),to=as.Date("2025-07-01"),by="1 week"))){
@@ -20,8 +22,6 @@ for(dat1 in as.character(seq(from=as.Date("2024-10-01"),to=as.Date("2025-07-01")
 end_date = as.Date(dat1)
 headroom_date = end_date %m-% years(1)
 announcement_date = ifelse(end_date<"2025-01-21",NA,"2025-01-21")
-
-source('Do/0_model_functions.R')
 
 source('Do/2_assemble_econ_data.R')
 
