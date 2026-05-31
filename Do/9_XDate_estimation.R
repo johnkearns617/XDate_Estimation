@@ -18,7 +18,7 @@ library(forecast)
 library(glmnet)
 library(caret)
 library(vtable)
-library(seasonal)
+library(seasonal)ƒ
 library(signal)
 library(plm)
 library(blsAPI)
@@ -92,7 +92,7 @@ limit = limit %>%
          total_debt_level_lwr=total_debt_level,
          total_debt_level_upper=total_debt_level)
 
-if(is.na(limit$open_today_bal[limit$record_date=="2026-04-30"])){
+if(is.na(limit$open_today_bal[limit$record_date=="2026-04-30"])&end_date>"2025-07-01"){
   
   limit = limit %>% 
     mutate(tga_adjustment=ifelse(record_date=="2026-04-30",1025,open_today_bal))
@@ -295,7 +295,14 @@ csrdf_invest = data.frame(date=seq.Date(as.Date("2003-10-01"),floor_date(max(lim
          amt=case_when(year(date)>max(max(csrdf_invest$year))~amt*cpiu,
                        TRUE~amt),
          sept_amt=case_when(year(date)>max(max(csrdf_invest$year))~sept_amt*cpiu,
-                       TRUE~sept_amt))
+                       TRUE~sept_amt)) %>% 
+  group_by(date) %>% 
+  summarize(year=year[1],
+            amt=mean(amt,na.rm=TRUE),
+            sept_amt=sum(sept_amt,na.rm=TRUE),
+            interest_amt=sum(interest_amt,na.rm=TRUE),
+            cpiu=mean(cpiu,na.rm=TRUE)) %>% 
+  ungroup()
 # extrapolate backwards and adjust for inflation forwards for monthly intake
 # extrap backwards and hold constant forwards for sept amt
 # extrap backwards for investment securities and hold distribution and rate fixed (with adjustment for change in interest rates)
@@ -438,7 +445,14 @@ psrhbf_invest = data.frame(date=seq.Date(as.Date("2003-10-01"),floor_date(max(li
          amt=case_when(year(date)>max(max(psrhbf_invest$year))~amt*cpiu,
                        TRUE~amt),
          sept_amt=case_when(year(date)>max(max(psrhbf_invest$year))~sept_amt*cpiu,
-                            TRUE~sept_amt))
+                            TRUE~sept_amt)) %>% 
+  group_by(date) %>% 
+  summarize(year=year[1],
+            amt=mean(amt,na.rm=TRUE),
+            sept_amt=sum(sept_amt,na.rm=TRUE),
+            interest_amt=sum(interest_amt,na.rm=TRUE),
+            cpiu=mean(cpiu,na.rm=TRUE)) %>% 
+  ungroup()
 # extrapolate backwards and adjust for inflation forwards for monthly intake
 # extrap backwards and hold constant forwards for sept amt
 # extrap backwards for investment securities and hold distribution and rate fixed (with adjustment for change in interest rates)
@@ -507,8 +521,8 @@ for(i in 1:(length(dates)-1)){
   
 }
 
-FISCAL_SPACE$headroom[FISCAL_SPACE$date>="2025-01-17"&FISCAL_SPACE$date<"2025-03-14"] = FISCAL_SPACE$headroom[FISCAL_SPACE$date>="2025-01-17"&FISCAL_SPACE$date<"2025-03-14"] + 
-  seq((2*8.5+2*.3),0,length=length(FISCAL_SPACE$headroom[FISCAL_SPACE$date>="2025-01-17"&FISCAL_SPACE$date<"2025-03-14"]))
+FISCAL_SPACE$headroom[FISCAL_SPACE$record_date>="2025-01-17"&FISCAL_SPACE$record_date<"2025-03-14"] = FISCAL_SPACE$headroom[FISCAL_SPACE$record_date>="2025-01-17"&FISCAL_SPACE$record_date<"2025-03-14"] + 
+  seq((2*8.5+2*.3),0,length=length(FISCAL_SPACE$headroom[FISCAL_SPACE$record_date>="2025-01-17"&FISCAL_SPACE$record_date<"2025-03-14"]))
 
 
 # 1.b. CRSF and PSRF suspended investments and interest

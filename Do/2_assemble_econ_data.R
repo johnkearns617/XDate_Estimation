@@ -88,7 +88,8 @@ get_national_econ_data = function(end_date){
       
       df = df %>% 
         mutate(release_date=date) %>% 
-        select(-c(realtime_start,realtime_end))
+        select(-c(realtime_start,realtime_end)) %>% 
+        filter(release_date<=end_date)
       
     } 
     
@@ -356,7 +357,8 @@ for(yr in c(2025:year(end_date))){
 op_cash_dep_withdraw = data.table::rbindlist(list(
   op_cash_dep_withdraw,
   op_cash_dep_withdraw_new
-))
+)) %>% 
+  filter(record_date<=end_date)
 
 debt_subject_to_limit_new = data.frame()
 for(yr in c(2025:year(end_date))){
@@ -395,7 +397,8 @@ for(yr in c(2025:year(end_date))){
 debt_subject_to_limit = data.table::rbindlist(list(
   debt_subject_to_limit,
   debt_subject_to_limit_new
-))
+)) %>% 
+  filter(record_date<=end_date)
 
 deficit_summary_new = data.frame()
 for(yr in c(2025:year(end_date))){
@@ -434,7 +437,8 @@ for(yr in c(2025:year(end_date))){
 deficit_summary = data.table::rbindlist(list(
   deficit_summary,
   deficit_summary_new
-))
+)) %>% 
+  filter(record_date<=end_date)
 
 outlays_new = data.frame()
 for(yr in c(2025:year(end_date))){
@@ -473,7 +477,8 @@ for(yr in c(2025:year(end_date))){
 outlays = data.table::rbindlist(list(
   outlays,
   outlays_new
-))
+)) %>% 
+  filter(record_date<=end_date)
 
 receipts_new = data.frame()
 for(yr in c(2025:year(end_date))){
@@ -512,7 +517,8 @@ for(yr in c(2025:year(end_date))){
 receipts = data.table::rbindlist(list(
   receipts,
   receipts_new
-))
+)) %>% 
+  filter(record_date<=end_date)
 
 fed_invest_programs_new = data.frame()
 for(yr in c(2025:year(end_date))){
@@ -551,7 +557,8 @@ for(yr in c(2025:year(end_date))){
 fed_invest_programs = data.table::rbindlist(list(
   fed_invest_programs,
   fed_invest_programs_new
-))
+)) %>% 
+  filter(record_date<=end_date)
 
 spending_by_function_new = data.frame()
 for(yr in c(2025:year(end_date))){
@@ -590,7 +597,8 @@ for(yr in c(2025:year(end_date))){
 spending_by_function = data.table::rbindlist(list(
   spending_by_function,
   spending_by_function_new
-))
+)) %>% 
+  filter(record_date<=end_date)
 
 overall_debt_new = data.frame()
 for(yr in c(2025:year(end_date))){
@@ -629,7 +637,8 @@ for(yr in c(2025:year(end_date))){
 overall_debt = data.table::rbindlist(list(
   overall_debt,
   overall_debt_new
-))
+)) %>% 
+  filter(record_date<=end_date)
 
 
 treasury_securities_new = data.frame()
@@ -669,7 +678,8 @@ for(yr in c(2025:year(end_date))){
 treasury_securities = data.table::rbindlist(list(
   treasury_securities,
   treasury_securities_new
-))
+)) %>% 
+  filter(record_date<=end_date)
 
 
 debt_level_new = data.frame()
@@ -709,7 +719,8 @@ for(yr in c(2025:year(end_date))){
 debt_level = data.table::rbindlist(list(
   debt_level,
   debt_level_new
-))
+)) %>% 
+  filter(record_date<=end_date)
 
 investment_funds_new = data.frame()
 for(yr in c(2025:year(end_date))){
@@ -748,7 +759,8 @@ for(yr in c(2025:year(end_date))){
 investment_funds = data.table::rbindlist(list(
   investment_funds,
   investment_funds_new
-))
+)) %>% 
+  filter(record_date<=end_date)
 
 op_cash_balance_new = data.frame()
 for(yr in c(2025:year(end_date))){
@@ -787,7 +799,8 @@ for(yr in c(2025:year(end_date))){
 op_cash_balance = data.table::rbindlist(list(
   op_cash_balance,
   op_cash_balance_new
-))
+)) %>% 
+  filter(record_date<=end_date)
 
 # tax_deposits1 = data.frame()
 # for(yr in c(2005:2023)){
@@ -858,7 +871,8 @@ for(yr in c(2025:year(end_date))){
 tax_deposits2 = data.table::rbindlist(list(
   tax_deposits2,
   tax_deposits2_new
-))
+)) %>% 
+  filter(record_date<=end_date)
 
 tax_deposits1a = tax_deposits1 %>% 
   mutate(group=case_when(
@@ -880,7 +894,8 @@ tax_deposits2a = tax_deposits2 %>%
   )) %>% 
   filter(!is.na(group)) %>% 
   select(record_date,group,today_amt,mtd_amt,record_calendar_year,record_fiscal_year,record_calendar_month,record_calendar_day) %>% 
-  mutate_at(vars(record_calendar_month:record_calendar_day),as.numeric)
+  mutate_at(vars(record_calendar_month:record_calendar_day),as.numeric) %>% 
+  filter(record_date<=end_date)
 
 
 tax_refunds_new = data.frame()
@@ -920,7 +935,8 @@ for(yr in c(2025:year(end_date))){
 tax_refunds = data.table::rbindlist(list(
   tax_refunds,
   tax_refunds_new
-))
+)) %>% 
+  filter(record_date<=end_date)
 
 tax_refunds = tax_refunds %>% 
   mutate(group=case_when(
@@ -938,7 +954,8 @@ tax_deposits = data.table::rbindlist(list(
   tax_deposits1a,
   tax_deposits2a,
   tax_refunds
-))
+)) %>% 
+  filter(record_date<=end_date)
 
 
 daily_gas_activity_new = data.frame()
@@ -980,12 +997,14 @@ for(yr in c(2025:year(end_date))){
 daily_gas_activity = data.table::rbindlist(list(
   daily_gas_activity,
   daily_gas_activity_new
-))
+)) %>% 
+  filter(record_date<=end_date)
 
 debt_subject_to_limit = data.table::rbindlist(list(
   debt_subject_to_limit,
   debt_subject_to_limit_new
-))
+)) %>% 
+  filter(record_date<=end_date)
 
 issuance_new = data.frame()
 for(yr in c(2025:year(end_date))){
@@ -1024,7 +1043,8 @@ for(yr in c(2025:year(end_date))){
 issuance = data.table::rbindlist(list(
   issuance,
   issuance_new
-))
+)) %>% 
+  filter(record_date<=end_date)
 
 funds_new = data.frame()
 for(yr in c(2025:year(end_date))){
@@ -1063,7 +1083,8 @@ for(yr in c(2025:year(end_date))){
 funds = data.table::rbindlist(list(
   funds,
   funds_new
-))
+)) %>% 
+  filter(record_date<=end_date)
 
 cbo_proj = read_csv("https://raw.githubusercontent.com/US-CBO/eval-projections/refs/heads/main/input_data/baselines.csv")
 cbo_actual = read_csv("https://raw.githubusercontent.com/US-CBO/eval-projections/refs/heads/main/input_data/actuals.csv")
@@ -1089,6 +1110,12 @@ if(end_date>="2025-02-22"){
   
 }
 
+cbo_proj = cbo_proj %>% 
+  filter(baseline_date<=end_date)
+
+cbo_actual = cbo_actual %>% 
+  filter(fiscal_year<ifelse(month(end_date)<10,year(end_date),year(end_date)+1))
+
 temp <- tempfile()
 download.file("https://www.cbo.gov/system/files/2026-02/55022-2026-02-Historical-Economic-Data.zip",temp)
 cbo_econ <- read_csv(unz(temp, "Quarterly_February2026.csv")) %>% 
@@ -1096,19 +1123,19 @@ cbo_econ <- read_csv(unz(temp, "Quarterly_February2026.csv")) %>%
 unlink(temp)
 
 outlays_fred = tryCatch({
-    fredr(paste0("MTSO133FMS"))
-  },error=function(e) fredr(paste0("MTSO133FMS"))) %>% 
+    fredr(paste0("MTSO133FMS"),realtime_end = as.Date(end_date))
+  },error=function(e) fredr(paste0("MTSO133FMS"),realtime_start = as.Date(end_date))) %>% 
   mutate(fiscal_year=as.integer(quarter(date, with_year = TRUE, fiscal_start = 10)),
          value=value/1000)
 
 receipts_fred = tryCatch({
-    fredr(paste0("MTSR133FMS"))
-  },error=function(e) fredr(paste0("MTSR133FMS"))) %>% 
+    fredr(paste0("MTSR133FMS"),realtime_end = as.Date(end_date))
+  },error=function(e) fredr(paste0("MTSR133FMS"),realtime_start = as.Date(end_date))) %>% 
   mutate(fiscal_year=as.integer(quarter(date, with_year = TRUE, fiscal_start = 10)),
          value=value/1000)
 
 deficit_fred = tryCatch({
-    fredr(paste0("MTSDS133FMS"))
-  },error=function(e) fredr(paste0("MTSDS133FMS"))) %>% 
+    fredr(paste0("MTSDS133FMS"),realtime_end = as.Date(end_date))
+  },error=function(e) fredr(paste0("MTSDS133FMS"),realtime_start = as.Date(end_date))) %>% 
   mutate(fiscal_year=as.integer(quarter(date, with_year = TRUE, fiscal_start = 10)))
 
