@@ -18,7 +18,7 @@ library(forecast)
 library(glmnet)
 library(caret)
 library(vtable)
-library(seasonal)ƒ
+library(seasonal)
 library(signal)
 library(plm)
 library(blsAPI)
