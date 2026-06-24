@@ -27,8 +27,14 @@ daily_chart_df = bind_rows(
   group_by(month) %>% 
   mutate(deficit=sum(final_pred_day),
          share=final_pred_day/deficit) %>% 
-  left_join(deficit_fred %>% mutate(value=value/1000) %>% select(date,value),by=c("month"="date")) %>% 
-  mutate(final_pred_day=case_when(record_date<="2025-09-30"~share*value, # ensures it adds up to monthly 
+  left_join(deficit_fred %>% 
+              mutate(value=value/1000) %>% 
+              group_by(date) %>% 
+              slice(n()) %>% 
+              ungroup() %>% 
+              select(date,value),
+            by=c("month"="date")) %>% 
+  mutate(final_pred_day=case_when(record_date<="2025-09-30"~((value-deficit)/n())+final_pred_day, # ensures it adds up to monthly 
                                   TRUE~final_pred_day)) %>% 
   ungroup() %>% 
   select(-c(month,deficit,value,share))

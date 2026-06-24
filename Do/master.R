@@ -20,7 +20,7 @@ reticulate::use_virtualenv("r-reticulate", required = TRUE)
 reticulate::py_config()
 
 end_date = Sys.Date()
-headroom_date = max(c("2026-01-01",end_date %m-% years(1)))
+headroom_date = max(c("2026-01-01",as.character(end_date %m-% years(1))))
 announcement_date = NA
 
 reticulate::py_run_file("Do/1a_pull_trends_data.py")
