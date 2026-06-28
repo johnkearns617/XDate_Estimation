@@ -325,6 +325,7 @@ for(yr in c(2025:year(end_date))){
   
   print(as.character(yr)) 
   
+  Sys.sleep(10)
   request = paste0("https://api.fiscaldata.treasury.gov/services/api/fiscal_service/v1/",
                    "accounting/dts/deposits_withdrawals_operating_cash",
                    "?sort=-record_date",
@@ -346,6 +347,7 @@ for(yr in c(2025:year(end_date))){
                        "&page[number]=",page_num,
                        "&page[size]=10000")
     
+    Sys.sleep(2)
     data = read_csv(url(request_2))
     
     op_cash_dep_withdraw_new = new_bind(op_cash_dep_withdraw_new,data)
@@ -365,6 +367,7 @@ for(yr in c(2025:year(end_date))){
   
   print(as.character(yr)) 
   
+  Sys.sleep(10)
   request = paste0("https://api.fiscaldata.treasury.gov/services/api/fiscal_service/v1/",
                    "accounting/dts/debt_subject_to_limit",
                    "?sort=-record_date",
@@ -385,7 +388,7 @@ for(yr in c(2025:year(end_date))){
                        "&filter=record_calendar_year:eq:",as.character(yr),
                        "&page[number]=",page_num,
                        "&page[size]=10000")
-    
+    Sys.sleep(2)
     data = read_csv(url(request_2))
     
     debt_subject_to_limit_new = new_bind(debt_subject_to_limit_new,data)
@@ -405,6 +408,7 @@ for(yr in c(2025:year(end_date))){
   
   print(as.character(yr)) 
   
+  Sys.sleep(10)
   request = paste0("https://api.fiscaldata.treasury.gov/services/api/fiscal_service/v1/",
                    "accounting/mts/mts_table_1",
                    "?sort=-record_date",
@@ -426,6 +430,7 @@ for(yr in c(2025:year(end_date))){
                        "&page[number]=",page_num,
                        "&page[size]=10000")
     
+    Sys.sleep(2)
     data = read_csv(url(request_2))
     
     deficit_summary_new = new_bind(deficit_summary_new,data)
@@ -445,6 +450,7 @@ for(yr in c(2025:year(end_date))){
   
   print(as.character(yr)) 
   
+  Sys.sleep(10)
   request = paste0("https://api.fiscaldata.treasury.gov/services/api/fiscal_service/v1/",
                    "accounting/mts/mts_table_5",
                    "?sort=-record_date",
@@ -466,6 +472,7 @@ for(yr in c(2025:year(end_date))){
                        "&page[number]=",page_num,
                        "&page[size]=10000")
     
+    Sys.sleep(2)
     data = read_csv(url(request_2))
     
     outlays_new = new_bind(outlays_new,data)
@@ -485,6 +492,7 @@ for(yr in c(2025:year(end_date))){
   
   print(as.character(yr)) 
   
+  Sys.sleep(10)
   request = paste0("https://api.fiscaldata.treasury.gov/services/api/fiscal_service/v1/",
                    "accounting/mts/mts_table_4",
                    "?sort=-record_date",
@@ -506,6 +514,7 @@ for(yr in c(2025:year(end_date))){
                        "&page[number]=",page_num,
                        "&page[size]=10000")
     
+    Sys.sleep(2)
     data = read_csv(url(request_2))
     
     receipts_new = new_bind(receipts_new,data)
@@ -525,6 +534,7 @@ for(yr in c(2025:year(end_date))){
   
   print(as.character(yr)) 
   
+  Sys.sleep(10)
   request = paste0("https://api.fiscaldata.treasury.gov/services/api/fiscal_service/v1/",
                    "accounting/od/fip_principal_outstanding_table1",
                    "?sort=-record_date",
@@ -546,6 +556,7 @@ for(yr in c(2025:year(end_date))){
                        "&page[number]=",page_num,
                        "&page[size]=10000")
     
+    Sys.sleep(2)
     data = read_csv(url(request_2))
     
     fed_invest_programs_new = new_bind(fed_invest_programs_new,data)
@@ -565,6 +576,7 @@ for(yr in c(2025:year(end_date))){
   
   print(as.character(yr)) 
   
+  Sys.sleep(10)
   request = paste0("https://api.fiscaldata.treasury.gov/services/api/fiscal_service/v1/",
                    "accounting/mts/mts_table_9",
                    "?sort=-record_date",
@@ -586,6 +598,7 @@ for(yr in c(2025:year(end_date))){
                        "&page[number]=",page_num,
                        "&page[size]=10000")
     
+    Sys.sleep(2)
     data = read_csv(url(request_2))
     
     spending_by_function_new = new_bind(spending_by_function_new,data)
@@ -605,6 +618,7 @@ for(yr in c(2025:year(end_date))){
   
   print(as.character(yr)) 
   
+  Sys.sleep(10)
   request = paste0("https://api.fiscaldata.treasury.gov/services/api/fiscal_service/v1/",
                    "debt/mspd/mspd_table_2",
                    "?sort=-record_date",
@@ -626,6 +640,7 @@ for(yr in c(2025:year(end_date))){
                        "&page[number]=",page_num,
                        "&page[size]=10000")
     
+    Sys.sleep(2)
     data = read_csv(url(request_2))
     
     overall_debt_new = new_bind(overall_debt_new,data)
@@ -646,6 +661,7 @@ for(yr in c(2025:year(end_date))){
   
   print(as.character(yr)) 
   
+  Sys.sleep(10)
   request = paste0("https://api.fiscaldata.treasury.gov/services/api/fiscal_service/v1/",
                    "debt/mspd/mspd_table_3",
                    "?sort=-record_date",
@@ -667,6 +683,7 @@ for(yr in c(2025:year(end_date))){
                        "&page[number]=",page_num,
                        "&page[size]=10000")
     
+    Sys.sleep(2)
     data = read_csv(url(request_2))
     
     treasury_securities_new = new_bind(treasury_securities_new,data)
@@ -687,6 +704,7 @@ for(yr in c(2025:year(end_date))){
   
   print(as.character(yr)) 
   
+  Sys.sleep(10)
   request = paste0("https://api.fiscaldata.treasury.gov/services/api/fiscal_service/v2/",
                    "accounting/od/debt_to_penny",
                    "?sort=-record_date",
@@ -708,6 +726,7 @@ for(yr in c(2025:year(end_date))){
                        "&page[number]=",page_num,
                        "&page[size]=10000")
     
+    Sys.sleep(2)
     data = read_csv(url(request_2))
     
     debt_level_new = new_bind(debt_level_new,data)
@@ -727,6 +746,7 @@ for(yr in c(2025:year(end_date))){
   
   print(as.character(yr)) 
   
+  Sys.sleep(10)
   request = paste0("https://api.fiscaldata.treasury.gov/services/api/fiscal_service/v1/",
                    "accounting/od/fip_principal_outstanding_table1",
                    "?sort=-record_date",
@@ -748,6 +768,7 @@ for(yr in c(2025:year(end_date))){
                        "&page[number]=",page_num,
                        "&page[size]=10000")
     
+    Sys.sleep(2)
     data = read_csv(url(request_2))
     
     investment_funds_new = new_bind(investment_funds_new,data)
@@ -767,6 +788,7 @@ for(yr in c(2025:year(end_date))){
   
   print(as.character(yr)) 
   
+  Sys.sleep(10)
   request = paste0("https://api.fiscaldata.treasury.gov/services/api/fiscal_service/v1/",
                    "accounting/dts/operating_cash_balance",
                    "?sort=-record_date",
@@ -788,6 +810,7 @@ for(yr in c(2025:year(end_date))){
                        "&page[number]=",page_num,
                        "&page[size]=10000")
     
+    Sys.sleep(2)
     data = read_csv(url(request_2))
     
     op_cash_balance_new = new_bind(op_cash_balance_new,data)
@@ -839,6 +862,7 @@ for(yr in c(2025:year(end_date))){
   
   print(as.character(yr)) 
   
+  Sys.sleep(10)
   request = paste0("https://api.fiscaldata.treasury.gov/services/api/fiscal_service/v1/",
                    "accounting/dts/inter_agency_tax_transfers",
                    "?sort=-record_date",
@@ -860,6 +884,7 @@ for(yr in c(2025:year(end_date))){
                        "&page[number]=",page_num,
                        "&page[size]=10000")
     
+    Sys.sleep(2)
     data = read_csv(url(request_2))
     
     tax_deposits2_new = new_bind(tax_deposits2_new,data)
@@ -903,6 +928,7 @@ for(yr in c(2025:year(end_date))){
   
   print(as.character(yr)) 
   
+  Sys.sleep(10)
   request = paste0("https://api.fiscaldata.treasury.gov/services/api/fiscal_service/v1/",
                    "accounting/dts/income_tax_refunds_issued",
                    "?sort=-record_date",
@@ -924,6 +950,7 @@ for(yr in c(2025:year(end_date))){
                        "&page[number]=",page_num,
                        "&page[size]=10000")
     
+    Sys.sleep(2)
     data = read_csv(url(request_2))
     
     tax_refunds_new = new_bind(tax_refunds_new,data)
@@ -964,6 +991,7 @@ for(yr in c(2025:year(end_date))){
   
   print(as.character(yr)) 
   
+  Sys.sleep(10)
   request = paste0("https://api.fiscaldata.treasury.gov/services/api/fiscal_service/v1/",
                    "accounting/od/",var,
                    "?sort=-record_date",
@@ -985,6 +1013,7 @@ for(yr in c(2025:year(end_date))){
                        "&page[number]=",page_num,
                        "&page[size]=10000")
     
+    Sys.sleep(2)
     data = read_csv(url(request_2))
     
     daily_gas_activity_new = new_bind(daily_gas_activity_new,data)
@@ -1011,6 +1040,7 @@ for(yr in c(2025:year(end_date))){
   
   print(as.character(yr)) 
   
+  Sys.sleep(10)
   request = paste0("https://api.fiscaldata.treasury.gov/services/api/fiscal_service/v1/",
                    "accounting/mts/mts_table_6d",
                    "?sort=-record_date",
@@ -1032,6 +1062,7 @@ for(yr in c(2025:year(end_date))){
                        "&page[number]=",page_num,
                        "&page[size]=10000")
     
+    Sys.sleep(2)
     data = read_csv(url(request_2))
     
     issuance_new = new_bind(issuance_new,data)
@@ -1051,6 +1082,7 @@ for(yr in c(2025:year(end_date))){
   
   print(as.character(yr)) 
   
+  Sys.sleep(10)
   request = paste0("https://api.fiscaldata.treasury.gov/services/api/fiscal_service/v1/",
                    "accounting/od/fip_statement_of_account_table2",
                    "?sort=-record_date",
@@ -1072,6 +1104,7 @@ for(yr in c(2025:year(end_date))){
                        "&page[number]=",page_num,
                        "&page[size]=10000")
     
+    Sys.sleep(2)
     data = read_csv(url(request_2))
     
     funds_new = new_bind(funds_new,data)
