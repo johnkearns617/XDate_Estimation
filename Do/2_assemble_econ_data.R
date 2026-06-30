@@ -25,6 +25,7 @@ library(blsAPI)
 library(rjson)
 library(httr)
 library(jsonlite)
+library(retry)
 
 conflicted::conflicts_prefer(dplyr::filter,
                             jsonlite::fromJSON,
@@ -339,6 +340,8 @@ for(yr in c(2025:year(end_date))){
   
   for(page_num in c(1:out$meta$`total-pages`)){
     
+    set_config( config( ssl_verifypeer = 0L ) )
+    
     request_2 = paste0("https://api.fiscaldata.treasury.gov/services/api/fiscal_service/v1/",
                        "accounting/dts/deposits_withdrawals_operating_cash",
                        "?sort=-record_date",
@@ -348,7 +351,13 @@ for(yr in c(2025:year(end_date))){
                        "&page[size]=10000")
     
     Sys.sleep(2)
-    data = read_csv(url(request_2))
+    data =  retry(       
+      expr = read_csv(url(request_2)),       
+      upon = "error",       
+      until = ~ class(.)[4]=="data.frame",       
+      max_tries = 5,       
+      interval = 5     
+      )
     
     op_cash_dep_withdraw_new = new_bind(op_cash_dep_withdraw_new,data)
     
@@ -381,6 +390,8 @@ for(yr in c(2025:year(end_date))){
   
   for(page_num in c(1:out$meta$`total-pages`)){
     
+    set_config( config( ssl_verifypeer = 0L ) )
+    
     request_2 = paste0("https://api.fiscaldata.treasury.gov/services/api/fiscal_service/v1/",
                        "accounting/dts/debt_subject_to_limit",
                        "?sort=-record_date",
@@ -389,7 +400,13 @@ for(yr in c(2025:year(end_date))){
                        "&page[number]=",page_num,
                        "&page[size]=10000")
     Sys.sleep(2)
-    data = read_csv(url(request_2))
+    data =  retry(       
+      expr = read_csv(url(request_2)),       
+      upon = "error",       
+      until = ~ class(.)[4]=="data.frame",       
+      max_tries = 5,       
+      interval = 5     
+      )
     
     debt_subject_to_limit_new = new_bind(debt_subject_to_limit_new,data)
     
@@ -422,6 +439,8 @@ for(yr in c(2025:year(end_date))){
   
   for(page_num in c(1:out$meta$`total-pages`)){
     
+    set_config( config( ssl_verifypeer = 0L ) )
+    
     request_2 = paste0("https://api.fiscaldata.treasury.gov/services/api/fiscal_service/v1/",
                        "accounting/mts/mts_table_1",
                        "?sort=-record_date",
@@ -431,7 +450,14 @@ for(yr in c(2025:year(end_date))){
                        "&page[size]=10000")
     
     Sys.sleep(2)
-    data = read_csv(url(request_2))
+    
+    data =  retry(       
+      expr = read_csv(url(request_2)),       
+      upon = "error",       
+      until = ~ class(.)[4]=="data.frame",       
+      max_tries = 5,       
+      interval = 5     
+      )
     
     deficit_summary_new = new_bind(deficit_summary_new,data)
     
@@ -464,6 +490,8 @@ for(yr in c(2025:year(end_date))){
   
   for(page_num in c(1:out$meta$`total-pages`)){
     
+    set_config( config( ssl_verifypeer = 0L ) )
+    
     request_2 = paste0("https://api.fiscaldata.treasury.gov/services/api/fiscal_service/v1/",
                        "accounting/mts/mts_table_5",
                        "?sort=-record_date",
@@ -473,7 +501,13 @@ for(yr in c(2025:year(end_date))){
                        "&page[size]=10000")
     
     Sys.sleep(2)
-    data = read_csv(url(request_2))
+    data =  retry(       
+      expr = read_csv(url(request_2)),       
+      upon = "error",       
+      until = ~ class(.)[4]=="data.frame",       
+      max_tries = 5,       
+      interval = 5     
+      )
     
     outlays_new = new_bind(outlays_new,data)
     
@@ -506,6 +540,8 @@ for(yr in c(2025:year(end_date))){
   
   for(page_num in c(1:out$meta$`total-pages`)){
     
+    set_config( config( ssl_verifypeer = 0L ) )
+    
     request_2 = paste0("https://api.fiscaldata.treasury.gov/services/api/fiscal_service/v1/",
                        "accounting/mts/mts_table_4",
                        "?sort=-record_date",
@@ -515,7 +551,13 @@ for(yr in c(2025:year(end_date))){
                        "&page[size]=10000")
     
     Sys.sleep(2)
-    data = read_csv(url(request_2))
+    data =  retry(       
+      expr = read_csv(url(request_2)),       
+      upon = "error",       
+      until = ~ class(.)[4]=="data.frame",       
+      max_tries = 5,       
+      interval = 5     
+      )
     
     receipts_new = new_bind(receipts_new,data)
     
@@ -548,6 +590,8 @@ for(yr in c(2025:year(end_date))){
   
   for(page_num in c(1:out$meta$`total-pages`)){
     
+    set_config( config( ssl_verifypeer = 0L ) )
+    
     request_2 = paste0("https://api.fiscaldata.treasury.gov/services/api/fiscal_service/v1/",
                        "accounting/od/fip_principal_outstanding_table1",
                        "?sort=-record_date",
@@ -557,7 +601,13 @@ for(yr in c(2025:year(end_date))){
                        "&page[size]=10000")
     
     Sys.sleep(2)
-    data = read_csv(url(request_2))
+    data =  retry(       
+      expr = read_csv(url(request_2)),       
+      upon = "error",       
+      until = ~ class(.)[4]=="data.frame",       
+      max_tries = 5,       
+      interval = 5     
+      )
     
     fed_invest_programs_new = new_bind(fed_invest_programs_new,data)
     
@@ -590,6 +640,8 @@ for(yr in c(2025:year(end_date))){
   
   for(page_num in c(1:out$meta$`total-pages`)){
     
+    set_config( config( ssl_verifypeer = 0L ) )
+    
     request_2 = paste0("https://api.fiscaldata.treasury.gov/services/api/fiscal_service/v1/",
                        "accounting/mts/mts_table_9",
                        "?sort=-record_date",
@@ -599,7 +651,13 @@ for(yr in c(2025:year(end_date))){
                        "&page[size]=10000")
     
     Sys.sleep(2)
-    data = read_csv(url(request_2))
+    data =  retry(       
+      expr = read_csv(url(request_2)),       
+      upon = "error",       
+      until = ~ class(.)[4]=="data.frame",       
+      max_tries = 5,       
+      interval = 5     
+      )
     
     spending_by_function_new = new_bind(spending_by_function_new,data)
     
@@ -632,6 +690,8 @@ for(yr in c(2025:year(end_date))){
   
   for(page_num in c(1:out$meta$`total-pages`)){
     
+    set_config( config( ssl_verifypeer = 0L ) )
+    
     request_2 = paste0("https://api.fiscaldata.treasury.gov/services/api/fiscal_service/v1/",
                        "debt/mspd/mspd_table_2",
                        "?sort=-record_date",
@@ -641,7 +701,13 @@ for(yr in c(2025:year(end_date))){
                        "&page[size]=10000")
     
     Sys.sleep(2)
-    data = read_csv(url(request_2))
+    data =  retry(       
+      expr = read_csv(url(request_2)),       
+      upon = "error",       
+      until = ~ class(.)[4]=="data.frame",       
+      max_tries = 5,       
+      interval = 5     
+      )
     
     overall_debt_new = new_bind(overall_debt_new,data)
     
@@ -675,6 +741,8 @@ for(yr in c(2025:year(end_date))){
   
   for(page_num in c(1:out$meta$`total-pages`)){
     
+    set_config( config( ssl_verifypeer = 0L ) )
+    
     request_2 = paste0("https://api.fiscaldata.treasury.gov/services/api/fiscal_service/v1/",
                        "debt/mspd/mspd_table_3",
                        "?sort=-record_date",
@@ -684,7 +752,13 @@ for(yr in c(2025:year(end_date))){
                        "&page[size]=10000")
     
     Sys.sleep(2)
-    data = read_csv(url(request_2))
+    data =  retry(       
+      expr = read_csv(url(request_2)),       
+      upon = "error",       
+      until = ~ class(.)[4]=="data.frame",       
+      max_tries = 5,       
+      interval = 5     
+      )
     
     treasury_securities_new = new_bind(treasury_securities_new,data)
     
@@ -718,6 +792,8 @@ for(yr in c(2025:year(end_date))){
   
   for(page_num in c(1:out$meta$`total-pages`)){
     
+    set_config( config( ssl_verifypeer = 0L ) )
+    
     request_2 = paste0("https://api.fiscaldata.treasury.gov/services/api/fiscal_service/v2/",
                        "accounting/od/debt_to_penny",
                        "?sort=-record_date",
@@ -727,7 +803,13 @@ for(yr in c(2025:year(end_date))){
                        "&page[size]=10000")
     
     Sys.sleep(2)
-    data = read_csv(url(request_2))
+    data =  retry(       
+      expr = read_csv(url(request_2)),       
+      upon = "error",       
+      until = ~ class(.)[4]=="data.frame",       
+      max_tries = 5,       
+      interval = 5     
+      )
     
     debt_level_new = new_bind(debt_level_new,data)
     
@@ -760,6 +842,8 @@ for(yr in c(2025:year(end_date))){
   
   for(page_num in c(1:out$meta$`total-pages`)){
     
+    set_config( config( ssl_verifypeer = 0L ) )
+    
     request_2 = paste0("https://api.fiscaldata.treasury.gov/services/api/fiscal_service/v1/",
                        "accounting/od/fip_principal_outstanding_table1",
                        "?sort=-record_date",
@@ -769,7 +853,13 @@ for(yr in c(2025:year(end_date))){
                        "&page[size]=10000")
     
     Sys.sleep(2)
-    data = read_csv(url(request_2))
+    data =  retry(       
+      expr = read_csv(url(request_2)),       
+      upon = "error",       
+      until = ~ class(.)[4]=="data.frame",       
+      max_tries = 5,       
+      interval = 5     
+      )
     
     investment_funds_new = new_bind(investment_funds_new,data)
     
@@ -802,6 +892,8 @@ for(yr in c(2025:year(end_date))){
   
   for(page_num in c(1:out$meta$`total-pages`)){
     
+    set_config( config( ssl_verifypeer = 0L ) )
+    
     request_2 = paste0("https://api.fiscaldata.treasury.gov/services/api/fiscal_service/v1/",
                        "accounting/dts/operating_cash_balance",
                        "?sort=-record_date",
@@ -811,7 +903,13 @@ for(yr in c(2025:year(end_date))){
                        "&page[size]=10000")
     
     Sys.sleep(2)
-    data = read_csv(url(request_2))
+    data =  retry(       
+      expr = read_csv(url(request_2)),       
+      upon = "error",       
+      until = ~ class(.)[4]=="data.frame",       
+      max_tries = 5,       
+      interval = 5     
+      )
     
     op_cash_balance_new = new_bind(op_cash_balance_new,data)
     
@@ -849,7 +947,7 @@ op_cash_balance = data.table::rbindlist(list(
 #                        "&page[number]=",page_num,
 #                        "&page[size]=10000")
 #     
-#     data = read_csv(url(request_2))
+#     data =  retry(       expr = read_csv(url(request_2)),       upon = "error",       until = ~ class(.)[4]=="data.frame",       max_tries = 5,       interval = 5     )
 #     
 #     tax_deposits1 = new_bind(tax_deposits1,data)
 #     
@@ -876,6 +974,8 @@ for(yr in c(2025:year(end_date))){
   
   for(page_num in c(1:out$meta$`total-pages`)){
     
+    set_config( config( ssl_verifypeer = 0L ) )
+    
     request_2 = paste0("https://api.fiscaldata.treasury.gov/services/api/fiscal_service/v1/",
                        "accounting/dts/inter_agency_tax_transfers",
                        "?sort=-record_date",
@@ -885,7 +985,13 @@ for(yr in c(2025:year(end_date))){
                        "&page[size]=10000")
     
     Sys.sleep(2)
-    data = read_csv(url(request_2))
+    data =  retry(       
+      expr = read_csv(url(request_2)),       
+      upon = "error",       
+      until = ~ class(.)[4]=="data.frame",       
+      max_tries = 5,       
+      interval = 5     
+      )
     
     tax_deposits2_new = new_bind(tax_deposits2_new,data)
     
@@ -951,7 +1057,13 @@ for(yr in c(2025:year(end_date))){
                        "&page[size]=10000")
     
     Sys.sleep(2)
-    data = read_csv(url(request_2))
+    data =  retry(       
+      expr = read_csv(url(request_2)),       
+      upon = "error",       
+      until = ~ class(.)[4]=="data.frame",       
+      max_tries = 5,       
+      interval = 5     
+      )
     
     tax_refunds_new = new_bind(tax_refunds_new,data)
     
@@ -1005,6 +1117,8 @@ for(yr in c(2025:year(end_date))){
   
   for(page_num in c(1:out$meta$`total-pages`)){
     
+    set_config( config( ssl_verifypeer = 0L ) )
+    
     request_2 = paste0("https://api.fiscaldata.treasury.gov/services/api/fiscal_service/v1/",
                        "accounting/od/",var,
                        "?sort=-record_date",
@@ -1014,7 +1128,13 @@ for(yr in c(2025:year(end_date))){
                        "&page[size]=10000")
     
     Sys.sleep(2)
-    data = read_csv(url(request_2))
+    data =  retry(       
+      expr = read_csv(url(request_2)),       
+      upon = "error",       
+      until = ~ class(.)[4]=="data.frame",       
+      max_tries = 5,       
+      interval = 5     
+      )
     
     daily_gas_activity_new = new_bind(daily_gas_activity_new,data)
     
@@ -1054,6 +1174,8 @@ for(yr in c(2025:year(end_date))){
   
   for(page_num in c(1:out$meta$`total-pages`)){
     
+    set_config( config( ssl_verifypeer = 0L ) )
+    
     request_2 = paste0("https://api.fiscaldata.treasury.gov/services/api/fiscal_service/v1/",
                        "accounting/mts/mts_table_6d",
                        "?sort=-record_date",
@@ -1063,7 +1185,13 @@ for(yr in c(2025:year(end_date))){
                        "&page[size]=10000")
     
     Sys.sleep(2)
-    data = read_csv(url(request_2))
+    data =  retry(       
+      expr = read_csv(url(request_2)),       
+      upon = "error",       
+      until = ~ class(.)[4]=="data.frame",       
+      max_tries = 5,       
+      interval = 5     
+      )
     
     issuance_new = new_bind(issuance_new,data)
     
@@ -1096,6 +1224,8 @@ for(yr in c(2025:year(end_date))){
   
   for(page_num in c(1:out$meta$`total-pages`)){
     
+    set_config( config( ssl_verifypeer = 0L ) )
+    
     request_2 = paste0("https://api.fiscaldata.treasury.gov/services/api/fiscal_service/v1/",
                        "accounting/od/fip_statement_of_account_table2",
                        "?sort=-record_date",
@@ -1105,7 +1235,13 @@ for(yr in c(2025:year(end_date))){
                        "&page[size]=10000")
     
     Sys.sleep(2)
-    data = read_csv(url(request_2))
+    data =  retry(       
+      expr = read_csv(url(request_2)),       
+      upon = "error",       
+      until = ~ class(.)[4]=="data.frame",       
+      max_tries = 5,       
+      interval = 5     
+      )
     
     funds_new = new_bind(funds_new,data)
     
