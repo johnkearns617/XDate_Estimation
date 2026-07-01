@@ -3382,6 +3382,17 @@
       ],
       "Hash": "43239d1c5749802890d904295dbdc4a8"
     },
+    "retry": {
+      "Package": "retry",
+      "Version": "0.1.1",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Requirements": [
+        "later",
+        "rlang"
+      ],
+      "Hash": "cf479286b824294aa324326d49a3b563"
+    },
     "rjson": {
       "Package": "rjson",
       "Version": "0.2.23",
