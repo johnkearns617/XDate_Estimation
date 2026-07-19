@@ -1014,7 +1014,7 @@ tax_deposits1a = tax_deposits1 %>%
   )) %>% 
   filter(!is.na(group)) %>% 
   select(record_date,group,today_amt=tax_deposit_today_amt,mtd_amt=tax_deposit_mtd_amt,record_calendar_year,record_fiscal_year,record_calendar_month,record_calendar_day) %>% 
-  mutate_at(vars(record_calendar_month:record_calendar_day),as.numeric)
+  mutate_at(vars(record_calendar_month:record_calendar_day,today_amt,mtd_amt),as.numeric)
 
 
 tax_deposits2a = tax_deposits2 %>% 
@@ -1025,7 +1025,7 @@ tax_deposits2a = tax_deposits2 %>%
   )) %>% 
   filter(!is.na(group)) %>% 
   select(record_date,group,today_amt,mtd_amt,record_calendar_year,record_fiscal_year,record_calendar_month,record_calendar_day) %>% 
-  mutate_at(vars(record_calendar_month:record_calendar_day),as.numeric) %>% 
+  mutate_at(vars(record_calendar_month:record_calendar_day,today_amt,mtd_amt),as.numeric) %>% 
   filter(record_date<=end_date)
 
 
@@ -1084,8 +1084,9 @@ tax_refunds = tax_refunds %>%
     tax_refund_type%in%c("IRS - Economic Impact Payments (Checks)", "IRS - Economic Impact Payments (EFT)")~"revenue_Estate_Gift_Customs_Misc"
   )) %>% 
   filter(!is.na(group)) %>% 
+  mutate_at(vars(tax_refund_mtd_amt,tax_refund_today_amt),~gsub("'","",.)) %>% 
   select(record_date,group,today_amt=tax_refund_today_amt,mtd_amt=tax_refund_mtd_amt,record_calendar_year,record_fiscal_year,record_calendar_month,record_calendar_day) %>% 
-  mutate_at(vars(record_calendar_month:record_calendar_day),as.numeric) %>% 
+  mutate_at(vars(record_calendar_month:record_calendar_day,today_amt,mtd_amt),as.numeric) %>% 
   mutate(today_amt=-1*today_amt,
          mtd_amt=-1*mtd_amt)
 
