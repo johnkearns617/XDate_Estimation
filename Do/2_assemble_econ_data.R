@@ -313,6 +313,14 @@ get_national_econ_data = function(end_date){
     )) %>% 
     select(-c(diff,ch))
   
+  # fix when government was shutdown
+  if(end_date>="2025-12-18"){
+    
+    national_econ$value[national_econ$series_id=="UNRATE"] = na.approx(national_econ$value[national_econ$series_id=="UNRATE"],na.rm=FALSE)
+    national_econ$value[national_econ$series_id=="CPILFESL"] = na.approx(national_econ$value[national_econ$series_id=="CPILFESL"],na.rm=FALSE)
+    
+  }
+  
   return(national_econ)
 }
 
