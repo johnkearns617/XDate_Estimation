@@ -810,7 +810,7 @@ nowcast_daily_budget_receipt = function(dts,mts_dataset,end_date,col,col_mts,tes
     
     if(tail(x_data1$fiscal_year,1)!=fys[1]){
       
-      scalar = x_data1 %>% 
+      SCALAR = x_data1 %>% 
         ungroup() %>% 
         filter(fiscal_year==fys[1]) %>% 
         mutate(cbo_pred_month=cbo_proj*pred_cumshare,
@@ -821,8 +821,10 @@ nowcast_daily_budget_receipt = function(dts,mts_dataset,end_date,col,col_mts,tes
         pull(num)
       
       x_data1 = x_data1 %>% 
-        mutate(cbo_proj=case_when(fiscal_year==tail(x_data1$fiscal_year,1)~cbo_proj*scalar,
+        mutate(cbo_proj=case_when(fiscal_year==tail(x_data1$fiscal_year,1)~cbo_proj*SCALAR,
                                   TRUE~cbo_proj))
+      
+      rm(SCALAR)
       
     }else{
       scalar=1
@@ -1802,7 +1804,7 @@ nowcast_daily_budget_outlay = function(dts,mts_dataset,end_date,col,col_mts,test
     
     if(tail(x_data1$fiscal_year,1)!=fys[1]){
       
-      scalar = x_data1 %>% 
+      SCALAR = x_data1 %>% 
         ungroup() %>% 
         filter(fiscal_year==fys[1]) %>% 
         mutate(cbo_pred_month=cbo_proj*pred_cumshare,
@@ -1813,8 +1815,10 @@ nowcast_daily_budget_outlay = function(dts,mts_dataset,end_date,col,col_mts,test
         pull(num)
       
       x_data1 = x_data1 %>% 
-        mutate(cbo_proj=case_when(fiscal_year==tail(x_data1$fiscal_year,1)~cbo_proj*scalar,
+        mutate(cbo_proj=case_when(fiscal_year==tail(x_data1$fiscal_year,1)~cbo_proj*SCALAR,
                                   TRUE~cbo_proj))
+      
+      rm(SCALAR)
       
     }else{
       scalar=1
